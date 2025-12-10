@@ -164,6 +164,8 @@ function App() {
             <Route path="payment/status" element={<PaymentStatusPage />} />
             <Route path="billing/checkout" element={<Checkout />} />
             <Route path="upgrade" element={<UpgradePlanPage />} />
+
+            <Route path="billing" element={<BillingPage />} />
             <Route path="preview-test" element={<PreviewTest />} />
 
             {/* ===== Core Workspaces ===== */}
@@ -534,14 +536,14 @@ function App() {
               }
             />
 
-            <Route
+            {/* <Route
               path="settings/billing"
               element={
                 <FeatureGuard featureKey={FK.SETTINGS_BILLING_VIEW}>
                   <BillingPage />
                 </FeatureGuard>
               }
-            />
+            /> */}
 
             <Route
               path="settings/checkout"
