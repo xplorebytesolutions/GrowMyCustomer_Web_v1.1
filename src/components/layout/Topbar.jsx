@@ -194,6 +194,7 @@ export default function Topbar({ collapsed, setCollapsed }) {
             )}
 
             {/* User Menu */}
+            {/* User Menu */}
             <UserMenuDropdown />
           </div>
         </div>
