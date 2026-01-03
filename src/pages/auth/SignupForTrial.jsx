@@ -104,7 +104,7 @@ const SignupForTrial = () => {
     acceptTerms;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center px-4 py-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-4">
       <div className="flex flex-col lg:flex-row w-full max-w-6xl shadow-2xl rounded-2xl overflow-hidden bg-white">
         {/* Left Section - Marketing Panel */}
         <div className="lg:w-1/2 bg-gradient-to-br from-emerald-50 to-cyan-50 p-6 lg:p-8 flex flex-col justify-center overflow-hidden">

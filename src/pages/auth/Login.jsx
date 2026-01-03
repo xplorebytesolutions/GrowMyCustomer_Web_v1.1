@@ -61,6 +61,7 @@ export default function Login() {
   const handleSubmit = async e => {
     e.preventDefault();
     setError("");
+    setSessionNotice("");
     setLoading(true);
 
     try {
@@ -92,16 +93,16 @@ export default function Login() {
           : null) || routeForStatus(statusFromCtx);
 
       if (next === "/app/profile-completion") {
-        toast.info("🧩 Please complete your profile to continue.");
+        toast.info("Please complete your profile to continue.");
       } else if (next === "/pending-approval") {
-        toast.warn("⏳ Your account is pending approval.");
+        toast.warn("Your account is pending approval.");
       } else {
-        toast.success("✅ Login successful");
+        toast.success("Login successful");
       }
       navigate(next, { replace: true });
     } catch (err) {
       const message =
-        err?.response?.data?.message || err?.message || "❌ Login failed.";
+        err?.response?.data?.message || err?.message || "Login failed.";
       const lower = String(message).toLowerCase();
       const isWarning =
         lower.includes("pending") || lower.includes("under review");
