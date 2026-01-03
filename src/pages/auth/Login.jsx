@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { Clock } from "lucide-react";
 import { login } from "./services/authService";
 import { useAuth } from "../../app/providers/AuthProvider";
 
@@ -111,10 +112,20 @@ export default function Login() {
     }
   };
 
+  const errorText = String(error || "").trim();
+  const errorLower = errorText.toLowerCase();
+  const displayErrorText =
+    errorLower.includes("not active") ||
+    errorLower.includes("under review") ||
+    errorLower.includes("pending approval")
+      ? "Your account is under review and will be activated shortly after approval."
+      : errorText;
   const isWarning =
     typeof error === "string" &&
     (error.toLowerCase().includes("pending") ||
       error.toLowerCase().includes("under review"));
+  const showErrorIcon =
+    displayErrorText !== "" && /^[A-Za-z0-9]/.test(displayErrorText);
 
   return (
     <div
@@ -260,8 +271,9 @@ export default function Login() {
             </p>
 
             {sessionNotice && (
-              <div className="p-4 rounded-xl mb-6 text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100 flex items-center">
-                <span className="mr-2">ℹ️</span> {sessionNotice}
+              <div className="p-4 rounded-xl mb-6 text-sm font-medium bg-amber-50 text-amber-800 border border-amber-100 flex items-center">
+                <Clock className="w-4 h-4 mr-2" />
+                {sessionNotice}
               </div>
             )}
 
@@ -273,14 +285,17 @@ export default function Login() {
                     : "bg-red-50 text-red-700 border-red-100"
                 }`}
               >
-                <span className="mr-2">{isWarning ? "⚠️" : "🚫"}</span> {error}
+                {showErrorIcon && (
+                  <span className="mr-2">{isWarning ? "⚠️" : "🚫"}</span>
+                )}{" "}
+                {displayErrorText || error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
                 <label className="block text-sm font-semibold text-gray-700">
-                  Email Address
+                  Email
                 </label>
                 <input
                   type="email"
