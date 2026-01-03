@@ -13,31 +13,35 @@ import {
   Star,
 } from "lucide-react";
 import TypewriterHeadline from "../../components/TypewriterHeadline";
+import axiosClient from "../../api/axiosClient";
 
 const SignupForTrial = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    fullName: "",
     companyName: "",
-    country: "India",
-    state: "",
-    companySize: "",
-    industry: "",
     mobileNumber: "",
     email: "",
     password: "",
-    confirmPassword: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   const handleInputChange = e => {
     const { name, value } = e.target;
+
+    if (name === "mobileNumber") {
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 10);
+      setFormData(prev => ({
+        ...prev,
+        [name]: digitsOnly,
+      }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value,
@@ -49,34 +53,43 @@ const SignupForTrial = () => {
     setError("");
     setLoading(true);
 
-    // Basic validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
-
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters long");
       setLoading(false);
       return;
     }
 
+    if (formData.mobileNumber.length !== 10) {
+      setError("Mobile number must be exactly 10 digits");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // TODO: Implement actual signup API call
-      console.log("Signup data:", formData);
+      const payload = {
+        companyName: formData.companyName,
+        email: formData.email,
+        password: formData.password,
+      };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await axiosClient.post(
+        "/auth/business-user-signup",
+        payload
+      );
 
-      toast.success("🎉 Account created successfully! Welcome to GrowMyCustomer!");
+      if (!response?.data?.success) {
+        throw new Error(response?.data?.message || "Signup failed. Try again.");
+      }
+
+      toast.success(
+        "Account created successfully! Welcome to GrowMyCustomer!"
+      );
       navigate("/login");
     } catch (err) {
       const message =
         err?.response?.data?.message ||
         err?.message ||
         "❌ Signup failed. Please try again.";
-      toast.error(message);
       setError(message);
     } finally {
       setLoading(false);
@@ -84,12 +97,10 @@ const SignupForTrial = () => {
   };
 
   const isFormValid =
-    formData.fullName &&
     formData.companyName &&
+    formData.mobileNumber.length === 10 &&
     formData.email &&
     formData.password &&
-    formData.confirmPassword &&
-    formData.password === formData.confirmPassword &&
     acceptTerms;
 
   return (
@@ -246,124 +257,25 @@ const SignupForTrial = () => {
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Personal Information Section */}
 
-            {/* Full Name and Company Name Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                  placeholder="Enter your full name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Name *
-                </label>
-                <input
-                  type="text"
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                  placeholder="Enter your company name"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Country and State Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Country *
-                </label>
-                <select
-                  name="country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                  required
-                >
-                  <option value="India">India</option>
-                  <option value="United States">United States</option>
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="Canada">Canada</option>
-                  <option value="Australia">Australia</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  State
-                </label>
-                <select
-                  name="state"
-                  value={formData.state}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                >
-                  <option value="">Select State</option>
-                  <option value="Maharashtra">Maharashtra</option>
-                  <option value="Karnataka">Karnataka</option>
-                  <option value="Tamil Nadu">Tamil Nadu</option>
-                  <option value="Delhi">Delhi</option>
-                  <option value="Gujarat">Gujarat</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Company Size and Industry Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Size
-                </label>
-                <select
-                  name="companySize"
-                  value={formData.companySize}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                >
-                  <option value="">Select Size</option>
-                  <option value="1-10">1-10 employees</option>
-                  <option value="11-50">11-50 employees</option>
-                  <option value="51-200">51-200 employees</option>
-                  <option value="201-500">201-500 employees</option>
-                  <option value="500+">500+ employees</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Industry
-                </label>
-                <select
-                  name="industry"
-                  value={formData.industry}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                >
-                  <option value="">Select Industry</option>
-                  <option value="E-commerce">E-commerce</option>
-                  <option value="Healthcare">Healthcare</option>
-                  <option value="Education">Education</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Technology">Technology</option>
-                  <option value="Retail">Retail</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Company Name *
+              </label>
+              <input
+                type="text"
+                name="companyName"
+                value={formData.companyName}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
+                placeholder="Enter your company name"
+                required
+              />
             </div>
 
             {/* Mobile Number */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mobile Number
+                Mobile Number *
               </label>
               <div className="flex space-x-1">
                 <select
@@ -380,8 +292,12 @@ const SignupForTrial = () => {
                   name="mobileNumber"
                   value={formData.mobileNumber}
                   onChange={handleInputChange}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={10}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                  placeholder="Enter mobile number"
+                  placeholder="Enter 10-digit mobile number"
+                  required
                 />
               </div>
             </div>
@@ -402,61 +318,32 @@ const SignupForTrial = () => {
               />
             </div>
 
-            {/* Password and Confirm Password Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password *
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                    placeholder="Create a strong password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm Password *
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
-                    placeholder="Confirm your password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
+                  placeholder="Create a strong password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
             </div>
 
