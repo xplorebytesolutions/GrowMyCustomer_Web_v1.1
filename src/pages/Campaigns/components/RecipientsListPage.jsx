@@ -142,7 +142,8 @@ function RecipientsListPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
+    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
+      <div className="mx-auto max-w-7xl px-4 py-6">
       {/* Page Header */}
       <div className="mb-6">
         <button
@@ -345,6 +346,7 @@ function RecipientsListPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -1,30 +1,302 @@
 // 📄 src/pages/campaigns/TemplateCampaignList.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
 import WhatsAppBubblePreview from "../../components/WhatsAppBubblePreview";
 import TemplateCard from "./components/templates/TemplateCard";
 import normalizeCampaign from "../../utils/normalizeTemplate";
 import { useNavigate } from "react-router-dom";
+import { Menu, Portal, Transition } from "@headlessui/react";
+import { Fragment } from "react";
 import {
-  FaRocket,
   FaSearch,
   FaSyncAlt,
   FaListUl,
+  FaList,
   FaTable,
   FaThLarge,
-  FaFilter,
   FaEye,
   FaEdit,
   FaTrash,
   FaUsers,
   FaPaperPlane,
   FaChartBar,
-  FaList,
+  FaEllipsisV,
+  FaHistory,
+  FaRegClock,
 } from "react-icons/fa";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+dayjs.extend(relativeTime);
+
 
 function cx(...xs) {
   return xs.filter(Boolean).join(" ");
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function CampaignRowMoreMenu({
+  hasRecipients,
+  canDelete,
+  onPreview,
+  onViewRecipients,
+  onViewLogs,
+  onLogReport,
+  onDelete,
+}) {
+  const buttonRef = useRef(null);
+
+  return (
+    <Menu as="div" className="relative ml-2 inline-block text-left">
+      {({ open }) => (
+        <>
+          <Menu.Button
+            ref={buttonRef}
+            className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          >
+            <span className="sr-only">Open options</span>
+            <FaEllipsisV className="h-4 w-4" aria-hidden="true" />
+          </Menu.Button>
+
+          <CampaignRowMoreMenuItems
+            open={open}
+            buttonRef={buttonRef}
+            hasRecipients={hasRecipients}
+            canDelete={canDelete}
+            onPreview={onPreview}
+            onViewRecipients={onViewRecipients}
+            onViewLogs={onViewLogs}
+            onLogReport={onLogReport}
+            onDelete={onDelete}
+          />
+        </>
+      )}
+    </Menu>
+  );
+}
+
+function CampaignRowMoreMenuItems({
+  open,
+  buttonRef,
+  hasRecipients,
+  canDelete,
+  onPreview,
+  onViewRecipients,
+  onViewLogs,
+  onLogReport,
+  onDelete,
+}) {
+  const itemsRef = useRef(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [originClass, setOriginClass] = useState("origin-top-right");
+  const [positioned, setPositioned] = useState(false);
+
+  const updatePosition = useCallback(() => {
+    const anchor = buttonRef?.current;
+    const menu = itemsRef?.current;
+    if (!anchor || !menu) return;
+
+    const anchorRect = anchor.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+
+    const margin = 8;
+    const viewportPad = 8;
+
+    const spaceBelow = window.innerHeight - anchorRect.bottom - margin;
+    const spaceAbove = anchorRect.top - margin;
+    const openUp = spaceBelow < menuRect.height && spaceAbove > spaceBelow;
+
+    const nextTop = openUp
+      ? anchorRect.top - menuRect.height - margin
+      : anchorRect.bottom + margin;
+
+    const top = clamp(
+      nextTop,
+      viewportPad,
+      Math.max(viewportPad, window.innerHeight - menuRect.height - viewportPad)
+    );
+
+    const nextLeft = anchorRect.right - menuRect.width;
+    const left = clamp(
+      nextLeft,
+      viewportPad,
+      Math.max(viewportPad, window.innerWidth - menuRect.width - viewportPad)
+    );
+
+    setOriginClass(openUp ? "origin-bottom-right" : "origin-top-right");
+    setPosition({ top, left });
+    setPositioned(true);
+  }, [buttonRef]);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPositioned(false);
+      return;
+    }
+
+    setPositioned(false);
+    const raf1 = requestAnimationFrame(updatePosition);
+    const raf2 = requestAnimationFrame(updatePosition);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handler = () => updatePosition();
+    window.addEventListener("resize", handler);
+    window.addEventListener("scroll", handler, true);
+    return () => {
+      window.removeEventListener("resize", handler);
+      window.removeEventListener("scroll", handler, true);
+    };
+  }, [open, updatePosition]);
+
+  return (
+    <Portal>
+      <Transition
+        show={open}
+        as={Fragment}
+        enter="transition ease-out duration-100"
+        enterFrom="transform opacity-0 scale-95"
+        enterTo="transform opacity-100 scale-100"
+        leave="transition ease-in duration-75"
+        leaveFrom="transform opacity-100 scale-100"
+        leaveTo="transform opacity-0 scale-95"
+      >
+        <Menu.Items
+          static
+          ref={itemsRef}
+          style={{
+            position: "fixed",
+            top: position.top,
+            left: position.left,
+            zIndex: 60,
+            visibility: positioned ? "visible" : "hidden",
+          }}
+          className={cx(
+            "w-48 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none divide-y divide-gray-100 max-h-[60vh] overflow-auto",
+            originClass
+          )}
+        >
+          <div className="p-1">
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  onClick={onPreview}
+                  className={cx(
+                    active
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "text-gray-700",
+                    "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                  )}
+                >
+                  <FaEye className="text-gray-400 group-hover:text-emerald-500" />
+                  Preview Template
+                </button>
+              )}
+            </Menu.Item>
+
+            <Menu.Item disabled={!hasRecipients}>
+              {({ active, disabled }) => (
+                <button
+                  disabled={disabled}
+                  onClick={onViewRecipients}
+                  className={cx(
+                    disabled
+                      ? "text-gray-300 cursor-not-allowed"
+                      : active
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "text-gray-700",
+                    "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                  )}
+                >
+                  <FaUsers
+                    className={cx(
+                      "text-gray-400 group-hover:text-emerald-500",
+                      disabled && "text-gray-300"
+                    )}
+                  />
+                  View Recipients
+                </button>
+              )}
+            </Menu.Item>
+
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  onClick={onViewLogs}
+                  className={cx(
+                    active ? "bg-amber-50 text-amber-700" : "text-gray-700",
+                    "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                  )}
+                >
+                  <FaHistory className="text-gray-400 group-hover:text-amber-500" />
+                  View Logs
+                </button>
+              )}
+            </Menu.Item>
+
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  onClick={onLogReport}
+                  className={cx(
+                    active ? "bg-indigo-50 text-indigo-700" : "text-gray-700",
+                    "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                  )}
+                >
+                  <FaChartBar className="text-gray-400 group-hover:text-indigo-500" />
+                  Log Report
+                </button>
+              )}
+            </Menu.Item>
+          </div>
+
+          <div className="p-1">
+            <Menu.Item disabled={!canDelete}>
+              {({ active, disabled }) => (
+                <button
+                  onClick={onDelete}
+                  disabled={disabled}
+                  className={cx(
+                    disabled
+                      ? "text-gray-300 cursor-not-allowed"
+                      : active
+                      ? "bg-red-50 text-red-700"
+                      : "text-gray-700",
+                    "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                  )}
+                >
+                  <FaTrash
+                    className={cx(
+                      "text-gray-400 group-hover:text-red-500",
+                      disabled && "text-gray-300"
+                    )}
+                  />
+                  Delete Campaign
+                </button>
+              )}
+            </Menu.Item>
+          </div>
+        </Menu.Items>
+      </Transition>
+    </Portal>
+  );
 }
 
 const TYPE_FILTERS = [
@@ -67,9 +339,9 @@ function InspectorModal({ item, onClose }) {
         className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b px-6 py-4 bg-gradient-to-r from-sapphire-50 to-emerald-50">
+        <div className="flex items-center justify-between border-b px-6 py-4 bg-gradient-to-r from-slate-50 to-emerald-50">
           <div>
-            <div className="text-xl font-bold text-gray-900">{item.name}</div>
+            <div className="text-lg font-bold text-gray-900">{item.name}</div>
             <div className="text-sm text-gray-600">Template Preview</div>
           </div>
           <button
@@ -116,12 +388,8 @@ function DangerDeleteModal({
   const [confirmed, setConfirmed] = React.useState(false);
   const [typed, setTyped] = React.useState("");
 
-  React.useEffect(() => {
-    if (!open) {
-      setConfirmed(false);
-      setTyped("");
-    }
-  }, [open]);
+  // React.useEffect removed to avoid update loop. 
+  // State reset is handled by unmounting/remounting via key prop.
 
   if (!open) return null;
 
@@ -248,7 +516,7 @@ function TemplateCampaignList() {
   const [onlyWithRecipients, setOnlyWithRecipients] = useState(false);
   const [sort, setSort] = useState("recent"); // recent | recipients | name
   const [activeType, setActiveType] = useState("all");
-  const [viewMode, setViewMode] = useState("grid"); // grid | table
+  const [viewMode, setViewMode] = useState("table"); // grid | table
   const [inspector, setInspector] = useState(null);
 
   // Delete modal state
@@ -257,20 +525,52 @@ function TemplateCampaignList() {
   const [usageLoading, setUsageLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Pagination state (MUST be defined before loadCampaigns)
+  const [, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+    total: 0,
+  });
+
   const navigate = useNavigate();
 
-  const loadCampaigns = async () => {
-    setLoading(true);
+  const loadCampaigns = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
+      // Reverted to original endpoint that works
       const res = await axiosClient.get("/campaign/get-image-campaign");
-      setRaw(res.data || []);
+      
+      // Handle potential response formats (array vs object)
+      const items = Array.isArray(res.data) ? res.data : (res.data?.items || []);
+      setRaw(items);
+      
+      // Update total for pagination (client-side or server-side count)
+      const total = Array.isArray(res.data) ? res.data.length : (res.data?.totalCount || 0);
+      setPagination(prev => ({ ...prev, total }));
     } catch (err) {
       console.error(err);
-      toast.error("❌ Failed to load template campaigns");
+      if (!silent) toast.error("Failed to load campaigns");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  // Auto-refresh polling for processing campaigns
+  useEffect(() => {
+    const hasProcessing = raw.some(
+      c =>
+        c.status === "Processing" ||
+        c.status === "Sending" ||
+        c.status === "InFlight"
+    );
+
+    if (hasProcessing) {
+      const interval = setInterval(() => {
+        loadCampaigns(true); // silent reload
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [raw]);
 
   useEffect(() => {
     loadCampaigns();
@@ -281,6 +581,7 @@ function TemplateCampaignList() {
     try {
       await axiosClient.post(`/campaign/send-campaign/${campaignId}`);
       toast.success("🚀 Campaign sent successfully!");
+      loadCampaigns();
     } catch (err) {
       console.error("❌ Sending failed:", err);
       toast.error("❌ Failed to send campaign");
@@ -388,62 +689,54 @@ function TemplateCampaignList() {
   }, [data, q, onlyWithRecipients, activeType, sort]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-emerald-50">
+    <div className="min-h-screen bg-[#f5f6f7]">
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-sapphire-500 to-emerald-500 rounded-xl flex items-center justify-center">
-                  <FaRocket className="text-white text-xl" />
+                <div className="w-12 h-12 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-600/20">
+                  <FaList className="text-white text-xl" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
+                  <h1 className="text-2xl font-bold text-gray-900">
                     Template Campaigns
                   </h1>
-                  <p className="text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 mt-1">
                     Manage and send your WhatsApp template campaigns
                   </p>
                 </div>
               </div>
-              <button
-                onClick={loadCampaigns}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                title="Refresh"
-              >
-                <FaSyncAlt className={cx(loading && "animate-spin")} />
-                Refresh
-              </button>
             </div>
 
             {/* Controls */}
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-              <div className="relative">
-                <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <div className="relative group">
+                <FaSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
                 <input
                   value={q}
                   onChange={e => setQ(e.target.value)}
                   placeholder="Search by name or message…"
-                  className="w-full lg:w-80 rounded-xl border border-gray-200 pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-sapphire-300 focus:border-sapphire-300 outline-none"
+                  className="w-full lg:w-72 rounded-xl border border-gray-200 pl-12 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm"
                 />
               </div>
 
-              <div className="flex items-center gap-4">
-                <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={onlyWithRecipients}
                     onChange={e => setOnlyWithRecipients(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-sapphire-600 focus:ring-sapphire-400"
+                    className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                   />
-                  Only with recipients
+                  Has recipients
                 </label>
 
                 <select
                   value={sort}
                   onChange={e => setSort(e.target.value)}
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-sapphire-300 focus:border-sapphire-300 outline-none"
+                  className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none shadow-sm cursor-pointer"
                 >
                   <option value="recent">Sort: Recent</option>
                   <option value="recipients">Sort: Recipients</option>
@@ -455,59 +748,66 @@ function TemplateCampaignList() {
         </div>
 
         {/* Segmented filters */}
-        <div className="mb-8">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <FaFilter className="text-sapphire-500" />
-              Filter by type:
-            </span>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             {TYPE_FILTERS.map(f => {
               const Icon = f.icon;
+              const isActive = activeType === f.id;
               return (
                 <button
                   key={f.id}
                   className={cx(
-                    "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                    activeType === f.id
-                      ? "bg-sapphire-600 text-white shadow-lg"
-                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                    "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                      : "bg-white text-gray-600 border border-transparent hover:bg-emerald-50 hover:text-emerald-700"
                   )}
                   onClick={() => setActiveType(f.id)}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={cx("w-3.5 h-3.5", isActive ? "text-white" : "text-gray-400")} />
                   {f.label}
                 </button>
               );
             })}
+          </div>
 
-            <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white p-1">
               <button
+                type="button"
                 className={cx(
-                  "inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                  "inline-flex h-8 w-8 items-center justify-center rounded-md transition-all",
                   viewMode === "grid"
-                    ? "bg-sapphire-50 border-sapphire-200 text-sapphire-700"
-                    : "text-gray-700 border-gray-200 hover:bg-gray-50"
+                    ? "bg-emerald-50 text-emerald-700 shadow-sm"
+                    : "text-gray-400 hover:text-gray-600"
                 )}
                 onClick={() => setViewMode("grid")}
                 title="Grid view"
               >
-                <FaThLarge />
-                Grid
+                <FaThLarge className="h-3.5 w-3.5" />
               </button>
               <button
+                type="button"
                 className={cx(
-                  "inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors",
+                  "inline-flex h-8 w-8 items-center justify-center rounded-md transition-all",
                   viewMode === "table"
-                    ? "bg-sapphire-50 border-sapphire-200 text-sapphire-700"
-                    : "text-gray-700 border-gray-200 hover:bg-gray-50"
+                    ? "bg-emerald-50 text-emerald-700 shadow-sm"
+                    : "text-gray-400 hover:text-gray-600"
                 )}
                 onClick={() => setViewMode("table")}
                 title="Table view"
               >
-                <FaTable />
-                Table
+                <FaTable className="h-3.5 w-3.5" />
               </button>
             </div>
+            <button
+              onClick={loadCampaigns}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white hover:shadow-sm transition-all bg-white/50"
+              title="Refresh"
+            >
+              <FaSyncAlt className={cx(loading && "animate-spin")} />
+              Refresh
+            </button>
           </div>
         </div>
 
@@ -537,24 +837,21 @@ function TemplateCampaignList() {
         {!loading && view.length === 0 && (
           <div className="mt-16 flex flex-col items-center justify-center text-center">
             <div className="rounded-3xl border border-gray-200 p-12 shadow-sm bg-white max-w-lg">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-sapphire-100 to-emerald-100">
-                <FaListUl className="text-sapphire-600 text-2xl" />
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-100 to-emerald-50">
+                <FaListUl className="text-emerald-600 text-2xl" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                No template campaigns yet
+                No template campaigns found
               </h3>
               <p className="text-gray-600 mb-8">
-                Create an image template campaign and assign recipients to start
-                sending.
+                Try adjusting your filters or create a new campaign to get started.
               </p>
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={loadCampaigns}
-                  className="rounded-xl border border-gray-200 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Refresh
-                </button>
-              </div>
+              <button
+                onClick={loadCampaigns}
+                className="rounded-xl border border-gray-200 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Refresh List
+              </button>
             </div>
           </div>
         )}
@@ -592,103 +889,179 @@ function TemplateCampaignList() {
 
         {/* TABLE VIEW (compact) */}
         {!loading && view.length > 0 && viewMode === "table" && (
-          <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <div className="overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm">
             <div className="max-h-[70vh] overflow-auto">
-              <table className="w-full text-[13px]">
-                <thead className="sticky top-0 z-10 bg-gray-50 text-left text-gray-700 border-b">
+              <table className="w-full text-sm text-slate-900">
+                <thead className="sticky top-0 z-10 bg-gray-100 backdrop-blur text-left text-xs font-semibold tracking-wider text-gray-700 border-b border-gray-200">
                   <tr>
-                    <th className="px-3 py-2 font-semibold">Name</th>
-                    <th className="px-3 py-2 font-semibold">Type</th>
-                    <th className="px-3 py-2 font-semibold">Buttons</th>
-                    <th className="px-3 py-2 font-semibold">Recipients</th>
-                    <th className="px-3 py-2 font-semibold">Updated</th>
-                    <th className="px-3 py-2 font-semibold text-right">
-                      Actions
-                    </th>
+                    <th className="px-4 py-3 w-4"></th>
+                    <th className="px-4 py-3">Campaign Name</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3 text-center">Recipients</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3">Sent At</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-100">
                   {view.map(t => {
-                    const deletingThis = deletingId === t.id;
-                    return (
+                     const hasRecipients = t.recipients > 0;
+                     const statusRaw = (t?.status || "").toString().toLowerCase();
+                     const isSent =
+                       Boolean(t?.sentAt) ||
+                       ["sent", "delivered", "dispatched", "completed"].includes(
+                         statusRaw
+                       );
+                     const canDelete = hasRecipients && !isSent;
+                      
+                     return (
                       <tr
                         key={t.id}
-                        className="border-t hover:bg-gray-50/70 transition-colors"
+                        className={cx(
+                          "group hover:bg-gray-200 transition-colors",
+                          view.indexOf(t) % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                        )}
                       >
-                        <td className="px-3 py-2 font-medium text-gray-900">
-                          {t.name}
+                        {/* Status Indicator Bar */}
+                        <td className="px-4 py-3 align-middle">
+                           <div className={cx(
+                             "w-1.5 h-8 rounded-full",
+                             hasRecipients ? "bg-emerald-500" : "bg-gray-200"
+                           )} title={hasRecipients ? "Ready to send" : "No recipients assigned"}/>
                         </td>
-                        <td className="px-3 py-2">
-                          {t.kind === "image_header"
-                            ? "Image Header"
-                            : "Text Only"}
-                        </td>
-                        <td className="px-3 py-2">
-                          {t.hasButtons ? t.buttons.length : 0}
-                        </td>
-                        <td className="px-3 py-2">{t.recipients}</td>
-                        <td className="px-3 py-2">
-                          {t.updatedAt
-                            ? new Date(t.updatedAt).toLocaleString()
-                            : "—"}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              className="rounded-md border px-2.5 py-1.5 hover:bg-gray-50"
-                              onClick={() => setInspector(t)}
-                            >
-                              Preview
-                            </button>
 
-                            <button
-                              className="rounded-md bg-yellow-100 px-2.5 py-1.5 text-yellow-800 hover:bg-yellow-200"
-                              onClick={() =>
-                                navigate(`/app/campaigns/logs/${t.id}`)
-                              }
-                            >
-                              Log
-                            </button>
+                        <td className="px-4 py-3 font-medium text-gray-900 group-hover:text-indigo-800 align-middle">
+                          <span className="truncate max-w-[200px] xl:max-w-[300px]" title={t.name}>
+                            {t.name}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 align-middle">
+                          <span className={cx(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border",
+                            t.kind === "image_header" 
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-100"
+                              : "bg-slate-50 text-slate-700 border-slate-200"
+                          )}>
+                            {t.kind === "image_header" ? <FaEye className="opacity-70" /> : <FaEdit className="opacity-70" />}
+                            {t.kind === "image_header" ? "Image Header" : "Text Only"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center align-middle">
+                          <button
+                            disabled={!hasRecipients}
+                            onClick={() =>
+                              navigate(
+                                `/app/campaigns/image-campaigns/assigned-contacts/${t.id}`
+                              )
+                            }
+                            className={cx(
+                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
+                              hasRecipients
+                                ? "bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer"
+                                : "bg-gray-100 text-gray-600 cursor-default"
+                            )}
+                            title={hasRecipients ? "View assigned recipients" : ""}
+                          >
+                            {t.recipients}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-center align-middle">
+                          <span
+                            className={cx(
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border",
+                              isSent
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                : statusRaw === "failed" 
+                                ? "bg-red-50 text-red-700 border-red-100"
+                                : statusRaw === "sending" || statusRaw === "processing"
+                                ? "bg-blue-50 text-blue-700 border-blue-100"
+                                : "bg-amber-50 text-amber-700 border-amber-100"
+                            )}
+                            title={t?.status ? `Status: ${t.status}` : undefined}
+                          >
+                            <FaPaperPlane className="opacity-70" />
+                            {isSent ? "Sent" : t?.status || "Pending"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 group-hover:text-gray-800 text-xs align-middle">
+                          <div
+                            className="flex items-center gap-1.5"
+                            title={t.sentAt ? new Date(t.sentAt).toLocaleString() : ""}
+                          >
+                            <FaRegClock className="text-gray-400 group-hover:text-gray-600" />
+                            {t.sentAt ? dayjs(t.sentAt).fromNow() : "—"}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 align-middle">
+                          <div className="flex items-center justify-end gap-2">
+                            {/* Context-Aware Actions */}
+                            {isSent ? (
+                                <>
+                                  <button
+                                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
+                                    onClick={() => navigate(`/app/campaigns/logs/${t.id}`)}
+                                  >
+                                    <FaHistory className="text-emerald-600" />
+                                    View Logs
+                                  </button>
+                                  <button
+                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3.5 py-1.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
+                                    onClick={() => navigate(`/app/campaigns/${t.id}/reports/logs`)}
+                                  >
+                                    <FaChartBar className="text-indigo-600" />
+                                    Log Report
+                                  </button>
+                                </>
+                            ) : hasRecipients ? (
+                              // READY STATE: Show "Send" as primary
+                              <>
+                                <button
+                                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-md transition-colors"
+                                  onClick={() =>
+                                    navigate(
+                                      `/app/campaigns/image-campaigns/assign-contacts/${t.id}`
+                                    )
+                                  }
+                                >
+                                  Assign
+                                </button>
+                                <button
+                                  className="ml-2 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all"
+                                  onClick={() => handleSend(t.id)}
+                                >
+                                  Send
+                                </button>
+                              </>
+                            ) : (
+                              // EMPTY STATE: Show "Assign" as primary
+                                <button
+                                  className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all"
+                                  onClick={() =>
+                                    navigate(
+                                      `/app/campaigns/image-campaigns/assign-contacts/${t.id}`
+                                    )
+                                  }
+                                >
+                                  Assign Contacts
+                                </button>
+                            )}
 
-                            <button
-                              className="rounded-md bg-purple-100 px-2.5 py-1.5 text-purple-800 hover:bg-purple-200"
-                              onClick={() =>
-                                navigate(
-                                  `/app/campaigns/image-campaigns/assign-contacts/${t.id}`
-                                )
-                              }
-                            >
-                              Assign
-                            </button>
-
-                            <button
-                              className="rounded-md bg-blue-100 px-2.5 py-1.5 text-blue-700 hover:bg-blue-200"
-                              onClick={() =>
+                            {/* More Dropdown */}
+                            <CampaignRowMoreMenu
+                              hasRecipients={hasRecipients}
+                              canDelete={canDelete}
+                              onPreview={() => setInspector(t)}
+                              onViewRecipients={() =>
                                 navigate(
                                   `/app/campaigns/image-campaigns/assigned-contacts/${t.id}`
                                 )
                               }
-                            >
-                              Recipients
-                            </button>
-
-                            {/* Delete in table row */}
-                            <button
-                              className="rounded-md border px-2.5 py-1.5 text-red-700 border-red-300 bg-red-50 hover:bg-red-100 disabled:opacity-50"
-                              onClick={() => openDelete(t)}
-                              disabled={deletingThis}
-                              title="Delete campaign"
-                            >
-                              {deletingThis ? "Deleting…" : "Delete"}
-                            </button>
-
-                            <button
-                              className="rounded-md bg-emerald-600 px-2.5 py-1.5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                              disabled={t.recipients === 0}
-                              onClick={() => handleSend(t.id)}
-                            >
-                              Send
-                            </button>
+                              onViewLogs={() => navigate(`/app/campaigns/logs/${t.id}`)}
+                              onLogReport={() =>
+                                navigate(`/app/campaigns/${t.id}/reports/logs`)
+                              }
+                              onDelete={() => openDelete(t)}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -697,12 +1070,32 @@ function TemplateCampaignList() {
                 </tbody>
               </table>
             </div>
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-6 py-4 text-sm text-slate-600 bg-slate-50/50 border-t border-slate-100">
+              <div className="flex items-center gap-4">
+                <span className="text-xs font-medium text-slate-700">
+                  {view.length > 0 ? (
+                    <>
+                      Showing{' '}
+                      <span className="font-semibold text-emerald-700">
+                        1-{view.length}
+                      </span>
+                      {' '}of{' '}
+                      <span className="font-semibold text-slate-900">{view.length}</span>
+                      {' '}campaigns
+                    </>
+                  ) : (
+                    'No campaigns'
+                  )}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
         <InspectorModal item={inspector} onClose={() => setInspector(null)} />
 
         <DangerDeleteModal
+          key={deleteTarget?.id || 'closed'}
           open={!!deleteTarget}
           target={deleteTarget}
           usage={usage}

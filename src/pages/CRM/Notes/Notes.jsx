@@ -24,7 +24,7 @@ function Notes({ contactId }) {
   };
 
   return (
-    <div className="p-4 relative">
+    <div className="p-4 relative bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold text-purple-700">📝 Notes</h2>

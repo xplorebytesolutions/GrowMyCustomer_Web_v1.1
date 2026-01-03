@@ -26,7 +26,7 @@ export default function AutoReplyNodeBlock({ data }) {
 
   const bgColorMap = {
     message: "border-blue-300 bg-blue-50",
-    template: "border-purple-300 bg-purple-50",
+    template: "border-emerald-300 bg-emerald-50",
     wait: "border-yellow-300 bg-yellow-50",
     tag: "border-pink-300 bg-pink-50",
     cta_flow: "border-emerald-300 bg-emerald-50", // 🆕 CTA Flow color
@@ -78,7 +78,7 @@ export default function AutoReplyNodeBlock({ data }) {
       </div>
 
       {/* Step label */}
-      <div className="text-[7px] text-purple-600 font-medium mb-0.5">
+      <div className="text-[7px] text-emerald-600 font-medium mb-0.5">
         {formatStepLabel(data.id)}
       </div>
 
@@ -105,7 +105,7 @@ export default function AutoReplyNodeBlock({ data }) {
           {buttons.map((btn, index) => (
             <div
               key={index}
-              className="relative rounded bg-purple-100 px-2 py-1 text-[7px] text-purple-800 border border-purple-200 flex items-center justify-center text-center"
+              className="relative rounded bg-emerald-100 px-2 py-1 text-[7px] text-emerald-800 border border-emerald-200 flex items-center justify-center text-center"
             >
               {btn.buttonText || btn.text || "(unnamed)"}
 
@@ -119,7 +119,7 @@ export default function AutoReplyNodeBlock({ data }) {
                   right: -5,
                   width: 7,
                   height: 7,
-                  background: "#8b5cf6",
+                  background: "#10b981",
                   borderRadius: "50%",
                 }}
               />

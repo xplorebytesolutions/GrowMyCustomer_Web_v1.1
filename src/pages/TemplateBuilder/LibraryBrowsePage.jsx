@@ -73,7 +73,7 @@ export default function LibraryBrowsePage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <header className="flex items-center justify-between gap-3">
         <div className="text-xl font-semibold">Template Library</div>
         <div className="text-gray-500 text-sm">

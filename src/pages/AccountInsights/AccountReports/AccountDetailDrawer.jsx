@@ -567,7 +567,7 @@ export default function AccountDetailDrawer({
               >
                 <span className="flex items-center gap-2">
                   <MessageCircle className="w-3 h-3" />
-                  View WhatsApp Settings
+                  View Manual WhatsApp Business Api Setup
                 </span>
                 <span className="text-[9px] text-sky-700">
                   Channel readiness

@@ -185,7 +185,7 @@ function CampaignSendLogs() {
 
   // --- render ---
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-purple-700">
           📨 Send Logs for Campaign

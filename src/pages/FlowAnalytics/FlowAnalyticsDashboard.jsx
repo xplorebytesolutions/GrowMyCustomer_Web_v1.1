@@ -44,7 +44,7 @@ export default function FlowDashboard() {
   if (!summary) return <div className="p-4">No analytics data available.</div>;
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <h2 className="text-2xl font-bold text-purple-700 mb-4">
         📈 Visual CTA Flow Dashboard
       </h2>

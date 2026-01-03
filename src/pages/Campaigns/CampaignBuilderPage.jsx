@@ -5,6 +5,16 @@ import { toast } from "react-toastify";
 import PhoneWhatsAppPreview from "../../components/PhoneWhatsAppPreview";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
+import {
+  LayoutTemplate,
+  RefreshCw,
+  Zap,
+  Calendar,
+  Send,
+  Info,
+  Smartphone,
+} from "lucide-react";
+
 // === Your axios baseURL already ends with /api. Keep all calls RELATIVE (no leading slash).
 const SYNC_ENDPOINT = bid => `templates/sync/${bid}`; // POST
 
@@ -31,7 +41,7 @@ const mediaLabel = hk =>
     ? "Video URL"
     : "Document URL";
 
-function CampaignBuilderPage() {
+export default function CampaignBuilderPage() {
   const { businessId: ctxBusinessId } = useAuth();
 
   const [templates, setTemplates] = useState([]);
@@ -65,6 +75,9 @@ function CampaignBuilderPage() {
   // CSV controls all dynamic personalization (default ON)
   const [useCsvPersonalization, setUseCsvPersonalization] = useState(true);
 
+  // Schedule Mode: 'now' | 'later'
+  const [scheduleMode, setScheduleMode] = useState("now");
+
   const businessId = useMemo(
     () => ctxBusinessId || localStorage.getItem("businessId") || null,
     [ctxBusinessId]
@@ -72,7 +85,6 @@ function CampaignBuilderPage() {
   const hasValidBusiness = isGuid(businessId);
 
   const createdBy = localStorage.getItem("userId");
-  const businessName = localStorage.getItem("businessName") || "Your Business";
   const navigate = useNavigate();
 
   // ---------- Helpers ----------
@@ -81,12 +93,11 @@ function CampaignBuilderPage() {
     if (!name?.trim() || !hasValidBusiness) return;
     try {
       setCheckingName(true);
-      // ✅ relative path (no leading slash)
       const { data } = await axiosClient.get(`campaign/check-name`, {
         params: { name },
       });
       if (data?.available === false) {
-        setNameError("Name already exists. Please choose another.");
+        setNameError("Name already exists.");
       } else {
         setNameError("");
       }
@@ -120,11 +131,9 @@ function CampaignBuilderPage() {
       if (!hasValidBusiness) return;
       setLoadingTemplates(true);
       try {
-        // ✅ relative path
         const res = await axiosClient.get(
           `templates/${businessId}?status=APPROVED`
         );
-        // this endpoint already returns a flat array usable for the list
         if (res.data?.success) setTemplates(res.data.templates || []);
         else toast.error("❌ Failed to load templates.");
       } catch {
@@ -136,9 +145,10 @@ function CampaignBuilderPage() {
     load();
   }, [businessId, hasValidBusiness]);
 
-  // Load flows when "Attach Flow" is toggled
+  // Load flows when needed
   useEffect(() => {
     if (!useFlow || !hasValidBusiness) return;
+    if (flows.length > 0) return; // already loaded
 
     const loadFlows = async () => {
       setLoadingFlows(true);
@@ -157,14 +167,8 @@ function CampaignBuilderPage() {
           .filter(x => x.id && x.name);
 
         setFlows(mapped);
-        if (!mapped.length) {
-          toast.info(
-            "ℹ️ No published flows found. You can still create a campaign without a flow."
-          );
-        }
       } catch {
         toast.error("❌ Error loading flows.");
-        setFlows([]);
       } finally {
         setLoadingFlows(false);
       }
@@ -173,7 +177,7 @@ function CampaignBuilderPage() {
     loadFlows();
   }, [useFlow, hasValidBusiness, businessId]);
 
-  // Load available senders (WhatsAppPhoneNumbers)
+  // Load available senders
   useEffect(() => {
     if (!hasValidBusiness) return;
     (async () => {
@@ -184,7 +188,7 @@ function CampaignBuilderPage() {
 
         const raw = Array.isArray(r.data) ? r.data : r.data?.items || [];
         const normalized = raw.map(x => {
-          const provider = String(x.provider || x.Provider || "").toUpperCase(); // "PINNACLE" | "META_CLOUD"
+          const provider = String(x.provider || x.Provider || "").toUpperCase();
           const phoneNumberId = x.phoneNumberId ?? x.PhoneNumberId;
           const whatsAppNumber =
             x.whatsAppBusinessNumber ??
@@ -205,41 +209,27 @@ function CampaignBuilderPage() {
       } catch {
         toast.error("❌ Failed to load WhatsApp senders.");
         setSenders([]);
-        setSelectedSenderId("");
       }
     })();
   }, [hasValidBusiness, businessId]);
 
   // ---------- Actions ----------
-  // Sync Templates
   const handleSyncTemplates = async () => {
-    if (!hasValidBusiness) {
-      toast.warn("⚠️ Business context missing. Please re-login.");
-      return;
-    }
+    if (!hasValidBusiness) return;
     setSyncing(true);
     try {
       const res = await axiosClient.post(SYNC_ENDPOINT(businessId));
-      const ok =
-        res?.data?.success === true ||
-        res?.status === 200 ||
-        res?.status === 204;
-      if (ok) {
-        toast.success("✅ Templates synced. Refreshing list…");
-        setLoadingTemplates(true);
-        try {
-          const r2 = await axiosClient.get(
-            `templates/${businessId}?status=APPROVED`
-          );
-          if (r2.data?.success) setTemplates(r2.data.templates || []);
-        } finally {
-          setLoadingTemplates(false);
-        }
+      if (res?.data?.success || res?.status === 200) {
+        toast.success("Templates synced!");
+        const r2 = await axiosClient.get(
+          `templates/${businessId}?status=APPROVED`
+        );
+        if (r2.data?.success) setTemplates(r2.data.templates || []);
       } else {
-        toast.error("❌ Sync failed.");
+        toast.error("Sync failed.");
       }
     } catch {
-      toast.error("❌ Error syncing templates.");
+      toast.error("Error syncing templates.");
     } finally {
       setSyncing(false);
     }
@@ -254,33 +244,21 @@ function CampaignBuilderPage() {
       return;
     }
     try {
-      if (!hasValidBusiness) {
-        toast.error("Invalid or missing Business ID. Please re-login.");
-        return;
-      }
-      // ✅ relative path
       const res = await axiosClient.get(
         `templates/${businessId}/${encodeURIComponent(name)}`
       );
-
-      // 🔧 FIX: details API returns { success, template }
       const rawTemplate = res?.data?.template || res?.data || null;
       if (!rawTemplate?.name && !rawTemplate?.Name) {
-        toast.error("❌ Could not load template details.");
+        toast.error("Could not load template details.");
         return;
       }
 
-      // Accept multiple shapes: stringified or already-array
+      // Parse buttons
       const rawButtons =
         rawTemplate.buttonsJson ??
-        rawTemplate.ButtonsJson ??
-        rawTemplate.buttonParams ??
-        rawTemplate.ButtonParams ??
         rawTemplate.buttons ??
-        rawTemplate.urlButtonsJson ?? // (won’t contain quick replies, but keep for safety)
         rawTemplate.urlButtons ??
         null;
-
       let parsedButtons = [];
       if (Array.isArray(rawButtons)) {
         parsedButtons = rawButtons;
@@ -310,17 +288,17 @@ function CampaignBuilderPage() {
         hasImageHeader:
           rawTemplate.hasImageHeader ?? rawTemplate.HasImageHeader ?? false,
         parametersCount:
-          rawTemplate.parametersCount ??
-          rawTemplate.PlaceholderCount ??
-          rawTemplate.placeholderCount ??
-          0,
+          (
+            (rawTemplate.body ?? rawTemplate.Body ?? "").match(/{{[0-9]+}}/g) ||
+            []
+          ).length,
         buttonParams: toArray(parsedButtons),
       };
 
       setSelectedTemplate(normalized);
       setTemplateParams(Array(normalized.parametersCount).fill(""));
 
-      // Build client-side slots for dynamic buttons (preview/input)
+      // Dyn slots
       const dynSlots =
         normalized.buttonParams?.map(btn => {
           const originalUrl = btn?.ParameterValue || btn?.parameterValue || "";
@@ -333,57 +311,47 @@ function CampaignBuilderPage() {
       setButtonParams(dynSlots);
       setHeaderMediaUrl("");
     } catch {
-      toast.error("❌ Error loading template details.");
+      toast.error("Error loading template details.");
     }
   };
 
-  // Create Campaign
   const handleCreateCampaign = async () => {
-    if (!hasValidBusiness) {
-      toast.error("Invalid or missing Business ID. Please re-login.");
-      return;
-    }
+    if (!hasValidBusiness) return;
     if (!campaignName || !selectedTemplate) {
-      toast.warn("⚠️ Please fill campaign name and choose a template.");
+      toast.warn("Please fill campaign name and choose a template.");
       return;
     }
-
-    if (checkingName) {
-      toast.info("Checking campaign name…");
-      return;
-    }
+    if (checkingName) return;
     if (nameError) {
       toast.warn("Please fix the campaign name.");
       return;
     }
 
-    // Only require body params when NOT using CSV
     if (!useCsvPersonalization && templateParams.some(p => p === "")) {
-      toast.warn("⚠️ Please fill all template parameters or enable CSV.");
-      return;
-    }
-    if (useFlow && !selectedFlowId) {
-      toast.warn("⚠️ Please select a flow or uncheck “Attach Flow”.");
+      toast.warn("Please fill all template parameters or enable CSV.");
       return;
     }
 
-    // Resolve selected sender (required)
+    if (useFlow && !selectedFlowId) {
+      toast.warn("Please select a flow or disable Flow Integration.");
+      return;
+    }
+
     const selectedSender = senders.find(s => s.id === selectedSenderId);
     if (!selectedSender || !selectedSender.phoneNumberId) {
-      toast.warn("⚠️ Please choose a Sender (number).");
+      toast.warn("Please choose a Sender (number).");
       return;
     }
 
-    // Header media rules (campaign-level)
     const hk = selectedTemplate?.headerKind || HK.None;
     if (isMediaHeader(hk) && !headerMediaUrl) {
-      toast.warn(`⚠️ Please provide a ${mediaLabel(hk)}.`);
+      toast.warn(`Please provide a ${mediaLabel(hk)}.`);
       return;
     }
 
     setSubmitting(true);
 
-    // Keep static button values; leave dynamic button values empty (CSV will provide later)
+    // Build payload
     const buttonPayload =
       selectedTemplate.buttonParams?.map((btn, idx) => {
         const originalUrl = btn?.ParameterValue || btn?.parameterValue || "";
@@ -404,9 +372,14 @@ function CampaignBuilderPage() {
         };
       }) || [];
 
-    // Media mapping
     const campaignType =
       hk === HK.Image ? "image" : hk === HK.Video ? "video" : "text";
+
+    // Schedule logic
+    const finalScheduledAt =
+      scheduleMode === "later" && scheduledAt
+        ? new Date(scheduledAt).toISOString()
+        : null;
 
     const payload = {
       name: campaignName,
@@ -414,24 +387,18 @@ function CampaignBuilderPage() {
       templateId: selectedTemplate.name,
       templateLanguage: selectedTemplate.language || undefined,
       buttonParams: buttonPayload,
-
       campaignType,
       imageUrl: hk === HK.Image ? headerMediaUrl : null,
       videoUrl: hk === HK.Video ? headerMediaUrl : null,
       documentUrl: hk === HK.Document ? headerMediaUrl : null,
-
       headerMediaUrl: isMediaHeader(hk) ? headerMediaUrl : null,
       headerKind: hk,
-
-      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+      scheduledAt: finalScheduledAt,
       createdBy,
       businessId,
-
       templateParameters: useCsvPersonalization ? [] : templateParams,
       useCsvPersonalization,
-
       ctaFlowConfigId: useFlow ? selectedFlowId : null,
-
       provider: String(selectedSender.provider || "").toUpperCase(),
       phoneNumberId: selectedSender.phoneNumberId,
     };
@@ -439,7 +406,6 @@ function CampaignBuilderPage() {
     try {
       await checkNameAvailability(campaignName);
       if (nameError) {
-        toast.warn("Please choose a different campaign name.");
         setSubmitting(false);
         return;
       }
@@ -449,25 +415,17 @@ function CampaignBuilderPage() {
         payload
       );
       if (res.data?.success && res.data?.campaignId) {
-        toast.success("✅ Campaign created successfully.");
+        toast.success("Campaign created successfully.");
         navigate(
           `/app/campaigns/image-campaigns/assign-contacts/${res.data.campaignId}`
         );
       } else {
-        toast.error("❌ Failed to create campaign.");
+        toast.error("Failed to create campaign.");
       }
     } catch (err) {
-      const errorMsg =
-        err?.response?.data?.message || "❌ Error creating campaign.";
-      if (
-        typeof errorMsg === "string" &&
-        errorMsg.toLowerCase().includes("campaign") &&
-        errorMsg.toLowerCase().includes("name") &&
-        errorMsg.toLowerCase().includes("exists")
-      ) {
-        setNameError("Name already exists. Please choose another.");
-      }
-      toast.error(errorMsg);
+      toast.error(
+        err?.response?.data?.message || "Failed to create campaign."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -475,683 +433,566 @@ function CampaignBuilderPage() {
 
   const templateOptions = useMemo(
     () =>
-      templates.map(tpl => ({
-        key: `${tpl.name || tpl.Name}-${
-          tpl.language || tpl.Language || "en_US"
-        }`,
-        label: `${tpl.name || tpl.Name} (${
-          tpl.language || tpl.Language || "en_US"
-        }) — ${
-          tpl.placeholderCount ??
-          tpl.ParametersCount ??
-          tpl.PlaceholderCount ??
-          0
-        } params`,
-        value: tpl.name || tpl.Name,
-      })),
+      templates.map(tpl => {
+        const lang = tpl.language || tpl.Language || "en_US";
+        return {
+          key: `${tpl.name}-${lang}`,
+          label: `${tpl.name} (${lang})`,
+          value: tpl.name,
+          params: tpl.placeholderCount ?? 0,
+        };
+      }),
     [templates]
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-emerald-50">
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Create WhatsApp Campaign
-              </h1>
-              <p className="text-gray-600 text-lg">
-                Build engaging campaigns with approved templates
-              </p>
+    <div className="min-h-screen bg-[#f5f6f7] pb-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
+        {/* Page Header */}
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 shadow-sm shadow-emerald-200">
+              <LayoutTemplate className="h-5 w-5 text-white" />
             </div>
-
-            {/* Sync Templates */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSyncTemplates}
-                disabled={!hasValidBusiness || syncing}
-                className={`rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-200 ${
-                  !hasValidBusiness || syncing
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-sapphire-600 to-cyan-600 hover:from-sapphire-700 hover:to-cyan-700 hover:shadow-xl transform hover:scale-105"
-                }`}
-                title={
-                  !hasValidBusiness
-                    ? "Login required to sync templates"
-                    : undefined
-                }
-              >
-                {syncing ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Syncing…</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
-                    </svg>
-                    <span>Sync Templates</span>
-                  </div>
-                )}
-              </button>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">
+                New Campaign
+              </h1>
+              <p className="text-xs text-slate-500">
+                Design and schedule your WhatsApp broadcast.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Business guard */}
-        {!hasValidBusiness && (
-          <div className="mb-6 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-6 shadow-lg">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-amber-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                    />
-                  </svg>
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-amber-900 mb-2">
-                  Loading Business Context
-                </h3>
-                <p className="text-amber-800 mb-4">
-                  We're setting up your business environment. If this doesn't
-                  resolve in a moment, please re-login so we can attach your
-                  Business ID to requests.
-                </p>
-                <button
-                  onClick={() => navigate("/login")}
-                  className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                  type="button"
-                >
-                  Go to Login
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Content grid */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-          {/* Left column – unified form */}
-          <div>
-            <div className="bg-white rounded-lg shadow-xl border border-gray-200 hover:border-gray-300 transition-all duration-200 p-6">
-              <form className="space-y-6">
-                {/* Campaign Details Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-                    <div className="w-7 h-7 bg-emerald-100 rounded-full flex items-center justify-center">
-                      <span className="text-emerald-600 font-bold text-xs">
-                        1
-                      </span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* LEFT: UNIFIED FORM Container -- COMPACT */}
+          <div className="lg:col-span-7 xl:col-span-8">
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              
+              {/* SECTION: details */}
+              <div className="p-5 space-y-5">
+                <div>
+                   {/* Divider / Header */}
+                    <div className="mb-3 border-b border-slate-100 pb-2">
+                         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                            1. Campaign & Sender
+                        </h3>
                     </div>
-                    <h3 className="text-base font-semibold text-gray-900">
-                      Campaign Details
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Name */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Campaign Name *
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Campaign Name <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        className={`w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                        className={`w-full rounded-lg border px-3 py-2 text-sm outline-none ring-offset-1 focus:ring-2 ${
                           nameError
-                            ? "border-red-400 bg-red-50"
-                            : "border-gray-300 focus:bg-white"
+                            ? "border-red-300 focus:ring-red-200 bg-red-50"
+                            : "border-slate-300 focus:border-emerald-500 focus:ring-emerald-100"
                         }`}
-                        placeholder="e.g. Diwali Blast – Returning Customers"
+                        placeholder="e.g. Diwali Sale"
                         value={campaignName}
                         onChange={e => {
                           setCampaignName(e.target.value);
                           setNameError("");
                         }}
                         onBlur={() => checkNameAvailability(campaignName)}
-                        disabled={!hasValidBusiness}
                       />
-                      <div className="mt-1 flex items-center justify-between">
-                        <p className="text-xs text-gray-500">
-                          Must be unique within your workspace
-                        </p>
-                        {checkingName && (
-                          <div className="flex items-center gap-1 text-xs text-emerald-600">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-600"></div>
-                            <span>checking…</span>
-                          </div>
-                        )}
-                      </div>
                       {nameError && (
-                        <p className="mt-1 text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded">
+                        <p className="mt-1 text-xs font-medium text-red-600">
                           {nameError}
                         </p>
                       )}
                     </div>
 
+                    {/* Sender */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Template *
-                        <span className="text-emerald-600 font-medium ml-1">
-                          (approved)
-                        </span>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Sender (From) <span className="text-red-500">*</span>
                       </label>
                       <select
-                        disabled={loadingTemplates || !hasValidBusiness}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        onChange={e => handleTemplateSelect(e.target.value)}
-                        value={selectedTemplate?.name || ""}
-                      >
-                        <option value="" disabled>
-                          {loadingTemplates
-                            ? "Loading templates…"
-                            : "-- Select Template --"}
-                        </option>
-                        {templateOptions.map(o => (
-                          <option key={o.key} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Only{" "}
-                        <span className="font-semibold text-emerald-600">
-                          APPROVED
-                        </span>{" "}
-                        templates are listed
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Flow Integration Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-                    <div className="w-7 h-7 bg-cyan-100 rounded-full flex items-center justify-center">
-                      <span className="text-cyan-600 font-bold text-xs">2</span>
-                    </div>
-                    <h3 className="text-base font-semibold text-gray-900">
-                      Flow Integration
-                    </h3>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      Optional
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg border border-cyan-200">
-                      <input
-                        id="useFlow"
-                        type="checkbox"
-                        checked={useFlow}
-                        onChange={e => {
-                          setUseFlow(e.target.checked);
-                          if (!e.target.checked) setSelectedFlowId("");
-                        }}
-                        disabled={!hasValidBusiness}
-                        className="w-4 h-4 text-cyan-600 bg-gray-100 border-gray-300 rounded focus:ring-cyan-500 focus:ring-2"
-                      />
-                      <label
-                        htmlFor="useFlow"
-                        className="text-sm font-medium text-gray-700 cursor-pointer"
-                      >
-                        Attach a Visual Flow to this campaign
-                      </label>
-                    </div>
-
-                    {useFlow && (
-                      <div className="space-y-2">
-                        <label className="block text-xs font-semibold text-gray-700">
-                          Select Flow
-                        </label>
-                        <select
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          disabled={loadingFlows || !hasValidBusiness}
-                          value={selectedFlowId}
-                          onChange={e => setSelectedFlowId(e.target.value)}
-                        >
-                          <option value="">
-                            {loadingFlows
-                              ? "Loading flows…"
-                              : "-- Select Flow --"}
-                          </option>
-                          {flows.map(f => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                          <p className="text-xs text-blue-800">
-                            <strong>Note:</strong> If attached, the campaign
-                            will <strong>start</strong> from the flow's entry
-                            step. The backend will align the starting template
-                            automatically.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Personalization Section */}
-                {selectedTemplate && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-                      <div className="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center">
-                        <span className="text-purple-600 font-bold text-xs">
-                          3
-                        </span>
-                      </div>
-                      <h3 className="text-base font-semibold text-gray-900">
-                        Personalization
-                      </h3>
-                    </div>
-
-                    {/* CSV toggle */}
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-emerald-50 to-cyan-50 rounded-lg border border-emerald-200">
-                      <input
-                        id="useCsv"
-                        type="checkbox"
-                        checked={useCsvPersonalization}
-                        onChange={e =>
-                          setUseCsvPersonalization(e.target.checked)
-                        }
-                        className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500 focus:ring-2"
-                      />
-                      <label
-                        htmlFor="useCsv"
-                        className="text-sm font-medium text-gray-700 cursor-pointer"
-                      >
-                        I'll upload a CSV later for personalization (recommended
-                        for bulk campaigns)
-                      </label>
-                    </div>
-
-                    {/* Body params — show only if NOT using CSV */}
-                    {!useCsvPersonalization && templateParams.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-2">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                          Template Parameters
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {templateParams.map((val, idx) => (
-                            <div key={`tp-${idx}`} className="space-y-1">
-                              <label className="text-xs font-medium text-gray-600">
-                                Parameter {idx + 1} {`{{${idx + 1}}}`}
-                              </label>
-                              <input
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                placeholder={`Value for {{${idx + 1}}}`}
-                                value={val}
-                                onChange={e => {
-                                  const next = [...templateParams];
-                                  next[idx] = e.target.value;
-                                  setTemplateParams(next);
-                                }}
-                                disabled={!hasValidBusiness}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Button params — show only if NOT using CSV */}
-                    {!useCsvPersonalization &&
-                      (selectedTemplate?.buttonParams?.length ?? 0) > 0 && (
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-semibold text-gray-700 flex items-center gap-2">
-                            <div className="w-2 h-2 bg-cyan-500 rounded-full"></div>
-                            Button Parameters
-                          </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {selectedTemplate.buttonParams.map((btn, idx) => {
-                              const originalUrl =
-                                btn?.ParameterValue ||
-                                btn?.parameterValue ||
-                                "";
-                              const subtype = (
-                                btn?.SubType ||
-                                btn?.subType ||
-                                ""
-                              ).toLowerCase();
-                              const dynamic =
-                                ["url", "copy_code", "flow"].includes(
-                                  subtype
-                                ) || originalUrl.includes("{{1}}");
-                              const placeholders = {
-                                url: "Enter Redirect URL",
-                                copy_code: "Enter Coupon Code",
-                                flow: "Enter Flow ID",
-                              };
-                              const title =
-                                btn?.Text || btn?.text || `Button ${idx + 1}`;
-                              return (
-                                <div key={`bp-${idx}`} className="space-y-1">
-                                  <label className="text-xs font-medium text-gray-600">
-                                    {title} ·{" "}
-                                    <span className="text-cyan-600 font-semibold">
-                                      {subtype
-                                        ? subtype.toUpperCase()
-                                        : "STATIC"}
-                                    </span>
-                                  </label>
-                                  {dynamic ? (
-                                    <input
-                                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                                      placeholder={
-                                        placeholders[subtype] || "Enter value"
-                                      }
-                                      value={buttonParams[idx] || ""}
-                                      onChange={e => {
-                                        const next = [...buttonParams];
-                                        next[idx] = e.target.value;
-                                        setButtonParams(next);
-                                      }}
-                                      disabled={
-                                        !hasValidBusiness ||
-                                        useCsvPersonalization
-                                      }
-                                    />
-                                  ) : (
-                                    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2">
-                                      <p className="text-xs text-gray-600">
-                                        {subtype === "quick_reply"
-                                          ? "Quick reply (no value required)"
-                                          : `Static value: ${
-                                              originalUrl || "N/A"
-                                            }`}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                  </div>
-                )}
-
-                {/* Delivery Settings Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-                    <div className="w-7 h-7 bg-orange-100 rounded-full flex items-center justify-center">
-                      <span className="text-orange-600 font-bold text-xs">
-                        4
-                      </span>
-                    </div>
-                    <h3 className="text-base font-semibold text-gray-900">
-                      Delivery Settings
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Sender selection */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Sender (WhatsApp Number) *
-                      </label>
-                      <select
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        disabled={!hasValidBusiness || !senders.length}
                         value={selectedSenderId}
                         onChange={e => setSelectedSenderId(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-offset-1 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                       >
                         <option value="" disabled>
-                          {senders.length
-                            ? "-- Select Sender --"
-                            : "No active senders found"}
+                          -- Select Number --
                         </option>
                         {senders.map(s => (
                           <option key={s.id} value={s.id}>
-                            {s.whatsAppNumber}
+                            {s.whatsAppNumber} ({s.provider})
                           </option>
                         ))}
                       </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        We'll save the sender's phoneNumberId and provider
-                      </p>
                     </div>
+                  </div>
+                </div>
+
+                {/* SECTION: template */}
+                <div>
+                  <div className="mb-3 border-b border-slate-100 pb-2 mt-2">
+                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        2. Content & Variables
+                     </h3>
+                   </div>
+                  <div className="space-y-4">
+                    {/* Template Selector */}
+                    <div className="relative">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Select Template <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          disabled={loadingTemplates}
+                          className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-offset-1 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:opacity-60"
+                          onChange={e => handleTemplateSelect(e.target.value)}
+                          value={selectedTemplate?.name || ""}
+                        >
+                          <option value="" disabled>
+                            {loadingTemplates
+                              ? "Loading..."
+                              : "-- Select Approved Template --"}
+                          </option>
+                          {templateOptions.map(o => (
+                            <option key={o.key} value={o.value}>
+                              {o.label} — {o.params} params
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={handleSyncTemplates}
+                          disabled={syncing}
+                          className="flex items-center justify-center h-[38px] w-[38px] rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-emerald-600 hover:border-emerald-200 transition-colors disabled:opacity-50"
+                          title="Sync Templates from Meta"
+                        >
+                          <RefreshCw
+                            className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {selectedTemplate && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-5">
+                        <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3">
+                          {/* Header Media */}
+                          {selectedTemplate.requiresHeaderMediaUrl && (
+                            <div>
+                              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                Header Media URL{" "}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="url"
+                                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                placeholder={`https://example.com/item.jpg`}
+                                value={headerMediaUrl}
+                                onChange={e =>
+                                  setHeaderMediaUrl(e.target.value)
+                                }
+                              />
+                            </div>
+                          )}
+
+                          {/* Personalization Toggle */}
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-5 items-center">
+                              <input
+                                id="useCsv"
+                                type="checkbox"
+                                checked={useCsvPersonalization}
+                                onChange={e =>
+                                  setUseCsvPersonalization(e.target.checked)
+                                }
+                                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              />
+                            </div>
+                            <div className="text-sm">
+                              <label
+                                htmlFor="useCsv"
+                                className="font-medium text-slate-900"
+                              >
+                                Use CSV for personalization
+                              </label>
+                              <p className="text-slate-500 text-xs text-slate-600">
+                                If checked, you'll upload a CSV in the next step to
+                                fill {"{{}}"} variables.
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* CSV Requirement Badge (User Requested Redesign) */}
+                          {useCsvPersonalization && selectedTemplate && (() => {
+                            const hasBody = selectedTemplate.parametersCount > 0;
+                            const dynamicButtons =
+                              selectedTemplate.buttonParams?.filter(btn => {
+                                const type = (
+                                  btn?.type ||
+                                  btn?.Type ||
+                                  ""
+                                ).toLowerCase();
+                                const url = btn?.url || btn?.Url || "";
+                                return (
+                                  ["url", "copy_code"].includes(type) ||
+                                  url.includes("{{1}}")
+                                );
+                              }) || [];
+
+                            if (!hasBody && dynamicButtons.length === 0)
+                              return null;
+
+                            return (
+                              <div className="mt-2 rounded-md bg-blue-50 border border-blue-100 p-3">
+                                <div className="flex gap-2">
+                                  <Info className="h-4 w-4 text-blue-500 mt-0.5" />
+                                  <div className="text-xs text-blue-700 space-y-2">
+                                    <p className="font-semibold">
+                                      Required CSV Columns for this template:
+                                    </p>
+                                    <div className="space-y-3 mt-1">
+                                      {/* Body Params Section */}
+                                      {hasBody && (
+                                        <div>
+                                          <h4 className="font-bold text-blue-800 mb-1 flex items-center gap-1.5">
+                                            <span className="bg-blue-200 text-blue-800 w-4 h-4 rounded-full flex items-center justify-center text-[10px]">
+                                              1
+                                            </span>
+                                            Message Body
+                                          </h4>
+                                          <div className="ml-6 text-slate-700">
+                                            Requires columns for{" "}
+                                            {Array.from(
+                                              {
+                                                length:
+                                                  selectedTemplate.parametersCount,
+                                              },
+                                              (_, i) => (
+                                                <code
+                                                  key={i}
+                                                  className="bg-white border border-blue-200 px-1.5 py-0.5 rounded mx-0.5 font-mono text-blue-600 font-semibold"
+                                                >
+                                                  {"{{"}
+                                                  {i + 1}
+                                                  {"}}"}
+                                                </code>
+                                              )
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Dynamic Buttons Section */}
+                                      {dynamicButtons.length > 0 && (
+                                        <div>
+                                          <h4 className="font-bold text-blue-800 mb-1 flex items-center gap-1.5">
+                                            <span className="bg-blue-200 text-blue-800 w-4 h-4 rounded-full flex items-center justify-center text-[10px]">
+                                              {hasBody ? "2" : "1"}
+                                            </span>
+                                            Buttons
+                                          </h4>
+                                          <ul className="ml-6 list-disc pl-4 space-y-1 text-slate-700">
+                                            {dynamicButtons.map((btn, idx) => {
+                                              // We need original index, but we filtered.
+                                              // Actually, let's keep it simple: display 'Button (Label)' without strict index if possible,
+                                              // or finding original index.
+                                              // BUT, since we filtered, identifying "Button 1" vs "Button 3" is tricky unless we map first.
+                                              // Let's refine the logic to map and THEN filter to preserve index if needed.
+                                              // Or just display Label.
+                                              const label =
+                                                btn?.text ||
+                                                btn?.Text ||
+                                                "Button";
+                                              const type = (
+                                                btn?.type ||
+                                                btn?.Type ||
+                                                ""
+                                              ).toLowerCase();
+
+                                              return (
+                                                <li key={idx}>
+                                                  <strong>{label}</strong>:
+                                                  Requires value for{" "}
+                                                  {type === "url" && (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                      URL
+                                                    </span>
+                                                  )}
+                                                  {type === "copy_code" && (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                      Coupon Code
+                                                    </span>
+                                                  )}
+                                                </li>
+                                              );
+                                            })}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Manual Params */}
+                          {!useCsvPersonalization &&
+                            templateParams.length > 0 && (
+                              <div className="grid gap-3 pt-2">
+                                {templateParams.map((val, idx) => (
+                                  <div key={idx}>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                                      Body Parameter {"{{"}{idx + 1}{"}}"}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                      value={val}
+                                      onChange={e => {
+                                        const copy = [...templateParams];
+                                        copy[idx] = e.target.value;
+                                        setTemplateParams(copy);
+                                      }}
+                                      placeholder={`Value for {{${idx + 1}}}`}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* SECTION: settings */}
+                <div>
+                   <div className="mb-3 border-b border-slate-100 pb-2 mt-2">
+                       <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          3. Configuration
+                       </h3>
+                   </div>
+                  <div className="space-y-4">
+                    {/* Flow Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                       <div className="flex items-center gap-3">
+                          <div className="p-1.5 bg-white rounded-md shadow-sm border border-slate-200">
+                             <Zap className="h-4 w-4 text-amber-500" />
+                          </div>
+                          <div>
+                            <span className="block text-sm font-semibold text-slate-700">
+                                Attach Flow
+                            </span>
+                            <span className="text-xs text-slate-500 block">Trigger automation when user replies</span>
+                          </div>
+                       </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={useFlow}
+                            onChange={e => {
+                              setUseFlow(e.target.checked);
+                              if (!e.target.checked) setSelectedFlowId("");
+                            }}
+                          />
+                          <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                    </div>
+
+                     {useFlow && (
+                        <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Select Flow
+                          </label>
+                          <select
+                            value={selectedFlowId}
+                            onChange={e => setSelectedFlowId(e.target.value)}
+                            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                          >
+                            <option value="">-- Select Flow --</option>
+                            {flows.map(f => (
+                              <option key={f.id} value={f.id}>
+                                {f.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                     <div className="h-px bg-slate-100" />
 
                     {/* Schedule */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Schedule
-                      </label>
-                      <input
-                        type="datetime-local"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        value={scheduledAt}
-                        onChange={e => setScheduledAt(e.target.value)}
-                        disabled={!hasValidBusiness}
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Leave empty to send immediately after assignment
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Header Media URL */}
-                  {selectedTemplate?.requiresHeaderMediaUrl && (
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        {mediaLabel(selectedTemplate.headerKind)} *
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        placeholder="https://…"
-                        value={headerMediaUrl}
-                        onChange={e => setHeaderMediaUrl(e.target.value)}
-                        disabled={!hasValidBusiness}
-                      />
-                      <p className="mt-2 text-xs text-gray-500">
-                        Must be a public HTTPS link (set once per campaign)
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Submit Button */}
-                <div className="pt-4 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={handleCreateCampaign}
-                    disabled={
-                      submitting ||
-                      !hasValidBusiness ||
-                      checkingName ||
-                      !!nameError
-                    }
-                    className={`w-full rounded-xl px-6 py-3 text-base font-bold text-white shadow-lg transition-all duration-200 ${
-                      submitting ||
-                      !hasValidBusiness ||
-                      checkingName ||
-                      !!nameError
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-emerald-600 to-sapphire-600 hover:from-emerald-700 hover:to-sapphire-700 hover:shadow-xl transform hover:scale-105"
-                    }`}
-                    title={
-                      !hasValidBusiness
-                        ? "Login required to create a campaign"
-                        : nameError
-                        ? "Fix campaign name"
-                        : undefined
-                    }
-                  >
-                    {submitting ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Creating Campaign...</span>
+                      <div className="mb-2">
+                         <span className="block text-sm font-semibold text-slate-700">Schedule</span>
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-center gap-2">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label
+                          className={`relative flex cursor-pointer rounded-lg border p-3 shadow-sm focus:outline-none transition-all ${
+                            scheduleMode === "now"
+                              ? "border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600"
+                              : "border-slate-200 bg-white hover:bg-slate-50"
+                          }`}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          <input
+                            type="radio"
+                            name="schedule"
+                            value="now"
+                            className="sr-only"
+                            checked={scheduleMode === "now"}
+                            onChange={() => setScheduleMode("now")}
                           />
-                        </svg>
-                        <span>Create Campaign</span>
+                          <span className="flex flex-1">
+                            <span className="flex flex-col">
+                              <span className="block text-sm font-medium text-slate-900">
+                                Send Immediately
+                              </span>
+                              <span className="mt-0.5 flex items-center text-[11px] text-slate-500">
+                                Run as soon as assigned.
+                              </span>
+                            </span>
+                          </span>
+                          <Send
+                            className={`h-4 w-4 ${
+                              scheduleMode === "now"
+                                ? "text-emerald-600"
+                                : "text-slate-300"
+                            }`}
+                          />
+                        </label>
+
+                        {/* Schedule Later */}
+                        <label
+                          className={`relative flex cursor-pointer rounded-lg border p-3 shadow-sm focus:outline-none transition-all ${
+                            scheduleMode === "later"
+                              ? "border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600"
+                              : "border-slate-200 bg-white hover:bg-slate-50"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="schedule"
+                            value="later"
+                            className="sr-only"
+                            checked={scheduleMode === "later"}
+                            onChange={() => setScheduleMode("later")}
+                          />
+                          <span className="flex flex-1">
+                            <span className="flex flex-col">
+                              <span className="block text-sm font-medium text-slate-900">
+                                Schedule for Later
+                              </span>
+                              <span className="mt-0.5 flex items-center text-[11px] text-slate-500">
+                                Pick a date and time.
+                              </span>
+                            </span>
+                          </span>
+                          <Calendar
+                            className={`h-4 w-4 ${
+                              scheduleMode === "later"
+                                ? "text-emerald-600"
+                                : "text-slate-300"
+                            }`}
+                          />
+                        </label>
                       </div>
-                    )}
-                  </button>
+
+                      {scheduleMode === "later" && (
+                        <div className="mt-3 animate-in fade-in slide-in-from-top-1">
+                          <input
+                            type="datetime-local"
+                            className="block w-full rounded-md border border-slate-300 py-2 px-3 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                            value={scheduledAt}
+                            onChange={e => setScheduledAt(e.target.value)}
+                            min={new Date().toISOString().slice(0, 16)}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
-              </form>
+
+              </div>
             </div>
           </div>
 
-          {/* Right column – sticky preview */}
-          <aside className="lg:sticky lg:top-8">
-            <div className="bg-white rounded-lg shadow-xl border border-gray-200 hover:border-gray-300 transition-all duration-200 p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    Template Preview
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    See how your campaign will look
-                  </p>
+          {/* RIGHT: Preview (Sticky) */}
+          <div className="lg:col-span-5 xl:col-span-4 sticky top-6">
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-3 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Preview
+                </h3>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <Smartphone className="h-3.5 w-3.5" />
+                  <span>Mobile View</span>
                 </div>
               </div>
-
-              {hasValidBusiness ? (
-                selectedTemplate ? (
-                  <div className="flex justify-center">
-                    <div className="relative">
-                      <PhoneWhatsAppPreview
-                        businessName={businessName}
-                        templateBody={selectedTemplate.body}
-                        parameters={useCsvPersonalization ? [] : templateParams}
-                        // For now, only image preview is supported; others will come later.
-                        imageUrl={
-                          selectedTemplate.headerKind === HK.Image
-                            ? headerMediaUrl
-                            : ""
-                        }
-                        buttonParams={(selectedTemplate.buttonParams || []).map(
-                          btn => {
-                            const originalUrl =
-                              btn?.ParameterValue || btn?.parameterValue || "";
-                            const subtype = (
-                              btn?.SubType ||
-                              btn?.subType ||
-                              ""
-                            ).toLowerCase();
-                            const isDynamic =
-                              ["url", "copy_code", "flow"].includes(subtype) ||
-                              originalUrl.includes("{{1}}");
-                            return {
-                              text: btn?.Text || btn?.text || "Button",
-                              subType: btn?.SubType || btn?.subType || "",
-                              type: btn?.Type || btn?.type || "",
-                              value: isDynamic ? "" : originalUrl, // quick_reply will show with empty value just fine
-                            };
-                          }
-                        )}
-                        width="clamp(330px, 42vw, 410px)"
-                      />
-                    </div>
+              <div className="p-4 bg-slate-100 min-h-[500px] flex items-center justify-center">
+                {selectedTemplate ? (
+                  <div className="scale-[0.85] origin-top">
+                    {/* Reuse your existing preview component */}
+                    <PhoneWhatsAppPreview
+                      templateBody={selectedTemplate.body || ""}
+                      imageUrl={headerMediaUrl}
+                      parameters={templateParams}
+                      buttonParams={selectedTemplate.buttonParams}
+                    />
                   </div>
                 ) : (
-                  <div className="flex h-[460px] items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gradient-to-br from-gray-50 to-emerald-50">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg
-                          className="w-8 h-8 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                          />
-                        </svg>
-                      </div>
-                      <p className="text-sm text-gray-500 font-medium">
-                        Select a template to preview
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Your campaign preview will appear here
-                      </p>
+                  <div className="text-center text-slate-400">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-slate-200 flex items-center justify-center mb-4">
+                      <LayoutTemplate className="h-8 w-8 text-slate-400" />
                     </div>
-                  </div>
-                )
-              ) : (
-                <div className="flex h-[460px] items-center justify-center rounded-2xl border-2 border-dashed border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg
-                        className="w-8 h-8 text-amber-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                        />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-amber-800 font-medium">
-                      Waiting for Business ID
+                    <p className="text-sm font-medium text-slate-600">
+                      No Template Selected
                     </p>
-                    <p className="text-xs text-amber-600 mt-1">
-                      Please wait while we load your business context
+                    <p className="text-xs mt-1">
+                      Choose a template from the left to see a preview.
                     </p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </aside>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky Footer for Action */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white p-4 shadow-lg z-10">
+        <div className="mx-auto max-w-7xl flex items-center justify-between px-4 sm:px-6">
+          <div className="text-sm text-slate-500">
+            {scheduleMode === "later" && scheduledAt ? (
+              <span>
+                Scheduled for: <strong>{new Date(scheduledAt).toLocaleString()}</strong>
+              </span>
+            ) : (
+               <span>Ready to launch</span>
+            )}
+          </div>
+          <div className="flex gap-3">
+             <button
+              onClick={() => navigate(-1)}
+              className="px-5 py-2.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreateCampaign}
+              disabled={submitting}
+              className="px-8 py-2.5 rounded-lg bg-emerald-600 text-sm font-semibold text-white shadow-sm shadow-emerald-200 hover:bg-emerald-700 hover:shadow-emerald-300 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {submitting ? "Creating..." : "Create Campaign"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
-export default CampaignBuilderPage;

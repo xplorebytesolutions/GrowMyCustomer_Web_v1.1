@@ -8,21 +8,26 @@ export const getBreadcrumbs = pathname => {
   }
 
   const breadcrumbs = [
-    { label: "Home", path: "/app/dashboard", isActive: false },
+    { label: "Home", path: "/app/welcomepage", isActive: false },
   ];
 
-  // If we're on the dashboard, return just the home breadcrumb
-  if (
-    pathSegments.length === 0 ||
-    (pathSegments.length === 1 && pathSegments[0] === "dashboard")
-  ) {
+  // If we're on the app root, return just the home breadcrumb
+  if (pathSegments.length === 0) {
     breadcrumbs[0].isActive = true;
     return breadcrumbs;
   }
 
+  const toTitleCase = value =>
+    value
+      .split(/[-_]+/g)
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
   // Map path segments to readable labels
   const segmentLabels = {
     dashboard: "Dashboard",
+    welcomepage: "Dashboard",
     campaigns: "Campaigns",
     "template-campaigns-list": "Template Campaigns",
     "template-single": "New Campaign",
@@ -36,8 +41,7 @@ export const getBreadcrumbs = pathname => {
     conversations: "Conversations",
     contacts: "Contacts",
     settings: "Settings",
-    whatsapp: "WhatsApp Settings",
-    theme: "Theme Settings",
+    whatsapp: "Manual WhatsApp Business Api Setup",
     password: "Password Settings",
     automation: "Automation",
     templatebuilder: "Template Builder",
@@ -79,16 +83,21 @@ export const getBreadcrumbs = pathname => {
     reminders: "Reminders",
     timeline: "Timeline",
     notes: "Notes",
+    attributes: "Attribute",
     approvals: "Business Approvals",
     features: "Feature Toggles",
     "user-permissions": "User Permissions",
     inboxwrapper: "Inbox",
     "send-template-simple": "Send Template",
-    "whatsapp-settings": "WhatsApp Settings",
+    "whatsapp-settings": "Manual WhatsApp Business Api Setup",
     "profile-completion": "Profile Completion",
     welcome: "Welcome Center",
     403: "Access Denied",
     progress: "Campaign Progress",
+    "team-staff": "Team Staff",
+    "manage-staff": "Manage Staff",
+    "access-control": "Access Control",
+    "meta-account": "Meta Account",
   };
 
   let currentPath = "/app";
@@ -109,9 +118,7 @@ export const getBreadcrumbs = pathname => {
       ) {
         label = "Details";
       } else {
-        // Convert kebab-case to Title Case
-        label =
-          segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+        label = toTitleCase(segment);
       }
     }
 

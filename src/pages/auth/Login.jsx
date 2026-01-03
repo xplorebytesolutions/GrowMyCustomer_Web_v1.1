@@ -145,12 +145,7 @@ export default function Login() {
           <div className="relative z-10">
             <div className="mb-8">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="p-2 bg-white rounded-xl shadow-sm">
-                  <img src="/logo/logo.svg" alt="Logo" className="w-8 h-8" />
-                </div>
-                <span className="text-2xl font-bold text-emerald-950 tracking-tight">
-                  XploreByte
-                </span>
+                <img src="/new_logo_gmc.png" alt="GrowMyCustomer" className="h-20 w-auto object-contain" />
               </div>
 
               <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">

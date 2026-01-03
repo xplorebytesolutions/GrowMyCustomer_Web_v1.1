@@ -52,8 +52,8 @@ export default function InsightsWorkspacePage() {
   }
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-purple-800 mb-6">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
+      <h2 className="text-2xl font-bold text-emerald-800 mb-6">
         📊 Insights & Analytics Workspace
       </h2>
 

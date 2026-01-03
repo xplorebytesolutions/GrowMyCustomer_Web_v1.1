@@ -1,37 +1,60 @@
 import React, { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import axiosClient from "../../../api/axiosClient";
+import { toast } from "react-toastify";
 
 function NoteList({ contactId, onEdit, refreshKey }) {
   const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // 🟢 Wrap fetchNotes in useCallback so its identity is stable across renders
   const fetchNotes = useCallback(async () => {
     if (!contactId) return;
+    setLoading(true);
     try {
-      const res = await axios.get(`/api/notes/contact/${contactId}`);
-      setNotes(res.data);
+      const res = await axiosClient.get(`/notes/contact/${contactId}`);
+
+      // ✅ Backend returns ResponseResult.SuccessInfo("...", data)
+      const rows = res?.data?.data ?? [];
+      setNotes(Array.isArray(rows) ? rows : []);
     } catch (err) {
       console.error("❌ Failed to fetch notes:", err);
+      toast.error("Failed to load notes.");
+      setNotes([]);
+    } finally {
+      setLoading(false);
     }
   }, [contactId]);
 
   useEffect(() => {
     fetchNotes();
-  }, [fetchNotes, refreshKey]); // useCallback ensures fetchNotes is stable
+  }, [fetchNotes, refreshKey]);
 
   const handleDelete = async id => {
     if (!window.confirm("Delete this note?")) return;
     try {
-      await axios.delete(`/api/notes/${id}`);
+      await axiosClient.delete(`/notes/${id}`);
+      toast.info("🗑️ Note deleted.");
       fetchNotes();
     } catch (err) {
       console.error("❌ Failed to delete note:", err);
+      toast.error("Failed to delete note.");
     }
   };
 
+  if (!contactId) {
+    return (
+      <div className="text-gray-500 text-center py-6">
+        Open a contact to view notes.
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4">
-      {notes.length === 0 && (
+      {loading && (
+        <div className="text-gray-500 text-center py-6">Loading notes…</div>
+      )}
+
+      {!loading && notes.length === 0 && (
         <div className="text-gray-500 text-center py-6">
           No notes found for this contact.
         </div>
@@ -58,9 +81,10 @@ function NoteList({ contactId, onEdit, refreshKey }) {
                 </span>
               )}
             </h3>
+
             <div className="flex gap-2 text-sm">
               <button
-                onClick={() => onEdit(note)}
+                onClick={() => onEdit?.(note)}
                 className="text-blue-600 hover:underline"
               >
                 Edit
@@ -73,12 +97,14 @@ function NoteList({ contactId, onEdit, refreshKey }) {
               </button>
             </div>
           </div>
+
           <p className="text-sm text-gray-800 mt-2 whitespace-pre-line">
             {note.content}
           </p>
+
           <div className="text-xs text-gray-500 mt-3">
-            Created by <b>{note.createdBy}</b> ·{" "}
-            {new Date(note.createdAt).toLocaleString()}
+            Created by <b>{note.createdBy || "—"}</b> ·{" "}
+            {note.createdAt ? new Date(note.createdAt).toLocaleString() : "—"}
           </div>
         </div>
       ))}

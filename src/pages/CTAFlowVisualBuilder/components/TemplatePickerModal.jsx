@@ -42,7 +42,7 @@ export default function TemplatePickerModal({ open, onClose, onSelect }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center">
       <div className="bg-white w-full max-w-xl rounded-xl shadow-lg p-6 overflow-y-auto max-h-[90vh]">
-        <h2 className="text-xl font-semibold text-purple-700 mb-4">
+        <h2 className="text-xl font-semibold text-emerald-700 mb-4">
           📦 Select WhatsApp Template
         </h2>
 
@@ -76,7 +76,7 @@ export default function TemplatePickerModal({ open, onClose, onSelect }) {
                     })
                   }
                 >
-                  <div className="font-bold text-purple-600">{tpl.name}</div>
+                  <div className="font-bold text-emerald-600">{tpl.name}</div>
                   <div className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">
                     {tpl.body}
                   </div>
@@ -85,7 +85,7 @@ export default function TemplatePickerModal({ open, onClose, onSelect }) {
                       {tpl.buttonParams.map((btn, i) => (
                         <span
                           key={i}
-                          className="bg-purple-100 text-purple-800 text-xs px-3 py-1 rounded-full"
+                          className="bg-emerald-100 text-emerald-800 text-xs px-3 py-1 rounded-full"
                         >
                           {btn.text}
                         </span>

@@ -18,25 +18,25 @@ export default function ContactsTopBar({ onAdd }) {
     <div className="flex flex-col gap-4 mb-6">
       {/* 🔍 Search + Actions */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-        <div className="flex items-center w-full md:max-w-sm bg-white border border-gray-300 rounded-lg px-3 py-2 shadow-sm">
-          <Search size={18} className="text-gray-400 mr-2" />
+        <div className="flex items-center w-full md:max-w-sm bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+          <Search size={18} className="text-slate-400 mr-2" />
           <input
             type="text"
             placeholder="Search contact, group or project"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full outline-none text-sm text-gray-700"
+            className="w-full outline-none text-sm text-slate-700"
           />
         </div>
 
         <div className="flex items-center gap-2 mt-2 md:mt-0">
-          <button className="text-sm text-gray-600 hover:text-purple-700 flex items-center gap-1 border px-3 py-2 rounded-md border-gray-300">
+          <button className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1 border px-3 py-2 rounded-md border-slate-200 hover:bg-slate-50">
             <Filter size={16} />
             <span className="hidden sm:inline">Filter</span>
           </button>
           <button
             onClick={onAdd}
-            className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-2 rounded-md flex items-center gap-2 shadow"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 rounded-md flex items-center gap-2 shadow"
           >
             <Plus size={16} />
             Add Contact
@@ -45,19 +45,19 @@ export default function ContactsTopBar({ onAdd }) {
       </div>
 
       {/* 📁 Tabs */}
-      <div className="flex items-center gap-6 border-b border-gray-200 text-sm font-medium">
+      <div className="flex items-center gap-6 border-b border-slate-200 text-sm font-medium">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`pb-2 border-b-2 ${
               activeTab === tab.id
-                ? "border-purple-600 text-purple-700"
-                : "border-transparent text-gray-500 hover:text-purple-600"
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-slate-500 hover:text-slate-900"
             }`}
           >
             {tab.label}{" "}
-            <span className="text-xs text-gray-400 ml-1">({tab.count})</span>
+            <span className="text-xs text-slate-400 ml-1">({tab.count})</span>
           </button>
         ))}
       </div>

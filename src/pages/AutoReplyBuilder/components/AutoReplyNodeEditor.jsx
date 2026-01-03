@@ -264,7 +264,7 @@ export default function AutoReplyNodeEditor({ node, onClose, onSave }) {
                 value={form.text}
                 onChange={handleChange}
                 rows={4}
-                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="Type the auto-reply message..."
               />
             </div>
@@ -280,7 +280,7 @@ export default function AutoReplyNodeEditor({ node, onClose, onSave }) {
                 <select
                   value={form.templateName}
                   onChange={handleTemplateChange}
-                  className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">-- Choose template --</option>
                   {templates.map(tpl => (
@@ -341,7 +341,7 @@ export default function AutoReplyNodeEditor({ node, onClose, onSave }) {
                 type="text"
                 value={form.tags.join(", ")}
                 onChange={handleTagsChange}
-                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g. new_lead, hot, whatsapp_inbound"
               />
             </div>
@@ -359,7 +359,7 @@ export default function AutoReplyNodeEditor({ node, onClose, onSave }) {
                 min={1}
                 value={form.seconds}
                 onChange={handleChange}
-                className="w-32 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-32 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <p className="text-[11px] text-gray-500">
                 The flow will pause for this duration before moving to the next

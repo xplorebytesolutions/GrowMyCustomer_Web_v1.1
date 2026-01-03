@@ -184,7 +184,7 @@ export default function CTAFlowManager() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-emerald-50 relative">
+    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)] relative">
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Loading overlay */}
         {loading && (
@@ -192,7 +192,7 @@ export default function CTAFlowManager() {
             <div className="absolute inset-0 z-40 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
               <div className="flex items-center gap-3 text-gray-700">
                 <svg
-                  className="xafb-spin h-6 w-6 text-purple-600"
+                  className="xafb-spin h-6 w-6 text-emerald-600"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"

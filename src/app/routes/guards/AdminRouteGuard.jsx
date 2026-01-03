@@ -49,21 +49,3 @@ export default function AdminRouteGuard({
 
   return <Navigate to={redirectTo} replace />;
 }
-
-// import { Navigate } from "react-router-dom";
-// import { useAuth } from "../../providers/AuthProvider";
-
-// export default function AdminRouteGuard({ children }) {
-//   const { isLoading, role, hasAllAccess } = useAuth();
-
-//   if (isLoading) return null;
-
-//   const safeRole = String(role || "").toLowerCase();
-//   const isAdminish = ["superadmin", "admin", "partner", "reseller"].includes(
-//     safeRole
-//   );
-
-//   if (hasAllAccess || isAdminish) return children;
-
-//   return <Navigate to="/no-access" replace />;
-// }

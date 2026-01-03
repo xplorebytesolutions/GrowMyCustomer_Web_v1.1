@@ -28,7 +28,8 @@ function ImageCampaignDetailPage() {
     return <p className="text-center text-red-500">Campaign not found</p>;
 
   return (
-    <div className="max-w-3xl mx-auto p-6 bg-white shadow-xl rounded-xl space-y-6">
+    <div className="min-h-[calc(100vh-80px)] bg-[#f5f6f7] p-6">
+      <div className="max-w-3xl mx-auto p-6 bg-white shadow-xl rounded-xl space-y-6">
       <h2 className="text-2xl font-bold text-purple-600">
         📄 Image Campaign Details
       </h2>
@@ -92,6 +93,7 @@ function ImageCampaignDetailPage() {
           ➕ Assign Contacts
         </button>
       </div>
+    </div>
     </div>
   );
 }

@@ -6,7 +6,7 @@ export default function TemplateMessagingComingSoon() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-10">
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-10 bg-[#f5f6f7]">
       <div className="max-w-xl w-full bg-white rounded-2xl shadow-lg border border-emerald-100 p-8 relative overflow-hidden">
         {/* soft background glow */}
         <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-emerald-100 opacity-40" />

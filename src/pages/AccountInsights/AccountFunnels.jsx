@@ -74,7 +74,7 @@ export default function AccountFunnels() {
   ];
 
   return (
-    <div className="px-6 py-4 space-y-6">
+    <div className="px-6 py-4 space-y-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold text-slate-900">
           Account Funnels & Stages

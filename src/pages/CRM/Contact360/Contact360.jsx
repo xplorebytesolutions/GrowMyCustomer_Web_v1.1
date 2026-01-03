@@ -14,6 +14,7 @@ import {
   Activity,
   StickyNote,
   Clock,
+  X,
 } from "lucide-react";
 
 function formatDateTime(value) {
@@ -32,6 +33,8 @@ export default function Contact360() {
   const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [tagsState, setTagsState] = useState([]);
+  const [removingTagIds, setRemovingTagIds] = useState([]);
 
   useEffect(() => {
     if (!contactId) return;
@@ -103,16 +106,52 @@ export default function Contact360() {
     summary?.basic?.leadSource ||
     null;
 
-  const tags =
-    summary?.tags ??
-    summary?.contactTags ??
-    summary?.contactTagsDto ??
-    summary?.basic?.tags ??
-    [];
+  const derivedTags = useMemo(() => {
+    const list =
+      summary?.tags ??
+      summary?.contactTags ??
+      summary?.contactTagsDto ??
+      summary?.basic?.tags ??
+      [];
+    return Array.isArray(list) ? list : [];
+  }, [summary]);
+
+  useEffect(() => {
+    setTagsState(derivedTags);
+  }, [derivedTags]);
 
   const recentNotes = summary?.recentNotes ?? [];
   const nextReminder = summary?.nextReminder ?? null;
   const recentTimeline = summary?.recentTimeline ?? [];
+
+  const handleRemoveTag = async tagId => {
+    if (!tagId || !contactId) return;
+
+    setRemovingTagIds(prev =>
+      prev.includes(tagId) ? prev : [...prev, tagId]
+    );
+
+    try {
+      await axiosClient.delete(`/contacts/${contactId}/tags/${tagId}`);
+      setTagsState(prev =>
+        prev.filter(t => (t.id || t.tagId) !== tagId)
+      );
+      toast.success("Tag removed.");
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        setTagsState(prev =>
+          prev.filter(t => (t.id || t.tagId) !== tagId)
+        );
+        toast.info("Already removed.");
+      } else {
+        toast.error(
+          error?.response?.data?.message || "Failed to remove tag."
+        );
+      }
+    } finally {
+      setRemovingTagIds(prev => prev.filter(id => id !== tagId));
+    }
+  };
 
   const stats = useMemo(() => {
     return {
@@ -131,7 +170,7 @@ export default function Contact360() {
   }, [summary]);
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
+    <div className="h-full flex flex-col bg-[#f5f6f7]">
       {/* Header bar */}
       <div className="h-[60px] border-b border-slate-200 bg-white flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
@@ -251,18 +290,33 @@ export default function Contact360() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {tags && tags.length > 0 ? (
-                    tags.map((t, index) => (
-                      <span
-                        key={t.id || t.tagId || index}
-                        className="px-2 py-0.5 text-[10px] rounded-full font-medium border border-slate-200"
-                        style={{
-                          backgroundColor: t.colorHex || "#EEF2FF",
-                        }}
-                      >
-                        {t.tagName || t.name || "Tag"}
-                      </span>
-                    ))
+                  {tagsState && tagsState.length > 0 ? (
+                    tagsState.map((t, index) => {
+                      const tagId = t.id || t.tagId;
+                      const isRemoving = removingTagIds.includes(tagId);
+                      return (
+                        <span
+                          key={t.id || t.tagId || index}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-full font-medium border border-slate-200"
+                          style={{
+                            backgroundColor: t.colorHex || "#EEF2FF",
+                          }}
+                        >
+                          {t.tagName || t.name || "Tag"}
+                          {tagId && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTag(tagId)}
+                              disabled={isRemoving}
+                              className="ml-1 text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                              aria-label="Remove tag"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </span>
+                      );
+                    })
                   ) : (
                     <span className="text-[11px] text-slate-400">
                       No tags yet. Use CRM &gt; Tags to segment this contact.

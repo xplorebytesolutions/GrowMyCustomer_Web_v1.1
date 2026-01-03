@@ -68,7 +68,7 @@ export default function FlowNodeBubble({
   }, [canUseProfile, placeholderCount]);
 
   return (
-    <div className="bg-white shadow-md rounded-xl border border-purple-200 w-72 p-4 relative">
+    <div className="bg-white shadow-md rounded-xl border border-emerald-200 w-72 p-4 relative">
       {!readonly && (
         <button
           onClick={() => onDelete(id)}
@@ -91,7 +91,7 @@ export default function FlowNodeBubble({
 
       <div className="mb-2">
         <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
-          <MessageSquare size={16} className="text-purple-600 shrink-0" />
+          <MessageSquare size={16} className="text-emerald-600 shrink-0" />
           <div
             className="min-w-0 truncate text-sm font-medium text-gray-900"
             title={templateName}
@@ -116,7 +116,7 @@ export default function FlowNodeBubble({
           </span>
         )}
         {!!requiredSource && (
-          <span className="bg-purple-100 text-purple-800 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-semibold">
             🔗 Source: {requiredSource}
           </span>
         )}
@@ -204,7 +204,7 @@ export default function FlowNodeBubble({
                 title={`Drag to connect: ${text}`}
                 aria-label={`Connect from ${text}`}
                 style={{
-                  background: "#9333ea",
+                  background: "#10b981",
                   right: "-10px",
                   top: "50%",
                   transform: "translateY(-50%)",
@@ -212,7 +212,7 @@ export default function FlowNodeBubble({
                   height: 16,
                   border: "2px solid #fff",
                   borderRadius: 9999,
-                  boxShadow: "0 0 0 2px rgba(147,51,234,0.25)",
+                  boxShadow: "0 0 0 2px rgba(16,185,129,0.25)",
                   cursor: "crosshair",
                 }}
               />
@@ -240,12 +240,12 @@ export default function FlowNodeBubble({
           id="default"
           title="Drag to connect"
           style={{
-            background: "#9333ea",
+            background: "#10b981",
             width: 16,
             height: 16,
             border: "2px solid #fff",
             borderRadius: 9999,
-            boxShadow: "0 0 0 2px rgba(147,51,234,0.25)",
+            boxShadow: "0 0 0 2px rgba(16,185,129,0.25)",
           }}
         />
       )}
@@ -256,12 +256,12 @@ export default function FlowNodeBubble({
         id="incoming"
         title="Drop a connection here"
         style={{
-          background: "#9333ea",
+          background: "#10b981",
           width: 16,
           height: 16,
           border: "2px solid #fff",
           borderRadius: 9999,
-          boxShadow: "0 0 0 2px rgba(147,51,234,0.25)",
+          boxShadow: "0 0 0 2px rgba(16,185,129,0.25)",
         }}
       />
     </div>

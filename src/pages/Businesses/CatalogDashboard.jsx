@@ -66,7 +66,7 @@ function CatalogDashboard() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <h2 className="text-xl font-semibold text-purple-700 mb-4">
         📊 Catalog Dashboard
       </h2>

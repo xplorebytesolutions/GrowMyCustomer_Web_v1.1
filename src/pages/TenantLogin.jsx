@@ -42,9 +42,9 @@ function TenantLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-white">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-100 to-white">
       <div className="bg-white p-8 rounded-xl shadow-xl max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-4 text-center text-purple-700">Tenant Login</h2>
+        <h2 className="text-2xl font-bold mb-4 text-center text-emerald-700">Tenant Login</h2>
 
         {error && <p className="mb-4 text-sm text-red-600">❌ {error}</p>}
 
@@ -57,7 +57,7 @@ function TenantLogin() {
               value={form.email}
               onChange={handleChange}
               required
-              className="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -69,14 +69,14 @@ function TenantLogin() {
               value={form.password}
               onChange={handleChange}
               required
-              className="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full border px-4 py-2 rounded-lg focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition"
+            className="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 transition"
           >
             {loading ? "Logging in..." : "Login"}
           </button>

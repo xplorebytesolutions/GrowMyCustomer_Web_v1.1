@@ -1,10 +1,5 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import {
-  useParams,
-  useSearchParams,
-  useNavigate,
-  Link,
-} from "react-router-dom";
+import React, { useEffect, useState, useCallback } from "react";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   Eye,
@@ -12,7 +7,6 @@ import {
   ShieldCheck,
   Save,
   ChevronLeft,
-  Upload,
   Loader2,
 } from "lucide-react";
 
@@ -20,41 +14,41 @@ import axiosClient from "../../api/axiosClient";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { FK } from "../../capabilities/featureKeys";
 import { Card } from "../../components/ui/card";
+
 import DraftStatusBadge from "./components/DraftStatusBadge";
 import HeaderMediaUploader from "./components/HeaderMediaUploader";
 
-// Default one-language flow per your backend decision
 const DEFAULT_LANG = "en_US";
 
 export default function DraftEditorPage() {
   const { draftId } = useParams();
-  const navigate = useNavigate();
-  const { isLoading, can, hasAllAccess, businessId } = useAuth();
+  const { isLoading, can, hasAllAccess } = useAuth();
   const [params, setParams] = useSearchParams();
 
   const language = params.get("language") || DEFAULT_LANG;
 
-  // RBAC: edit/submit drafts require CAMPAIGN_CREATE
-  const canEdit = hasAllAccess || can(FK.CAMPAIGN_CREATE);
+  // ✅ Template Builder permission (NOT campaign)
+  const canEdit = hasAllAccess || can(FK.TEMPLATE_BUILDER_CREATE_DRAFT);
 
-  // Variant form state (simple MVP)
-  const [name, setName] = useState(""); // final template name (slug-like)
-  const [category, setCategory] = useState("UTILITY"); // MARKETING | UTILITY | AUTHENTICATION
-  const [headerType, setHeaderType] = useState("NONE"); // NONE | TEXT | IMAGE | VIDEO | DOCUMENT
-  const [headerText, setHeaderText] = useState(""); // when headerType = TEXT
-  const [headerMediaHandle, setHeaderMediaHandle] = useState(""); // when media header
-  const [bodyText, setBodyText] = useState(""); // may include {{1}}, {{2}} …
+  // Form state
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("UTILITY");
+  const [headerType, setHeaderType] = useState("NONE");
+  const [headerText, setHeaderText] = useState("");
+  const [headerMediaHandle, setHeaderMediaHandle] = useState("");
+  const [bodyText, setBodyText] = useState("");
   const [footerText, setFooterText] = useState("");
   const [buttons, setButtons] = useState([]); // max 3
-  const [examples, setExamples] = useState([""]); // example body values
+  const [examples, setExamples] = useState([""]);
 
-  // Auxiliary state
+  // Page state
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [preview, setPreview] = useState(null); // { human, components }
-  const [status, setStatus] = useState(null); // { name, language, status, reason }
+
+  const [preview, setPreview] = useState(null); // { human, components, category? }
+  const [status, setStatus] = useState(null); // { name, items: [{ language, status, reason }] }
 
   const onLanguageChange = next => {
     setParams(p => {
@@ -64,59 +58,65 @@ export default function DraftEditorPage() {
     });
   };
 
-  // --- Load current status + preview as source of truth (no direct GET variant API) ---
+  // -----------------------------
+  // Backend loaders
+  // -----------------------------
   const loadStatus = useCallback(async () => {
+    if (!draftId) return;
     try {
       const { data } = await axiosClient.get(
-        `/api/template-builder/drafts/${draftId}/status`
+        `/template-builder/drafts/${draftId}/status`
       );
       setStatus(data || null);
-      // If backend echoes name/lang, seed name
       if (data?.name) setName(prev => prev || data.name);
-    } catch (err) {
-      // Non-fatal; drafts might not be approved yet
+    } catch {
+      // non-fatal (might not exist yet)
     }
   }, [draftId]);
 
   const loadPreview = useCallback(async () => {
+    if (!draftId) return;
+
     setPreviewLoading(true);
     try {
       const { data } = await axiosClient.get(
-        `/api/template-builder/drafts/${draftId}/preview`,
+        `/template-builder/drafts/${draftId}/preview`,
         { params: { language } }
       );
-      setPreview(data || null);
 
-      // Seed editor state from preview payload if available
-      if (data?.components) {
-        // components is the exact Meta payload your preview service returns
-        const header = (data.components || []).find(c => c.type === "HEADER");
-        const body = (data.components || []).find(c => c.type === "BODY");
-        const footer = (data.components || []).find(c => c.type === "FOOTER");
-        const btns = (data.components || []).find(c => c.type === "BUTTONS");
+      // backend might return { success, preview } OR just preview
+      const payload = data?.preview ?? data;
+      setPreview(payload || null);
+
+      // Seed editor state from preview (best-effort)
+      if (payload?.components) {
+        const comps = payload.components || [];
+
+        const header = comps.find(c => c.type === "HEADER");
+        const body = comps.find(c => c.type === "BODY");
+        const footer = comps.find(c => c.type === "FOOTER");
+        const btns = comps.find(c => c.type === "BUTTONS");
 
         if (header) {
           const kind =
             header.format || header.text ? header.format || "TEXT" : "NONE";
-          setHeaderType(kind); // IMAGE/VIDEO/DOCUMENT/TEXT/NONE
+          setHeaderType(kind);
           if (kind === "TEXT") setHeaderText(header.text || "");
-          if (["IMAGE", "VIDEO", "DOCUMENT"].includes(kind)) {
-            // header example may include a "handle" hint in preview’s struct; keep empty otherwise
-          }
         } else {
           setHeaderType("NONE");
           setHeaderText("");
+          setHeaderMediaHandle("");
         }
 
-        if (body) setBodyText(body.text || "");
-        if (footer) setFooterText(footer.text || "");
+        if (body?.text) setBodyText(body.text);
+        if (footer?.text) setFooterText(footer.text);
+
         if (btns?.buttons) setButtons(btns.buttons.slice(0, 3));
       }
 
-      // Try to seed category if preview includes it
-      if (data?.category) setCategory(data.category);
+      if (payload?.category) setCategory(payload.category);
     } catch (err) {
-      // Will be empty on first load; user will edit and save
+      // On first load, preview may not exist (OK)
     } finally {
       setPreviewLoading(false);
     }
@@ -130,27 +130,28 @@ export default function DraftEditorPage() {
     loadPreview();
   }, [loadPreview]);
 
-  // --- Save variant (PUT /drafts/{id}/variant/{language}) ---
+  // -----------------------------
+  // Actions
+  // -----------------------------
   const handleSave = async () => {
     if (!canEdit) return;
-    if (!name?.trim()) {
-      toast.warn("Template name is required.");
-      return;
-    }
+
+    if (!name?.trim()) return toast.warn("Template name is required.");
+    if (!bodyText?.trim()) return toast.warn("Body is required.");
+
     if (headerType === "TEXT" && !headerText?.trim()) {
-      toast.warn("Header text is required when header type is TEXT.");
-      return;
+      return toast.warn("Header text is required when header type is TEXT.");
     }
+
     if (
       ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) &&
       !headerMediaHandle
     ) {
-      toast.warn("Upload/attach header media first.");
-      return;
+      return toast.warn("Upload/attach header media first.");
     }
 
-    const variant = {
-      name,
+    const dto = {
+      name: name.trim(),
       language,
       category,
       headerType,
@@ -161,78 +162,68 @@ export default function DraftEditorPage() {
       bodyText,
       footerText,
       buttons: (buttons || []).slice(0, 3),
-      examples, // array of example values to render {{n}}
+      examples,
     };
 
     setSaving(true);
     try {
-      await axiosClient.put(
-        `/api/template-builder/drafts/${draftId}/variant/${language}`,
-        variant
+      // ✅ Backend: POST /drafts/{draftId}/variants
+      await axiosClient.post(
+        `/template-builder/drafts/${draftId}/variants`,
+        dto
       );
       toast.success("Draft saved.");
       await loadPreview();
+      await loadStatus();
     } catch (err) {
-      toast.error("Failed to save draft.");
+      toast.error(err?.response?.data?.message || "Failed to save draft.");
     } finally {
       setSaving(false);
     }
   };
 
-  // --- Name check ---
   const handleNameCheck = async () => {
     setChecking(true);
     try {
       const { data } = await axiosClient.get(
-        `/api/template-builder/drafts/${draftId}/name-check`,
+        `/template-builder/drafts/${draftId}/name-check`,
         { params: { language } }
       );
-      if (data?.available) {
-        toast.success("Name is available in this language.");
-      } else {
-        toast.warn(data?.message || "Name not available.");
-      }
+
+      if (data?.available) toast.success("Name is available in this language.");
+      else
+        toast.warn(
+          data?.suggestion ? `Try: ${data.suggestion}` : "Name not available."
+        );
     } catch (err) {
-      toast.error("Name check failed.");
+      toast.error(err?.response?.data?.message || "Name check failed.");
     } finally {
       setChecking(false);
     }
   };
 
-  // --- Preview (fresh) ---
   const handlePreview = async () => {
-    setPreviewLoading(true);
-    try {
-      const { data } = await axiosClient.get(
-        `/api/template-builder/drafts/${draftId}/preview`,
-        { params: { language } }
-      );
-      setPreview(data || null);
-    } catch (err) {
-      toast.error("Failed to load preview.");
-    } finally {
-      setPreviewLoading(false);
-    }
+    await loadPreview();
   };
 
-  // --- Submit to Meta ---
   const handleSubmit = async () => {
     if (!canEdit) return;
+
     setSubmitting(true);
     try {
-      const { data } = await axiosClient.post(
-        `/api/template-builder/drafts/${draftId}/submit`
-      );
+      await axiosClient.post(`/template-builder/drafts/${draftId}/submit`);
       toast.success("Submitted to Meta. Status will update after review.");
       await loadStatus();
-      // Optional: navigate to Library or stay here
     } catch (err) {
-      toast.error("Submission failed.");
+      toast.error(err?.response?.data?.message || "Submission failed.");
     } finally {
       setSubmitting(false);
     }
   };
 
+  // -----------------------------
+  // Render
+  // -----------------------------
   if (isLoading) {
     return (
       <div className="p-8 text-center text-gray-500">Loading profile…</div>
@@ -261,7 +252,7 @@ export default function DraftEditorPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <Link
         to="/app/template-builder/library"
         className="text-purple-600 hover:underline flex items-center gap-2 mb-4"
@@ -271,6 +262,7 @@ export default function DraftEditorPage() {
 
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-2xl font-bold text-purple-800">Draft Editor</h2>
+
         <div className="flex items-center gap-3">
           <select
             value={language}
@@ -279,7 +271,8 @@ export default function DraftEditorPage() {
           >
             <option value="en_US">English (en_US)</option>
           </select>
-          <DraftStatusBadge status={status} />
+
+          <DraftStatusBadge status={status} language={language} />
         </div>
       </div>
 
@@ -303,6 +296,7 @@ export default function DraftEditorPage() {
                   className="mt-1 w-full rounded border-gray-300"
                 />
               </div>
+
               <div>
                 <label className="text-sm text-gray-600">Category</label>
                 <select
@@ -323,7 +317,15 @@ export default function DraftEditorPage() {
               <div className="mt-1 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <select
                   value={headerType}
-                  onChange={e => setHeaderType(e.target.value)}
+                  onChange={e => {
+                    const next = e.target.value;
+                    setHeaderType(next);
+
+                    // clear incompatible state
+                    if (next !== "TEXT") setHeaderText("");
+                    if (!["IMAGE", "VIDEO", "DOCUMENT"].includes(next))
+                      setHeaderMediaHandle("");
+                  }}
                   className="rounded border-gray-300"
                 >
                   <option value="NONE">None</option>
@@ -345,6 +347,8 @@ export default function DraftEditorPage() {
                 {["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) && (
                   <div className="md:col-span-2">
                     <HeaderMediaUploader
+                      draftId={draftId}
+                      language={language}
                       mediaType={headerType}
                       handle={headerMediaHandle}
                       onUploaded={h => setHeaderMediaHandle(h)}
@@ -399,6 +403,7 @@ export default function DraftEditorPage() {
                   <Save size={16} /> Add Button
                 </button>
               </div>
+
               <div className="mt-2 space-y-2">
                 {buttons.map((b, i) => (
                   <div
@@ -420,6 +425,7 @@ export default function DraftEditorPage() {
                       <option value="PHONE_NUMBER">Phone</option>
                       <option value="QUICK_REPLY">Quick Reply</option>
                     </select>
+
                     <input
                       value={b.text || ""}
                       onChange={e =>
@@ -432,6 +438,7 @@ export default function DraftEditorPage() {
                       placeholder="Button text"
                       className="rounded border-gray-300"
                     />
+
                     <input
                       value={b.url || b.phone_number || ""}
                       onChange={e =>
@@ -469,6 +476,7 @@ export default function DraftEditorPage() {
                   + Add example
                 </button>
               </div>
+
               <div className="mt-2 space-y-2">
                 {examples.map((ex, i) => (
                   <input
@@ -553,13 +561,13 @@ export default function DraftEditorPage() {
               <Loader2 className="animate-spin text-gray-400" size={18} />
             )}
           </div>
+
           {!preview ? (
             <div className="text-gray-500 text-sm">
               No preview yet. Click <b>Preview</b> to render.
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Human preview (simple) */}
               <div className="rounded border p-3 bg-gray-50">
                 <div className="text-xs uppercase text-gray-500 mb-1">
                   Human Preview
@@ -569,7 +577,6 @@ export default function DraftEditorPage() {
                 </pre>
               </div>
 
-              {/* Meta components (payload) */}
               <div className="rounded border p-3">
                 <div className="text-xs uppercase text-gray-500 mb-1">
                   Meta Components

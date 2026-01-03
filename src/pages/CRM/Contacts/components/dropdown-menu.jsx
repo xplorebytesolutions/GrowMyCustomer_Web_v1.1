@@ -31,7 +31,7 @@ export const DropdownMenuContent = ({ children, className = "" }) => (
     leaveTo="transform opacity-0 scale-95"
   >
     <MenuItems
-      className={`absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none ${className}`}
+      className={`absolute right-0 z-10 mt-2 w-48 origin-top-right overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg focus:outline-none ${className}`}
     >
       {children}
     </MenuItems>
@@ -44,8 +44,8 @@ export const DropdownMenuItem = ({ children, onClick, className = "" }) => (
       <button
         onClick={onClick}
         className={`${
-          active ? "bg-gray-100" : ""
-        } w-full px-4 py-2 text-sm text-left ${className}`}
+          active ? "bg-slate-50" : ""
+        } w-full px-4 py-2 text-left text-sm text-slate-700 ${className}`}
       >
         {children}
       </button>

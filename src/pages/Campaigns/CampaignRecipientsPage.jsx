@@ -28,8 +28,8 @@ function CampaignRecipientsPage() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white shadow-xl rounded-2xl">
-      <h2 className="text-2xl font-bold text-purple-600 mb-4">
+    <div className="mx-auto max-w-4xl rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <h2 className="mb-4 text-2xl font-bold text-emerald-700">
         📋 Assigned Contacts
       </h2>
 
@@ -41,7 +41,7 @@ function CampaignRecipientsPage() {
         <select
           value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-2 text-sm w-60"
+          className="w-60 rounded border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value="All">All</option>
           <option value="Pending">Pending</option>
@@ -58,7 +58,7 @@ function CampaignRecipientsPage() {
         <p className="text-yellow-600">No contacts match this filter.</p>
       ) : (
         <table className="w-full text-sm border border-gray-300 rounded-xl overflow-hidden">
-          <thead className="bg-purple-100 text-gray-700">
+          <thead className="bg-emerald-50 text-gray-700">
             <tr>
               <th className="p-3 text-left">Contact</th>
               <th className="p-3 text-left">Phone</th>

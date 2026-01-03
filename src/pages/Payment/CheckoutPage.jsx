@@ -173,7 +173,7 @@ export default function CheckoutPage() {
   if (!planKey) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)] py-10 px-4 sm:px-6 lg:px-8 font-sans">
       {/* 1. Header */}
       <div className="max-w-5xl mx-auto mb-8 flex items-center justify-between">
         <button

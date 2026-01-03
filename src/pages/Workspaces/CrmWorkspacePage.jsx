@@ -10,6 +10,7 @@ import {
   Clock4,
   MoreVertical,
   AlertTriangle,
+  SlidersHorizontal, // ✅ NEW (Attribute tile icon)
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
@@ -24,11 +25,13 @@ import { FK } from "../../capabilities/featureKeys";
 /**
  * 🔐 Map CRM blocks to EXACT Permission.Code values from your back end.
  */
+
 const PERM_BY_BLOCK = {
   contacts: [FK.CRM_CONTACT_VIEW],
   tags: [FK.CRM_TAGS_VIEW],
   reminders: [FK.CRM_REMINDERS_VIEW],
   timeline: [FK.CRM_TIMELINE_VIEW],
+  attributes: FK.CRM_ATTRIBUTE_VIEW, // ✅ NEW TILE
 };
 
 const crmBlocks = [
@@ -48,6 +51,18 @@ const crmBlocks = [
     icon: <Tags size={22} />,
     action: "Manage Tags",
   },
+
+  // ✅ NEW TILE: Attribute (Custom Fields)
+  {
+    id: "attributes",
+    label: "Attribute",
+    description:
+      "Create and manage custom attributes for contacts (dynamic fields).",
+    path: "/app/crm/attributes", // ✅ make sure your App route exists
+    icon: <SlidersHorizontal size={22} />,
+    action: "Open Attributes",
+  },
+
   {
     id: "reminders",
     label: "Reminders",
@@ -126,13 +141,17 @@ export default function CrmWorkspacePage() {
     .filter(b => (showArchived ? true : !archived.includes(b.id)))
     .map(block => {
       const codes = PERM_BY_BLOCK[block.id] || [];
+      const codeList = Array.isArray(codes) ? codes : [codes].filter(Boolean);
       const allowed =
-        hasAllAccess || (Array.isArray(codes) && codes.some(code => can(code)));
+        hasAllAccess ||
+        (codeList.length > 0 &&
+          typeof can === "function" &&
+          codeList.some(code => can(code)));
 
       return {
         ...block,
         allowed,
-        primaryCode: codes[0] || null,
+        primaryCode: codeList[0] || null,
       };
     });
 
@@ -148,7 +167,8 @@ export default function CrmWorkspacePage() {
   }
 
   return (
-    <div className="p-6" data-test-id="crm-root">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]" data-test-id="crm-root">
+
       {/* Emerald animated border, same pattern as Automation workspace */}
       <style>{`
         @keyframes drawRight { from { transform: scaleX(0) } to { transform: scaleX(1) } }
@@ -171,7 +191,7 @@ export default function CrmWorkspacePage() {
             type="checkbox"
             checked={showArchived}
             onChange={() => setShowArchived(!showArchived)}
-            className="accent-purple-600"
+            className="accent-emerald-600"
           />
           Show Archived
         </label>
@@ -208,7 +228,7 @@ export default function CrmWorkspacePage() {
               >
                 {blocksWithAccess.map((block, index) => {
                   const baseCardClasses =
-                    "tile group relative overflow-hidden rounded-md border bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-purple-300 cursor-pointer";
+                    "tile group relative overflow-hidden rounded-md border bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-300 cursor-pointer";
                   const lockedClasses =
                     "opacity-70 border-dashed cursor-not-allowed hover:-translate-y-0 hover:shadow-sm";
 
@@ -419,7 +439,7 @@ export default function CrmWorkspacePage() {
 //   AlertTriangle,
 // } from "lucide-react";
 // import { useNavigate } from "react-router-dom";
-// import { useState } from "react";
+// import { useState, useMemo } from "react";
 // import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 // // ✅ server-authoritative AuthProvider
@@ -477,15 +497,27 @@ export default function CrmWorkspacePage() {
 //   const navigate = useNavigate();
 //   const { isLoading, entLoading, hasAllAccess, can } = useAuth();
 
+//   // --- LocalStorage keys under "crm-*"
 //   const [pinned, setPinned] = useState(
 //     JSON.parse(localStorage.getItem("crm-pinned") || "[]")
 //   );
 //   const [archived, setArchived] = useState(
 //     JSON.parse(localStorage.getItem("crm-archived") || "[]")
 //   );
-//   const [order, setOrder] = useState(
-//     JSON.parse(localStorage.getItem("crm-order")) || crmBlocks.map(b => b.id)
-//   );
+
+//   // Seed order with all current ids; reconcile with any saved order
+//   const allIds = useMemo(() => crmBlocks.map(b => b.id), []);
+//   const storedOrder =
+//     JSON.parse(localStorage.getItem("crm-order") || "null") || [];
+//   const initialOrder = useMemo(() => {
+//     if (!Array.isArray(storedOrder) || storedOrder.length === 0) return allIds;
+//     const known = storedOrder.filter(id => allIds.includes(id));
+//     const missing = allIds.filter(id => !known.includes(id));
+//     return [...known, ...missing];
+//   }, [allIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+//   const [order, setOrder] = useState(initialOrder);
+//   const [showArchived, setShowArchived] = useState(false);
 
 //   const togglePin = (e, id) => {
 //     e.stopPropagation();
@@ -514,24 +546,25 @@ export default function CrmWorkspacePage() {
 //     localStorage.setItem("crm-order", JSON.stringify(newOrder));
 //   };
 
-//   // Build list of blocks (keep both locked + unlocked visible)
+//   // Build list of blocks (show both locked + unlocked)
 //   const blocksWithAccess = order
 //     .map(id => crmBlocks.find(b => b.id === id))
 //     .filter(Boolean)
-//     .filter(b => !archived.includes(b.id))
+//     .filter(b => (showArchived ? true : !archived.includes(b.id)))
 //     .map(block => {
-//       const codes = PERM_BY_BLOCK[block.id];
-//       let allowed = true;
-//       if (!hasAllAccess && typeof can === "function") {
-//         allowed = codes ? codes.some(code => can(code)) : true;
-//       }
+//       const codes = PERM_BY_BLOCK[block.id] || [];
+//       const allowed =
+//         hasAllAccess || (Array.isArray(codes) && codes.some(code => can(code)));
 
 //       return {
 //         ...block,
 //         allowed,
-//         primaryCode: codes && codes.length ? codes[0] : null,
+//         primaryCode: codes[0] || null,
 //       };
 //     });
+
+//   const anyVisible = blocksWithAccess.length > 0;
+//   const anyAllowed = blocksWithAccess.some(b => b.allowed);
 
 //   if (isLoading || entLoading) {
 //     return (
@@ -541,12 +574,9 @@ export default function CrmWorkspacePage() {
 //     );
 //   }
 
-//   const anyVisible = blocksWithAccess.length > 0;
-//   const anyAllowed = blocksWithAccess.some(b => b.allowed);
-
 //   return (
 //     <div className="p-6" data-test-id="crm-root">
-//       {/* sequential border animation (top→right→bottom→left) – emerald themed */}
+//       {/* Emerald animated border, same pattern as Automation workspace */}
 //       <style>{`
 //         @keyframes drawRight { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 //         @keyframes drawDown  { from { transform: scaleY(0) } to { transform: scaleY(1) } }
@@ -559,15 +589,27 @@ export default function CrmWorkspacePage() {
 //         .tile:hover .leftline   { animation: drawUp    .9s ease .54s forwards; }
 //       `}</style>
 
-//       <h2 className="text-2xl font-bold text-emerald-800 mb-1">
-//         📇 CRM Workspace
-//       </h2>
+//       <div className="flex justify-between items-center mb-4">
+//         <h2 className="text-2xl font-bold text-emerald-800">
+//           📇 CRM Workspace
+//         </h2>
+//         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+//           <input
+//             type="checkbox"
+//             checked={showArchived}
+//             onChange={() => setShowArchived(!showArchived)}
+//             className="accent-purple-600"
+//           />
+//           Show Archived
+//         </label>
+//       </div>
+
 //       <p className="text-sm text-slate-600 mb-4">
 //         Manage contacts, tags, reminders, and interaction timelines in one
 //         place.
 //       </p>
 
-//       {/* If tiles exist but all are locked → show a “restricted” banner, like Admin */}
+//       {/* If tiles exist but all are locked → show restricted banner */}
 //       {anyVisible && !anyAllowed && (
 //         <div className="bg-amber-50 text-amber-800 p-4 border-l-4 border-amber-500 rounded-md mb-6 shadow-sm flex items-start gap-3">
 //           <AlertTriangle size={22} className="mt-1" />
@@ -592,14 +634,14 @@ export default function CrmWorkspacePage() {
 //                 {...provided.droppableProps}
 //               >
 //                 {blocksWithAccess.map((block, index) => {
-//                   const cardBase =
-//                     "tile group relative overflow-hidden cursor-pointer bg-white rounded-md border shadow-sm hover:shadow-md transition transform hover:-translate-y-0.5 duration-200 focus:outline-none focus:ring-2 focus:ring-purple-300";
+//                   const baseCardClasses =
+//                     "tile group relative overflow-hidden rounded-md border bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-purple-300 cursor-pointer";
 //                   const lockedClasses =
 //                     "opacity-70 border-dashed cursor-not-allowed hover:-translate-y-0 hover:shadow-sm";
 
 //                   const cardClasses = block.allowed
-//                     ? cardBase
-//                     : `${cardBase} ${lockedClasses}`;
+//                     ? baseCardClasses
+//                     : `${baseCardClasses} ${lockedClasses}`;
 
 //                   const handleCardClick = () => {
 //                     if (!block.allowed) {
@@ -657,7 +699,7 @@ export default function CrmWorkspacePage() {
 //                             </span>
 //                           )}
 
-//                           {/* animated border segments – EMERALD gradient */}
+//                           {/* Emerald animated border (top → right → bottom → left) */}
 //                           <span
 //                             aria-hidden
 //                             className="topline pointer-events-none absolute left-0 -top-[2px] h-[2px] w-full origin-left rounded opacity-0 group-hover:opacity-100"
@@ -695,13 +737,13 @@ export default function CrmWorkspacePage() {
 //                             }}
 //                           />
 
-//                           {/* content – same structure as Admin tiles */}
+//                           {/* Card body */}
 //                           <div className="flex items-start gap-4 p-5">
 //                             <div className="bg-emerald-50 rounded-md p-2 text-emerald-800">
 //                               {block.icon}
 //                             </div>
-//                             <div className="flex-1">
-//                               <h3 className="text-md font-semibold text-emerald-800 group-hover:text-emerald-900">
+//                             <div className="flex-1 min-w-0">
+//                               <h3 className="text-md font-semibold text-emerald-800 truncate group-hover:text-emerald-900">
 //                                 {block.label}
 //                               </h3>
 //                               <p className="text-sm text-slate-600">
@@ -709,7 +751,7 @@ export default function CrmWorkspacePage() {
 //                               </p>
 //                             </div>
 
-//                             {/* kebab = the ONLY drag handle, like Admin */}
+//                             {/* Drag handle only on kebab */}
 //                             <div
 //                               {...provided.dragHandleProps}
 //                               title="Drag to re-order"
@@ -720,6 +762,7 @@ export default function CrmWorkspacePage() {
 //                             </div>
 //                           </div>
 
+//                           {/* Footer */}
 //                           <div className="px-5 py-3 border-t border-gray-200 flex items-center justify-between bg-gray-50">
 //                             <button
 //                               onClick={handlePrimaryActionClick}
@@ -730,6 +773,7 @@ export default function CrmWorkspacePage() {
 //                                 : "Upgrade to unlock"}
 //                               <ArrowRightCircle size={18} />
 //                             </button>
+
 //                             <div className="flex items-center gap-3">
 //                               <button
 //                                 onClick={e => togglePin(e, block.id)}

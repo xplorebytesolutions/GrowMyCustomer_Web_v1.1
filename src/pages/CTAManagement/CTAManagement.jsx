@@ -55,7 +55,8 @@ function CTAManagement() {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="min-h-[calc(100vh-80px)] bg-[#f5f6f7]">
+      <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h2 className="text-xl font-bold text-purple-700">🎯 CTA Management</h2>
 
       <div className="bg-white p-4 rounded-xl shadow space-y-3">
@@ -118,6 +119,7 @@ function CTAManagement() {
             <div className="text-gray-500 text-xs">{cta.description}</div>
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

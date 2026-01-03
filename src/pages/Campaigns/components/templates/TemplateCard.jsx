@@ -39,7 +39,7 @@ export default function TemplateCard({
   onDelete,
 }) {
   const recipients = Number(t?.recipients || 0);
-  const canSend = recipients > 0 && !sending;
+  const statusRaw = (t?.status || "").toString().toLowerCase();
 
   // --- Type (Text vs Image)
   const kind = (t?.kind || t?.templateType || t?.type || "")
@@ -54,6 +54,15 @@ export default function TemplateCard({
   const sentAt =
     t?.sentAt || t?.lastSentAt || t?.dispatchedAt || t?.deliveredAt || null;
   const scheduledAt = t?.scheduledAt || t?.queuedFor || null;
+
+  const isSent =
+    Boolean(sentAt) ||
+    ["sent", "delivered", "dispatched", "completed"].includes(statusRaw);
+
+  const canAssign = !isSent;
+  const canViewRecipients = recipients > 0;
+  const canDelete = recipients > 0 && !isSent && !deleting;
+  const canSend = recipients > 0 && !isSent && !sending;
 
   // --- Status mapping
   const status = (() => {
@@ -127,11 +136,16 @@ export default function TemplateCard({
             {/* Delete button */}
             {onDelete && (
               <button
-                onClick={onDelete}
+                onClick={canDelete ? onDelete : undefined}
                 type="button"
                 title="Delete campaign"
-                disabled={deleting}
-                className="w-8 h-8 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors flex items-center justify-center disabled:opacity-50"
+                disabled={!canDelete}
+                className={cx(
+                  "w-8 h-8 rounded-lg border transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed",
+                  canDelete
+                    ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300"
+                    : "border-gray-200 bg-gray-50 text-gray-300"
+                )}
               >
                 <FaTrash className="text-sm" />
               </button>
@@ -191,20 +205,32 @@ export default function TemplateCard({
       <div className="px-6 py-3 border-t border-gray-100 bg-gray-50">
         <div className="grid grid-cols-2 gap-2">
           <button
-            className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
-            onClick={onAssign}
+            className={cx(
+              "flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+              canAssign
+                ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                : "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+            )}
+            onClick={canAssign ? onAssign : undefined}
             type="button"
-            title="Assign recipients"
+            disabled={!canAssign}
+            title={canAssign ? "Assign recipients" : "Campaign already sent"}
           >
             <FaUserPlus className="text-xs" />
             Assign Recipients
           </button>
 
           <button
-            className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
-            onClick={onViewRecipients}
+            className={cx(
+              "flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors",
+              canViewRecipients
+                ? "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                : "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+            )}
+            onClick={canViewRecipients ? onViewRecipients : undefined}
             type="button"
-            title="View recipients"
+            disabled={!canViewRecipients}
+            title={canViewRecipients ? "View recipients" : "Add recipients first"}
           >
             <FaList className="text-xs" />
             View Recipients
@@ -224,7 +250,13 @@ export default function TemplateCard({
           disabled={!canSend || sending}
           onClick={onSend}
           type="button"
-          title={canSend ? "Send campaign" : "Add recipients first"}
+          title={
+            canSend
+              ? "Send campaign"
+              : isSent
+                ? "Campaign already sent"
+                : "Add recipients first"
+          }
           aria-label="Send campaign"
         >
           {sending ? (

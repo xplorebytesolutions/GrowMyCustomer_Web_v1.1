@@ -25,6 +25,11 @@ export const WORKSPACES = [
         path: "/app/crm/contacts",
         feature: FK.CRM_CONTACTS,
       },
+      {
+        label: "Attribute",
+        path: "/app/crm/attributes",
+        feature: FK.CRM_ATTRIBUTE_VIEW,
+      },
       { label: "Tags", path: "/app/crm/tags", feature: FK.CRM_TAGS },
       // Add more when you seed them:
       // { label: "Reminders", path: "/app/crm/reminders", feature: FK.CRM_REMINDERS },

@@ -1,7 +1,7 @@
 // 📄 src/pages/ChatInbox/hooks/useLeadTimelinePreview.js
 
 import { useState, useEffect, useCallback } from "react";
-import axiosClient from "../../../api/axiosClient";
+import axiosClient from "../api/chatInboxApi";
 import { toast } from "react-toastify";
 
 /**

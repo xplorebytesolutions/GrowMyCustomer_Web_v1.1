@@ -129,7 +129,7 @@ export default function AutoReplyBuilder() {
   }, [flowId]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex overflow-hidden bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* Sidebar (left) */}
       <div className="w-72 border-r border-gray-200 bg-white p-4">
         <h2 className="text-lg font-semibold mb-4 text-zinc-800">

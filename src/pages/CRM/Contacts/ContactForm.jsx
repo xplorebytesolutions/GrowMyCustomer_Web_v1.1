@@ -70,7 +70,7 @@ function ContactForm({ contact, onSaveComplete }) {
         toast.success("✅ Contact updated successfully!");
       } else {
         // Create new contact
-        await axiosClient.post("/contacts", payload);
+        await axiosClient.post("/contacts/create", payload);
         toast.success("✅ Contact created successfully!");
       }
       onSaveComplete?.(); // Notify parent component to refresh/close
@@ -139,7 +139,7 @@ function ContactForm({ contact, onSaveComplete }) {
       <button
         type="submit"
         disabled={saving}
-        className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 disabled:bg-purple-300"
+        className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {saving ? "Saving..." : contact?.id ? "Update Contact" : "Add Contact"}
       </button>

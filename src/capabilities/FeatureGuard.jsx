@@ -1,42 +1,73 @@
 // 📄 src/capabilities/FeatureGuard.jsx
 import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../app/providers/AuthProvider";
-import UpgradeCta from "./UpgradeCta";
 
 const normalizeCode = code =>
   String(code || "")
     .trim()
     .toUpperCase();
 
+const isDev =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    !import.meta.env.PROD) ||
+  (typeof process !== "undefined" &&
+    process.env &&
+    process.env.NODE_ENV !== "production");
+
 export default function FeatureGuard({
-  featureKey, // preferred (feature code or FK.*)
-  code, // legacy alias (single code)
-  codes, // allow array or single permission/feature code
-  fallback = <UpgradeCta />,
+  featureKey,
+  code,
+  codes,
+  fallback,
   children,
 }) {
-  const { isLoading, entLoading, entitlements, hasAllAccess } = useAuth();
+  const location = useLocation();
+  const { isLoading, entLoading, hasAllAccess, can } = useAuth();
+
+  // If dev passed *something*, but it resolves to nothing usable,
+  // that’s a config bug and MUST deny (fail closed).
+  const hadExplicitRequirement = Boolean(codes || featureKey || code);
 
   // ---- normalize required keys ----
   let required = [];
 
   if (codes) {
-    // <FeatureGuard codes={FK.CAMPAIGN_LIST_VIEW}>
-    // or <FeatureGuard codes={[FK.C1, FK.C2]}>
     required = Array.isArray(codes) ? codes : [codes];
   } else {
-    const single = featureKey ?? code;
+    const single = code;
     if (single) required = [single];
   }
 
-  const requiredNorm = required.filter(Boolean).map(normalizeCode);
+  const requiredNorm = required
+    .filter(x => typeof x === "string" && x.trim().length > 0)
+    .map(normalizeCode)
+    .filter(Boolean);
 
-  // No requirement provided → allow by default
-  if (!requiredNorm.length) {
-    return children;
+  // ✅ Fail closed if caller intended to protect, but passed undefined/invalid keys
+  if (hadExplicitRequirement && requiredNorm.length === 0) {
+    if (isDev) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[FeatureGuard] Invalid/missing permission key. DENYING access.",
+        {
+          featureKey,
+          code,
+          codes,
+          path: window.location.pathname,
+        }
+      );
+    }
+
+    if (fallback !== undefined) return fallback;
+    return <Navigate to="/no-access" replace state={{ from: location }} />;
   }
 
-  // While auth or entitlements are loading, DON'T block yet
+  // No requirement provided → allow by default
+  if (!requiredNorm.length) return children;
+
+  // While loading, don't block yet
   if (isLoading || entLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center py-16">
@@ -45,42 +76,12 @@ export default function FeatureGuard({
     );
   }
 
-  // ---- read permissions from Entitlements snapshot ----
-  let entPermsNorm = [];
-  if (entitlements) {
-    const raw =
-      entitlements.GrantedPermissions ??
-      entitlements.grantedPermissions ??
-      entitlements.Permissions ??
-      entitlements.permissions ??
-      [];
+  const allowed = hasAllAccess || requiredNorm.some(c => can(c));
 
-    if (Array.isArray(raw)) {
-      entPermsNorm = raw
-        .map(p => {
-          if (typeof p === "string") return normalizeCode(p);
-          if (p && typeof p === "object") {
-            return normalizeCode(
-              p.code || p.Code || p.permissionCode || p.PermissionCode
-            );
-          }
-          return "";
-        })
-        .filter(Boolean);
-    }
+  if (!allowed) {
+    if (fallback !== undefined) return fallback;
+    return <Navigate to="/no-access" replace state={{ from: location }} />;
   }
 
-  const allowed =
-    hasAllAccess || requiredNorm.some(code => entPermsNorm.includes(code));
-
-  // 🔍 Debug to verify on refresh
-  console.log("[FeatureGuard DEBUG]", {
-    path: window.location.pathname,
-    required: requiredNorm,
-    entPermsNorm,
-    hasAllAccess,
-    allowed,
-  });
-
-  return allowed ? <>{children}</> : fallback;
+  return <>{children}</>;
 }

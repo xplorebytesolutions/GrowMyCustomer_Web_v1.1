@@ -36,7 +36,7 @@ function CrmAnalyticsDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-8 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* 📊 Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard title="Total Contacts" value={summary.totalContacts} />

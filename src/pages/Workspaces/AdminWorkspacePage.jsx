@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   BarChart3,
   LucideBotMessageSquare,
+  FileCode2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -22,13 +23,15 @@ import { requestUpgrade } from "../../utils/upgradeBus";
 const PERM_BY_BLOCK = {
   "business-approvals": [FK.SUPER_ADMIN_NEW_BUSINESS_APPROVAL],
   "plan-manager": [FK.SUPER_ADMIN_PLAN_MANAGER_VIEW],
+  "plan-permissions": [FK.SUPER_ADMIN_PLAN_MANAGER_VIEW],
   "paln-permissions-list": [FK.SUPER_ADMIN_PLAN_PERMISSIONS_LIST],
   "esu-debug": [FK.SUPER_ADMIN_ESU_DEBUG],
-  "account-signup-report": [FK.SUPER_ADMIN_SINGNUP_REPORT_VIEW],
+  "account-signup-report": [FK.SUPER_ADMIN_SIGNUP_REPORT_VIEW],
   "business-overview": [FK.SUPER_ADMIN_BUSINESS_OVERVIEW],
   "webhook-monitor": [FK.SUPER_ADMIN_WEBHOOK_MONITOR],
   "user-permissions": [FK.SUPER_ADMIN_USER_MANAGEMENT_VIEW],
   "flow-execution-explorer": [FK.SUPER_ADMIN_FLOW_EXECUTION_EXPLORER_VIEW],
+  "developer-notes": [FK.SUPER_ADMIN_WORKSPACE_VIEW],
 };
 
 const allAdminBlocks = [
@@ -39,7 +42,7 @@ const allAdminBlocks = [
     path: "/app/admin/approvals",
     icon: <ShieldCheck size={22} />,
     action: "Review Requests",
-    roles: ["superadmin", "partner", "reseller", "admin"],
+    roles: ["superadmin", "partner", "reseller"],
   },
   {
     id: "plan-manager",
@@ -48,7 +51,7 @@ const allAdminBlocks = [
     path: "/app/admin/plan-management",
     icon: <SquareStack size={22} />,
     action: "Manage Plans",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin"],
   },
   {
     id: "paln-permissions-list",
@@ -58,7 +61,7 @@ const allAdminBlocks = [
     path: "/app/admin/permissions",
     icon: <ShieldCheck size={22} />,
     action: "Manage Permissions",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin"],
   },
   {
     id: "esu-debug",
@@ -78,7 +81,7 @@ const allAdminBlocks = [
     path: "/app/admin/account-insights",
     icon: <BarChart3 size={22} />,
     action: "View Report",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin"],
   },
   {
     id: "business-overview",
@@ -88,7 +91,7 @@ const allAdminBlocks = [
     path: "/app/admin/account-insights/account-reports",
     icon: <BarChart3 size={22} />,
     action: "Open Overview",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin"],
   },
   {
     id: "webhook-monitor",
@@ -98,7 +101,7 @@ const allAdminBlocks = [
     path: "/app/admin/webhooks/monitor",
     icon: <AlertTriangle size={22} />,
     action: "Open Webhook Tools",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin"],
   },
   {
     id: "user-permissions",
@@ -107,7 +110,7 @@ const allAdminBlocks = [
     path: "/app/admin/user-permissions",
     icon: <BarChart3 className="text-emerald-800" size={22} />,
     action: "Manage Access",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin"],
   },
   {
     id: "flow-execution-explorer",
@@ -116,7 +119,17 @@ const allAdminBlocks = [
     path: "/app/admin/audit/execution-explorer",
     icon: <LucideBotMessageSquare className="text-emerald-800" size={22} />,
     action: "Open Explorer",
-    roles: ["superadmin", "admin"],
+    roles: ["superadmin"],
+  },
+  {
+    id: "developer-notes",
+    label: "Developer Notes",
+    description:
+      "Internal sanity checks, SQL snippets, and engineering decisions for faster debugging.",
+    path: "/app/admin/developer-notes",
+    icon: <FileCode2 size={22} />,
+    action: "Open Notes",
+    roles: ["superadmin"],
   },
 ];
 
@@ -125,16 +138,26 @@ export default function AdminWorkspacePage() {
   const { role, hasAllAccess, can, isLoading, entLoading } = useAuth();
   const userRole = String(role || "").toLowerCase();
 
+  const defaultOrder = allAdminBlocks.map(b => b.id);
+  const loadOrder = () => {
+    try {
+      const raw = localStorage.getItem("admin-order");
+      if (!raw) return defaultOrder;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return defaultOrder;
+      return [...parsed, ...defaultOrder.filter(id => !parsed.includes(id))];
+    } catch {
+      return defaultOrder;
+    }
+  };
+
   const [pinned, setPinned] = useState(
     JSON.parse(localStorage.getItem("admin-pinned") || "[]")
   );
   const [archived, setArchived] = useState(
     JSON.parse(localStorage.getItem("admin-archived") || "[]")
   );
-  const [order, setOrder] = useState(
-    JSON.parse(localStorage.getItem("admin-order")) ||
-      allAdminBlocks.map(b => b.id)
-  );
+  const [order, setOrder] = useState(loadOrder());
   const [showArchived, setShowArchived] = useState(false);
 
   const togglePin = (e, id) => {
@@ -221,17 +244,7 @@ export default function AdminWorkspacePage() {
         <h2 className="text-2xl font-bold text-emerald-800">
           🛡 Admin Workspace
         </h2>
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={() => setShowArchived(!showArchived)}
-            className="accent-purple-600"
-          />
-          Show Archived Tools
-        </label>
       </div>
-
       <p className="text-sm text-slate-600 mb-4">
         Manage plans, permissions, account health, webhooks, and ESU debugging
         across all businesses.
@@ -278,7 +291,7 @@ export default function AdminWorkspacePage() {
               >
                 {blocksWithAccess.map((block, index) => {
                   const baseCardClasses =
-                    "tile group relative overflow-hidden cursor-pointer bg-white rounded-md border shadow-sm hover:shadow-md transition transform hover:-translate-y-0.5 duration-200 focus:outline-none focus:ring-2 focus:ring-purple-300";
+                    "tile group relative overflow-hidden cursor-pointer bg-white rounded-md border shadow-sm hover:shadow-md transition transform hover:-translate-y-0.5 duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-300";
                   const lockedClasses =
                     "opacity-70 border-dashed cursor-not-allowed hover:-translate-y-0 hover:shadow-sm";
 

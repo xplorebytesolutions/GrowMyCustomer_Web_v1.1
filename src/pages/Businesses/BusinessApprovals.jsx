@@ -124,7 +124,7 @@ export default function BusinessApprovals() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* 🔰 Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-5 rounded-lg shadow">
         <div>

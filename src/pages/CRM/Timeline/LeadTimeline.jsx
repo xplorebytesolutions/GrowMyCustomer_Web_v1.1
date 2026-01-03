@@ -43,7 +43,7 @@ function LeadTimeline() {
   }, [contactId, fetchContactInfo, fetchTimeline]);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-6">
         <div>

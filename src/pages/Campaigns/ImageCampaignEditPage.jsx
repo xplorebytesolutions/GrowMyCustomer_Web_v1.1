@@ -60,7 +60,8 @@ function ImageCampaignEditPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white shadow rounded-xl space-y-4">
+    <div className="min-h-[calc(100vh-80px)] bg-[#f5f6f7] p-6">
+      <div className="max-w-2xl mx-auto p-6 bg-white shadow rounded-xl space-y-4">
       <h2 className="text-xl font-bold text-purple-600">
         ✏️ Edit Image Campaign
       </h2>
@@ -126,6 +127,7 @@ function ImageCampaignEditPage() {
           {submitting ? "Updating..." : "Update Campaign"}
         </button>
       </form>
+    </div>
     </div>
   );
 }

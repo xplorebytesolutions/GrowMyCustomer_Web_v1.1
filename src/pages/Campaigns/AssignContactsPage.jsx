@@ -340,16 +340,17 @@ export default function AssignContactsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
+    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
+      <div className="mx-auto max-w-7xl px-4 py-6">
       {/* Title */}
-      <h1 className="mb-2 flex items-center gap-2 text-2xl font-bold text-purple-600">
+      <h1 className="mb-2 flex items-center gap-2 text-2xl font-bold text-emerald-700">
         📇 Assign Contacts
       </h1>
 
       {/* Campaign meta */}
       {campaign ? (
         <div className="mb-6 flex flex-wrap items-center gap-2 text-sm">
-          <span className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
             <strong className="font-semibold">Campaign:</strong>
             <span>
               {campaign.name ||
@@ -364,10 +365,7 @@ export default function AssignContactsPage() {
           {/* <span>{campaign.templateName || campaign.messageTemplate}</span> */}
           {/* </span> */}
           {/* ) : null} */}
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
-            <strong className="font-semibold">Placeholders:</strong>
-            <span>{placeholderCount}</span>
-          </span>
+
         </div>
       ) : (
         <div className="mb-6 text-xs text-gray-500">Loading campaign…</div>
@@ -386,28 +384,11 @@ export default function AssignContactsPage() {
               </>
             )}
           </h2>
-          <p className="mb-3 text-xs text-gray-600">
-            Upload a CSV with at least a <code>phone</code> column
-            {placeholderCount > 0 && (
-              <>
-                {" "}
-                and values for <code>{"{{1}}"}</code>
-                {placeholderCount > 1 && (
-                  <>
-                    …<code>{`{{${placeholderCount}}}`}</code>
-                  </>
-                )}
-              </>
-            )}
-            . This creates an Audience + Recipients with validation, dry-run,
-            and idempotency.
-          </p>
-          <CsvAudienceSection campaignId={campaignId} />
+          <CsvAudienceSection campaignId={campaignId} campaign={campaign} />
         </section>
       )}
 
       <div className="my-6 h-px bg-gray-100" />
-
       {/* 2) Optional CRM Panel (collapsed by default) */}
       <section className="rounded-xl border bg-white shadow-sm">
         {/* Header / Toggle */}
@@ -463,7 +444,7 @@ export default function AssignContactsPage() {
                   onChange={setTags}
                   category="All"
                 />
-                <label className="text-sm text-purple-600 hover:underline sm:ml-auto">
+                <label className="text-sm text-emerald-700 hover:underline sm:ml-auto">
                   + Upload CSV to CRM
                   <input
                     type="file"
@@ -567,7 +548,7 @@ export default function AssignContactsPage() {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={assignContacts}
-                  className="rounded-lg bg-purple-600 px-6 py-3 text-white transition hover:bg-purple-700"
+                  className="rounded-lg bg-emerald-600 px-6 py-3 text-white transition hover:bg-emerald-700"
                 >
                   Assign Selected Contacts to Campaign
                 </button>
@@ -651,7 +632,7 @@ export default function AssignContactsPage() {
             Cancel
           </button>
           <button
-            className="rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
+            className="rounded-md bg-emerald-600 px-4 py-2 text-white disabled:opacity-60 hover:bg-emerald-700"
             onClick={applyFieldMapping}
             disabled={isImporting}
           >
@@ -659,6 +640,7 @@ export default function AssignContactsPage() {
           </button>
         </div>
       </Modal>
+      </div>
     </div>
   );
 }

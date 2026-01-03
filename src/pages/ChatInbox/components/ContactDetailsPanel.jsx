@@ -161,6 +161,7 @@ export function ContactDetailsPanel({ conversation }) {
             ))}
           </div>
         </div>
+
       </div>
 
       {/* Footer placeholder – later quick actions like 'Open contact', 'View full CRM' */}

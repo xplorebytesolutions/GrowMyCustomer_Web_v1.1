@@ -80,47 +80,49 @@ function ProductForm() {
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-white p-6 rounded-xl shadow mt-10">
-      <h2 className="text-2xl font-bold text-purple-600 mb-4">
-        {isEditMode ? "✏️ Edit Product" : "➕ Add New Product"}
-      </h2>
+    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)] p-6">
+      <div className="max-w-xl mx-auto bg-white p-6 rounded-xl shadow mt-10">
+        <h2 className="text-2xl font-bold text-purple-600 mb-4">
+          {isEditMode ? "✏️ Edit Product" : "➕ Add New Product"}
+        </h2>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {[
-          ["Product Name", "name"],
-          ["Description", "description"],
-          ["Price", "price"],
-          ["Currency", "currency"],
-          ["Image URL", "imageUrl"],
-        ].map(([label, name]) => (
-          <div key={name}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {label}
-            </label>
-            <input
-              type={name === "price" ? "number" : "text"}
-              name={name}
-              value={formData[name]}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder={`Enter ${label.toLowerCase()}`}
-              required
-            />
-          </div>
-        ))}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {[
+            ["Product Name", "name"],
+            ["Description", "description"],
+            ["Price", "price"],
+            ["Currency", "currency"],
+            ["Image URL", "imageUrl"],
+          ].map(([label, name]) => (
+            <div key={name}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {label}
+              </label>
+              <input
+                type={name === "price" ? "number" : "text"}
+                name={name}
+                value={formData[name]}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder={`Enter ${label.toLowerCase()}`}
+                required
+              />
+            </div>
+          ))}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-purple-600 text-white py-2 rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
-        >
-          {loading
-            ? "Saving..."
-            : isEditMode
-            ? "Update Product"
-            : "Add Product"}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-purple-600 text-white py-2 rounded-xl hover:bg-purple-700 transition disabled:opacity-50"
+          >
+            {loading
+              ? "Saving..."
+              : isEditMode
+              ? "Update Product"
+              : "Add Product"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

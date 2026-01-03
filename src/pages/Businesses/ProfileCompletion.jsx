@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import { 
+  Building2, 
+  User, 
+  Phone, 
+  Globe, 
+  MapPin, 
+  Tag, 
+  Link as LinkIcon, 
+  CheckCircle2, 
+  Briefcase,
+  Image as ImageIcon
+} from "lucide-react";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL;
 
@@ -193,103 +205,204 @@ export default function ProfileCompletion() {
       .finally(() => setLoading(false));
   };
 
+  // Calculate completion percentage
+  const completionPercentage = Math.round(
+    (Object.values(form).filter(v => String(v || "").trim().length > 0).length /
+      Object.keys(form).length) *
+      100
+  );
+
+  const sections = [
+    {
+      title: "Business Identity",
+      description: "Define your company and primary contact.",
+      fields: [
+        { name: "companyName", icon: Building2 },
+        { name: "representativeName", icon: User },
+        { name: "industry", icon: Briefcase },
+      ],
+    },
+    {
+      title: "Contact & Location",
+      description: "Where can customers and partners find you?",
+      fields: [
+        { name: "phone", icon: Phone },
+        { name: "companyPhone", icon: Phone },
+        { name: "country", icon: Globe },
+        { name: "address", icon: MapPin },
+        { name: "website", icon: LinkIcon },
+      ],
+    },
+    {
+      title: "Branding",
+      description: "Customize your presence with a logo.",
+      fields: [
+        { name: "logoUrl", icon: ImageIcon },
+      ],
+    },
+  ];
+
+  const getFormField = (name) => fields.find(f => f[1] === name);
+
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-6 md:px-8 md:py-8">
+    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)] px-4 py-4 md:px-6 md:py-6 font-inter">
       {/* Page header */}
-      <div className="max-w-5xl mx-auto mb-5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-emerald-800">
-              🧩 Profile & Business Details
-            </h1>
-            <p className="text-sm text-slate-600 mt-1 max-w-2xl">
+      <div className="max-w-5xl mx-auto mb-4">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 bg-emerald-100 rounded-lg text-emerald-700">
+                <Building2 size={20} />
+              </div>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                Profile & Business Details
+              </h1>
+            </div>
+            <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
               Complete your business profile so messaging, campaigns, and
               analytics can use your latest company information.
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Recommended setup step
+          
+          <div className="w-full md:w-56 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <span>Setup Progress</span>
+              <span className="text-emerald-600">{completionPercentage}%</span>
+            </div>
+            <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500 ease-out"
+                style={{ width: `${completionPercentage}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main card */}
       <div className="max-w-5xl mx-auto">
-        <div className="relative rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-          {/* top gradient bar */}
-          <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-purple-500 to-sky-500" />
-
+        <div className="relative rounded-2xl bg-white border border-slate-200 shadow-lg shadow-slate-200/40 overflow-hidden">
           <form
             onSubmit={handleSubmit}
-            className="p-4 md:p-6 lg:p-8"
+            className="p-5 md:p-7"
             noValidate
           >
-            {/* subsection heading */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Business profile
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                These details help personalise templates, invoices, and campaign
-                messages for your brand.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-              {fields.map(([label, name, type]) => (
-                <div key={name}>
-                  <label
-                    htmlFor={name}
-                    className="text-xs font-medium text-slate-600 block mb-1.5"
-                  >
-                    {label}
-                  </label>
-                  <input
-                    id={name}
-                    type={type}
-                    name={name}
-                    value={form[name]}
-                    onChange={handleChange}
-                    placeholder={`Enter ${label.toLowerCase()}`}
-                    className={`w-full px-3 py-2 rounded-md text-sm border bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition ${
-                      errors[name] ? "border-red-500" : "border-slate-300"
-                    }`}
-                    aria-invalid={errors[name] ? "true" : "false"}
-                    aria-describedby={`${name}-error`}
-                  />
-                  {errors[name] && (
-                    <p
-                      className="text-red-600 text-xs mt-1"
-                      id={`${name}-error`}
-                      role="alert"
-                    >
-                      {errors[name]}
+            <div className="space-y-8">
+              {sections.map((section, sIdx) => (
+                <div key={sIdx} className="relative">
+                  <div className="mb-4">
+                    <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                      {section.title}
+                      <div className="h-px flex-1 bg-slate-100 ml-2" />
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      {section.description}
                     </p>
-                  )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3.5">
+                    {section.fields.map(({ name, icon: Icon }) => {
+                      const f = getFormField(name);
+                      if (!f) return null;
+                      const [label, , type] = f;
+                      
+                      return (
+                        <div key={name} className="relative group">
+                          <label
+                            htmlFor={name}
+                            className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5 transition-colors group-focus-within:text-emerald-600"
+                          >
+                            {label}
+                          </label>
+                          
+                          <div className="relative flex items-center">
+                            <div className="absolute left-3 text-slate-400 pointer-events-none transition-colors group-focus-within:text-emerald-500">
+                              <Icon size={14} />
+                            </div>
+                            
+                            <input
+                              id={name}
+                              type={type}
+                              name={name}
+                              value={form[name]}
+                              onChange={handleChange}
+                              placeholder={`Enter ${label.toLowerCase()}`}
+                              className={`w-full pl-9 pr-4 py-1.5 rounded-lg text-sm border bg-white shadow-sm transition-all focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 ${
+                                errors[name] ? "border-red-400 bg-red-50/10" : "border-slate-200"
+                              }`}
+                              aria-invalid={errors[name] ? "true" : "false"}
+                              aria-describedby={`${name}-error`}
+                            />
+
+                            {name === "logoUrl" && form.logoUrl && (
+                              <div className="absolute right-2 p-1 bg-white border rounded-lg shadow-sm">
+                                <img 
+                                  src={form.logoUrl} 
+                                  alt="Preview" 
+                                  className="w-6 h-6 object-contain rounded"
+                                  onError={(e) => { e.target.src = "https://placehold.co/100x100?text=Logo"; }}
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {errors[name] && (
+                            <p
+                              className="text-red-500 text-[11px] font-medium mt-1.5 flex items-center gap-1"
+                              id={`${name}-error`}
+                              role="alert"
+                            >
+                              <span className="w-1 h-1 rounded-full bg-red-500" />
+                              {errors[name]}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 pt-4 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-3">
-              <p className="text-xs text-slate-500">
-                You can update these details later from{" "}
-                <span className="font-semibold text-slate-700">
-                  Settings → Profile Update
-                </span>
-                .
-              </p>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`inline-flex items-center px-5 py-2.5 rounded-md text-sm font-semibold text-white shadow-sm transition ${
-                  loading
-                    ? "bg-slate-400 cursor-not-allowed"
-                    : "bg-emerald-600 hover:bg-emerald-700"
-                }`}
-              >
-                {loading ? "🔄 Saving profile…" : "✅ Save Profile"}
-              </button>
+            <div className="mt-8 pt-5 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="p-1.5 bg-white rounded-lg border border-slate-200 shadow-sm text-emerald-600">
+                  <CheckCircle2 size={16} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-700">Recommended setup step</p>
+                  <p className="text-[9px] text-slate-400">Updates sync across your entire business workspace.</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                <p className="text-[10px] text-slate-400 text-center md:text-right italic leading-tight">
+                  Changes take effect immediately <br />
+                  upon successful save.
+                </p>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`relative overflow-hidden group w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 rounded-lg text-sm font-bold text-white shadow-md shadow-emerald-500/10 transition-all ${
+                    loading
+                      ? "bg-slate-400 cursor-not-allowed"
+                      : "bg-emerald-600 hover:bg-emerald-700 active:scale-95"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    {loading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        Save Changes
+                      </>
+                    )}
+                  </span>
+                </button>
+              </div>
             </div>
           </form>
         </div>

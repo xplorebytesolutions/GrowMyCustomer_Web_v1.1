@@ -254,7 +254,7 @@ export default function AccountAlerts() {
   const infoCount = alerts.filter(a => a.severity === "info").length;
 
   return (
-    <div className="px-4 sm:px-6 py-6 space-y-6">
+    <div className="px-4 sm:px-6 py-6 space-y-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold text-slate-900">

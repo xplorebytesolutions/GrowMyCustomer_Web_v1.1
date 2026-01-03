@@ -172,7 +172,8 @@ export default function CampaignProgressPage({
   const lastUpdated = tsLabel(data?.retrievedAtUtc);
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
+      <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-4 mb-6">
         <div className="flex-1">
@@ -426,6 +427,7 @@ export default function CampaignProgressPage({
           Enter a campaign ID above, then enable auto-refresh.
         </div>
       )}
+      </div>
     </div>
   );
 }

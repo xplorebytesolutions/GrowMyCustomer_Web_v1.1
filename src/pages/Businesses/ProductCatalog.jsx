@@ -64,7 +64,7 @@ function ProductCatalog() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-purple-600">
           🛒 Product Catalog

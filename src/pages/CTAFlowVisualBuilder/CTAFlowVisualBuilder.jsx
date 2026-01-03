@@ -560,13 +560,13 @@ function CTAFlowVisualBuilderInner() {
   );
 
   return (
-    <div className="p-6 relative">
+    <div className="p-6 relative bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* Page-level spinner overlay */}
       {(loading || saving) && (
         <div className="absolute inset-0 z-[60] bg-white/70 backdrop-blur-[1px] grid place-items-center">
           <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow border">
             <svg
-              className="animate-spin h-5 w-5 text-purple-600"
+              className="animate-spin h-5 w-5 text-emerald-600"
               viewBox="0 0 24 24"
             >
               <circle
@@ -601,7 +601,7 @@ function CTAFlowVisualBuilderInner() {
 
           {/* Flow name input / badge inline with title */}
           {readonly ? (
-            <span className="truncate max-w-[40ch] px-2 py-1 rounded-md bg-purple-50 text-purple-700 text-sm font-medium">
+            <span className="truncate max-w-[40ch] px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-sm font-medium">
               {flowName || "Untitled Flow"}
             </span>
           ) : (
@@ -615,7 +615,7 @@ function CTAFlowVisualBuilderInner() {
                 setDirty(true);
               }}
               placeholder="Add flow name"
-              className="truncate max-w-[40ch] border border-gray-300 px-3 py-1.5 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              className="truncate max-w-[40ch] border border-gray-300 px-3 py-1.5 rounded-md shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
           )}
         </div>
@@ -650,7 +650,7 @@ function CTAFlowVisualBuilderInner() {
             <>
               <button
                 onClick={() => setShowPicker(true)}
-                className="px-3 py-2 rounded-md text-sm bg-purple-600 text-white shadow hover:bg-purple-700"
+                className="px-3 py-2 rounded-md text-sm bg-emerald-600 text-white shadow hover:bg-emerald-700"
                 disabled={saving}
               >
                 ➕ Add Step
@@ -700,7 +700,7 @@ function CTAFlowVisualBuilderInner() {
         <div className="absolute bottom-5 right-4 z-50 flex gap-2">
           <button
             onClick={() => setShowMiniMap(prev => !prev)}
-            className="bg-purple-600 text-white p-2 rounded-full shadow hover:bg-purple-700"
+            className="bg-emerald-600 text-white p-2 rounded-full shadow hover:bg-emerald-700"
             title={showMiniMap ? "Hide MiniMap" : "Show MiniMap"}
           >
             {showMiniMap ? <Minus size={15} /> : <Eye size={15} />}
@@ -894,7 +894,7 @@ function CTAFlowVisualBuilderInner() {
                     toast.error("❌ Failed to create draft copy");
                   }
                 }}
-                className="px-3 py-2 text-sm rounded bg-purple-600 text-white hover:bg-purple-700"
+                className="px-3 py-2 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 Create new draft version
               </button>

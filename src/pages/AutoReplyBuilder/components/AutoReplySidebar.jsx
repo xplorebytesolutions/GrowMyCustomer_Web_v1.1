@@ -39,9 +39,9 @@ export default function AutoReplySidebar() {
               key={node.type}
               onDragStart={e => onDragStart(e, node.type)}
               draggable
-              className="cursor-move flex items-center gap-3 px-4 py-2 rounded-lg border border-gray-300 bg-white hover:shadow-md hover:border-purple-500 transition-all"
+              className="cursor-move flex items-center gap-3 px-4 py-2 rounded-lg border border-gray-300 bg-white hover:shadow-md hover:border-emerald-500 transition-all"
             >
-              <Icon size={18} className="text-purple-600" />
+              <Icon size={18} className="text-emerald-600" />
               <span className="text-sm font-medium text-gray-800">
                 {node.label}
               </span>

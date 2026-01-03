@@ -1,24 +1,32 @@
 // 📄 src/hooks/useSignalR.js
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { toast } from "react-toastify";
 import { TOKEN_KEY } from "../api/axiosClient"; // single source of truth
 
+const REALTIME_TOAST_ID = "signalr-realtime-failed";
+
 function getHubUrl() {
-  // 1️⃣ Use the same env var as axiosClient
   const raw =
     (process.env.REACT_APP_API_BASE_URL &&
       process.env.REACT_APP_API_BASE_URL.trim()) ||
     "http://localhost:7113/api";
 
-  // Strip trailing slashes: "http://localhost:7113/api///" → "http://localhost:7113/api"
   const base = raw.replace(/\/+$/, "");
+  return `${base}/hubs/inbox`; // => .../api/hubs/inbox
+}
 
-  // ⚠️ IMPORTANT:
-  // REACT_APP_API_BASE_URL already includes `/api`
-  // Hub is mapped as `/api/hubs/inbox` on the server.
-  // So final URL becomes: {base}/hubs/inbox → .../api/hubs/inbox
-  return `${base}/hubs/inbox`;
+function isIgnorableSignalRError(err) {
+  const name = String(err?.name || "");
+  const msg = String(err?.message || err || "").toLowerCase();
+
+  return (
+    name === "AbortError" ||
+    msg.includes("stopped during negotiation") ||
+    msg.includes("abort") ||
+    msg.includes("canceled") ||
+    msg.includes("cancelled")
+  );
 }
 
 export default function useSignalR({
@@ -28,123 +36,123 @@ export default function useSignalR({
   const [connection, setConnection] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  useEffect(() => {
-    const hubUrl = getHubUrl();
+  const connRef = useRef(null);
+  const mountedRef = useRef(false);
+  const startingRef = useRef(false);
 
-    // 1. Read the token using the shared key
+  useEffect(() => {
+    mountedRef.current = true;
+
+    const hubUrl = getHubUrl();
     const token = localStorage.getItem(TOKEN_KEY);
 
     if (!token) {
-      console.error("SignalR connection skipped: No auth token found.");
-      return;
+      console.warn("SignalR skipped: No auth token found.");
+      setIsConnected(false);
+      return () => {
+        mountedRef.current = false;
+      };
     }
 
-    // 2. Build the connection with token in query string
-    const newConnection = new signalR.HubConnectionBuilder()
-      .withUrl(`${hubUrl}?access_token=${encodeURIComponent(token)}`)
-      .withAutomaticReconnect()
+    // ✅ Build connection
+    const conn = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl, {
+        accessTokenFactory: () => localStorage.getItem(TOKEN_KEY) || "",
+        // Prefer WS; fallback allowed
+        transport:
+          signalR.HttpTransportType.WebSockets |
+          signalR.HttpTransportType.LongPolling,
+        // ✅ IMPORTANT: DO NOT force skipNegotiation here (can cause real failures)
+      })
+      .withAutomaticReconnect([0, 2000, 5000, 10000])
+      .configureLogging(signalR.LogLevel.Information)
       .build();
 
-    // 3. Start the connection
-    newConnection
-      .start()
-      .then(() => {
-        console.log("✅ SignalR connected to", hubUrl);
-        setConnection(newConnection);
-        setIsConnected(true);
+    connRef.current = conn;
+    setConnection(conn);
 
-        if (onMessageReceived) {
-          newConnection.on("ReceiveInboxMessage", onMessageReceived);
-        }
-        if (onUnreadChanged) {
-          newConnection.on("UnreadCountChanged", onUnreadChanged);
-        }
-      })
-      .catch(err => {
-        console.error("❌ SignalR connection failed:", err);
-        if (err.toString().includes("401")) {
-          toast.error(
-            "SignalR connection unauthorized. Your session may have expired."
-          );
-        } else {
-          toast.error("Real-time connection failed.");
-        }
+    // ✅ Subscribe before start
+    if (onMessageReceived) conn.on("ReceiveInboxMessage", onMessageReceived);
+    if (onUnreadChanged) conn.on("UnreadCountChanged", onUnreadChanged);
+
+    conn.onreconnecting(() => {
+      if (!mountedRef.current) return;
+      setIsConnected(false);
+    });
+
+    conn.onreconnected(() => {
+      if (!mountedRef.current) return;
+      setIsConnected(true);
+      toast.dismiss(REALTIME_TOAST_ID);
+    });
+
+    conn.onclose(err => {
+      if (!mountedRef.current) return;
+      setIsConnected(false);
+
+      // Ignore dev-mode abort noise
+      if (isIgnorableSignalRError(err)) return;
+
+      // ✅ Only ONE toast ever
+      toast.error("Real-time connection failed.", {
+        toastId: REALTIME_TOAST_ID,
       });
+    });
 
-    // 4. Cleanup
+    const start = async () => {
+      if (startingRef.current) return;
+      startingRef.current = true;
+
+      try {
+        await conn.start();
+        if (!mountedRef.current) return;
+
+        setIsConnected(true);
+        toast.dismiss(REALTIME_TOAST_ID);
+        console.log("✅ SignalR connected:", hubUrl);
+      } catch (err) {
+        if (!mountedRef.current) return;
+
+        // Ignore dev-mode abort noise
+        if (isIgnorableSignalRError(err)) return;
+
+        setIsConnected(false);
+
+        const msg = String(err?.message || err || "").toLowerCase();
+        if (msg.includes("401") || msg.includes("unauthorized")) {
+          toast.error("SignalR unauthorized. Your session may have expired.", {
+            toastId: REALTIME_TOAST_ID,
+          });
+        } else {
+          toast.error("Real-time connection failed.", {
+            toastId: REALTIME_TOAST_ID,
+          });
+        }
+
+        console.error("❌ SignalR start failed:", err);
+      } finally {
+        startingRef.current = false;
+      }
+    };
+
+    start();
+
     return () => {
-      if (newConnection) {
-        newConnection.stop();
+      mountedRef.current = false;
+
+      try {
+        if (onMessageReceived)
+          conn.off("ReceiveInboxMessage", onMessageReceived);
+        if (onUnreadChanged) conn.off("UnreadCountChanged", onUnreadChanged);
+      } catch {
+        // ignore
+      }
+
+      if (conn && conn.state !== signalR.HubConnectionState.Disconnected) {
+        conn.stop().catch(() => {});
       }
     };
   }, [onMessageReceived, onUnreadChanged]);
 
   return { connection, isConnected };
 }
-
-// import { useEffect, useState } from "react";
-// import * as signalR from "@microsoft/signalr";
-// import { toast } from "react-toastify";
-
-// export default function useSignalR({
-//   onMessageReceived,
-//   onUnreadChanged,
-// } = {}) {
-//   const [connection, setConnection] = useState(null);
-//   const [isConnected, setIsConnected] = useState(false);
-
-//   useEffect(() => {
-//     const hubUrl = "http://localhost:7113/hubs/inbox";
-
-//     // 1. Read the token from localStorage using the correct key.
-//     const token = localStorage.getItem("xbyte_token");
-
-//     // 2. Do not attempt to connect if the user is not logged in.
-//     if (!token) {
-//       console.error("SignalR connection skipped: No auth token found.");
-//       return;
-//     }
-
-//     // 3. Build the connection, appending the token to the URL as a query string.
-//     const newConnection = new signalR.HubConnectionBuilder()
-//       .withUrl(`${hubUrl}?access_token=${token}`)
-//       .withAutomaticReconnect()
-//       .build();
-
-//     // 4. Start the connection and handle the outcome.
-//     newConnection
-//       .start()
-//       .then(() => {
-//         console.log("✅ SignalR connected to /hubs/inbox");
-//         setConnection(newConnection);
-//         setIsConnected(true);
-
-//         // Register event listeners passed in as props
-//         if (onMessageReceived) {
-//           newConnection.on("ReceiveInboxMessage", onMessageReceived);
-//         }
-//         if (onUnreadChanged) {
-//           newConnection.on("UnreadCountChanged", onUnreadChanged);
-//         }
-//       })
-//       .catch(err => {
-//         console.error("❌ SignalR connection failed:", err);
-//         if (err.toString().includes("401")) {
-//           toast.error(
-//             "SignalR connection unauthorized. Your session may have expired."
-//           );
-//         } else {
-//           toast.error("Real-time connection failed.");
-//         }
-//       });
-
-//     // 5. Clean up the connection when the component unmounts.
-//     return () => {
-//       if (newConnection) {
-//         newConnection.stop();
-//       }
-//     };
-//   }, [onMessageReceived, onUnreadChanged]); // Dependencies for re-binding callbacks if they change
-
-//   return { connection, isConnected };
-// }

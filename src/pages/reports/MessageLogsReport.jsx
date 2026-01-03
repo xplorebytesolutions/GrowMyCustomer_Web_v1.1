@@ -332,7 +332,7 @@ export default function MessageLogsReport() {
   const srBase = (page - 1) * pageSize;
 
   return (
-    <div className="p-6 bg-gradient-to-br from-white to-gray-50 min-h-screen">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-black">📊 Message Send Logs </h1>

@@ -19,9 +19,9 @@ export default function ContactList({
   onTimeline,
 }) {
   return (
-    <div className="overflow-x-auto mt-4 rounded-xl border shadow-sm">
+    <div className="overflow-x-auto mt-4 rounded-xl border border-slate-200 shadow-sm bg-white">
       <table className="min-w-full bg-white">
-        <thead className="text-left bg-gray-100 text-sm font-medium">
+        <thead className="text-left bg-slate-50 text-sm font-medium text-slate-600">
           <tr>
             <th className="px-4 py-3">Name</th>
             <th className="px-4 py-3">Phone</th>
@@ -29,19 +29,19 @@ export default function ContactList({
             <th className="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="text-sm">
+        <tbody className="text-sm text-slate-700">
           {contacts.map(contact => (
-            <tr key={contact.id} className="border-t hover:bg-gray-50">
+            <tr key={contact.id} className="border-t border-slate-100 hover:bg-slate-50">
               <td className="px-4 py-3 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm shadow-sm">
+                <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shadow-sm">
                   {getInitials(contact.name)}
                 </div>
-                <span className="font-semibold">{contact.name}</span>
+                <span className="font-semibold text-slate-900">{contact.name}</span>
               </td>
 
-              <td className="px-4 py-3 text-gray-700">
+              <td className="px-4 py-3 text-slate-700">
                 {contact.phoneNumber || (
-                  <span className="text-gray-400 italic">No number</span>
+                  <span className="text-slate-400 italic">No number</span>
                 )}
               </td>
 
@@ -54,14 +54,14 @@ export default function ContactList({
                         className="px-2 py-0.5 text-xs rounded-full font-medium"
                         style={{
                           backgroundColor: tag.colorHex || "#EEE",
-                          color: "#1F2937",
+                          color: "#0F172A",
                         }}
                       >
                         {tag.tagName || tag.name}
                       </span>
                     ))
                   ) : (
-                    <span className="text-gray-400 text-xs italic">
+                    <span className="text-slate-400 text-xs italic">
                       No tags
                     </span>
                   )}
@@ -91,35 +91,35 @@ function DropdownMenu({ onEdit, onDelete, onNotes, onTimeline }) {
     <div className="relative inline-block text-left">
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="p-2 rounded-full hover:bg-gray-100"
+        className="p-2 rounded-full hover:bg-slate-100"
       >
         <FaEllipsisV size={14} />
       </button>
 
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md bg-white shadow-lg border">
-          <div className="py-1 text-sm text-gray-700">
+        <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right overflow-hidden rounded-lg bg-white shadow-lg border border-slate-200">
+          <div className="py-1 text-sm text-slate-700">
             <button
               onClick={onEdit}
-              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+              className="block w-full px-4 py-2 hover:bg-slate-50 text-left"
             >
               ✏️ Edit
             </button>
             <button
               onClick={onNotes}
-              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+              className="block w-full px-4 py-2 hover:bg-slate-50 text-left"
             >
               📝 Notes
             </button>
             <button
               onClick={onTimeline}
-              className="block w-full px-4 py-2 hover:bg-gray-100 text-left"
+              className="block w-full px-4 py-2 hover:bg-slate-50 text-left"
             >
               🕒 Timeline
             </button>
             <button
               onClick={onDelete}
-              className="block w-full px-4 py-2 text-red-600 hover:bg-red-50 text-left"
+              className="block w-full px-4 py-2 text-rose-700 hover:bg-rose-50 text-left"
             >
               🗑 Delete
             </button>

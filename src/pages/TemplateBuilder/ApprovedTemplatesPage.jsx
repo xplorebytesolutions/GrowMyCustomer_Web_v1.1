@@ -9,7 +9,7 @@ import { Card } from "../../components/ui/card";
 
 export default function ApprovedTemplatesPage() {
   return (
-    <div className="p-6">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <Link
         to="/app/template-builder/library"
         className="text-purple-600 hover:underline flex items-center gap-2 mb-4"

@@ -69,7 +69,7 @@ const SignupForTrial = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      toast.success("🎉 Account created successfully! Welcome to XploreByte!");
+      toast.success("🎉 Account created successfully! Welcome to GrowMyCustomer!");
       navigate("/login");
     } catch (err) {
       const message =
@@ -100,14 +100,11 @@ const SignupForTrial = () => {
           {/* Logo */}
           <div className="mb-6">
             <div className="flex items-center space-x-3">
-              <img
-                src="/logo/logo.svg"
-                alt="XploreByte Logo"
-                className="w-8 h-8 rounded-lg shadow-sm"
+              <img 
+                src="/new_logo_gmc.png" 
+                alt="GrowMyCustomer"
+                className="h-20 w-auto object-contain"
               />
-              <span className="text-xl font-bold text-gray-900">
-                XploreByte
-              </span>
             </div>
           </div>
 
@@ -134,7 +131,7 @@ const SignupForTrial = () => {
               <span className="text-lg font-bold">1 Month FREE Trial</span>
             </div>
             <p className="text-emerald-100 text-sm">
-              Start your WhatsApp Business journey with our XploreByte platform
+              Start your WhatsApp Business journey with our GrowMyCustomer platform
             </p>
           </div>
 
@@ -231,7 +228,7 @@ const SignupForTrial = () => {
           {/* Form Title */}
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              Create Your XploreByte Account
+              Create Your GrowMyCustomer Account
             </h2>
             <p className="text-gray-600 text-sm">
               Start your 1-month free trial today

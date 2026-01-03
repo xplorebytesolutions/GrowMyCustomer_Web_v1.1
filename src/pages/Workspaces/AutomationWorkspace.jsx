@@ -149,7 +149,7 @@ export default function AutomationWorkspace() {
   }
 
   return (
-    <div className="p-6" data-test-id="automation-root">
+    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]" data-test-id="automation-root">
       {/* Emerald animated border, same pattern as other workspaces */}
       <style>{`
         @keyframes drawRight { from { transform: scaleX(0) } to { transform: scaleX(1) } }
@@ -172,7 +172,7 @@ export default function AutomationWorkspace() {
             type="checkbox"
             checked={showArchived}
             onChange={() => setShowArchived(!showArchived)}
-            className="accent-purple-600"
+            className="accent-emerald-600"
           />
           Show Archived
         </label>
@@ -209,7 +209,7 @@ export default function AutomationWorkspace() {
               >
                 {blocksWithAccess.map((block, index) => {
                   const baseCardClasses =
-                    "tile group relative overflow-hidden rounded-md border bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-purple-300 cursor-pointer";
+                    "tile group relative overflow-hidden rounded-md border bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-300 cursor-pointer";
                   const lockedClasses =
                     "opacity-70 border-dashed cursor-not-allowed hover:-translate-y-0 hover:shadow-sm";
 

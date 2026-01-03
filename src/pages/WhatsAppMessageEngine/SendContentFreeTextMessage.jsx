@@ -149,7 +149,8 @@ export default function SendTextMessagePage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-purple-700">
           📤 Send WhatsApp Message
@@ -316,6 +317,7 @@ export default function SendTextMessagePage() {
           </table>
         </div>
       </div>
+    </div>
     </div>
   );
 }

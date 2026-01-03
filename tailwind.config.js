@@ -4,6 +4,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
+        inter: ["Inter", "sans-serif"],
         whatsapp: ["Segoe UI", "sans-serif"],
       },
       colors: {

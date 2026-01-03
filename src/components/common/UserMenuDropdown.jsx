@@ -1,7 +1,7 @@
 // 📄 src/components/common/UserMenuDropdown.jsx
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, LogOut, Rocket, ShieldCheck } from "lucide-react";
+import { ChevronDown, LogOut, Rocket, ShieldCheck, Lock, Terminal, UserCog } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
 
@@ -19,7 +19,7 @@ export default function UserMenuDropdown() {
 
   const userAvatar =
     localStorage.getItem("userAvatar") ||
-    "https://randomuser.me/api/portraits/men/75.jpg";
+    "/user_avatar_premium.png";
 
   const plan = localStorage.getItem("plan") || "basic";
 
@@ -36,8 +36,22 @@ export default function UserMenuDropdown() {
 
   const handleUpgrade = () => {
     setOpen(false);
-    // Use app route variant (matches Topbar)
     navigate("/app/upgrade");
+  };
+
+  const handleSecurity = () => {
+    setOpen(false);
+    navigate("/app/settings/password");
+  };
+
+  const handleApiSetup = () => {
+    setOpen(false);
+    navigate("/app/settings/whatsapp");
+  };
+
+  const handleProfileUpdate = () => {
+    setOpen(false);
+    navigate("/app/settings/profile-completion");
   };
 
   // const handleProfileSettings = () => {
@@ -103,10 +117,37 @@ export default function UserMenuDropdown() {
           <ul className="py-1 text-sm text-gray-700">
             <li>
               <button
-                onClick={handleUpgrade}
-                className="w-full flex items-center px-4 py-2 hover:bg-purple-50"
+                onClick={handleProfileUpdate}
+                className="w-full flex items-center px-4 py-2 hover:bg-emerald-50 group"
               >
-                <Rocket size={16} className="mr-2 text-purple-600" />
+                <UserCog size={16} className="mr-2 text-indigo-500 transition-transform group-hover:scale-110" />
+                Profile Update
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={handleSecurity}
+                className="w-full flex items-center px-4 py-2 hover:bg-emerald-50 group"
+              >
+                <Lock size={16} className="mr-2 text-sapphire-600 transition-transform group-hover:scale-110" />
+                Change Password
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={handleApiSetup}
+                className="w-full flex items-center px-4 py-2 hover:bg-emerald-50 group"
+              >
+                <Terminal size={16} className="mr-2 text-amber-600 transition-transform group-hover:scale-110" />
+                Manual Api Setup
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={handleUpgrade}
+                className="w-full flex items-center px-4 py-2 hover:bg-emerald-50 group"
+              >
+                <Rocket size={16} className="mr-2 text-emerald-600 transition-transform group-hover:scale-110" />
                 Upgrade Plan
               </button>
             </li>

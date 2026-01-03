@@ -10,6 +10,28 @@ export default function normalizeTemplate(raw) {
     raw?.body ||
     "";
 
+  const createdAt =
+    raw?.createdAt || raw?.created_on || raw?.createdOn || raw?.created || null;
+
+  const sentAt =
+    raw?.sentAt ||
+    raw?.lastSentAt ||
+    raw?.dispatchedAt ||
+    raw?.deliveredAt ||
+    raw?.sent_at ||
+    raw?.sentOn ||
+    raw?.sent_on ||
+    null;
+
+  const scheduledAt =
+    raw?.scheduledAt ||
+    raw?.queuedFor ||
+    raw?.scheduled_at ||
+    raw?.queued_for ||
+    null;
+
+  const status = raw?.status || raw?.sendStatus || raw?.state || null;
+
   return {
     id: raw?.id,
     name: raw?.name || "Untitled Campaign",
@@ -20,7 +42,11 @@ export default function normalizeTemplate(raw) {
     buttons,
     hasButtons: Array.isArray(buttons) && buttons.length > 0,
     recipients: raw?.recipientCount || 0,
-    updatedAt: raw?.updatedAt || raw?.createdAt || null,
+    createdAt,
+    sentAt,
+    scheduledAt,
+    status,
+    updatedAt: raw?.updatedAt || raw?.updated_at || createdAt || null,
     raw,
   };
 }

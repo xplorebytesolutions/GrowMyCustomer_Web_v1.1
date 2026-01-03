@@ -74,7 +74,7 @@ export default function MultiSelect({
         ref={triggerRef}
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full border px-3 py-2 rounded text-left flex items-center justify-between hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-300"
+        className="w-full border px-3 py-2 rounded text-left flex items-center justify-between hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
         aria-haspopup="listbox"
         aria-expanded={open}
       >

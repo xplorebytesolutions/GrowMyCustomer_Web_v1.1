@@ -1,22 +1,29 @@
 import React, { useState } from "react";
 import { Upload, Loader2 } from "lucide-react";
-import axiosClient from "../../../api/axiosClient";
 import { toast } from "react-toastify";
+import { uploadHeaderMedia } from "../../../api/templateBuilder/uploads";
 
-export default function HeaderMediaUploader({ mediaType, handle, onUploaded }) {
+export default function HeaderMediaUploader({
+  draftId,
+  language,
+  mediaType,
+  handle,
+  onUploaded,
+}) {
   const [busy, setBusy] = useState(false);
 
   const onFile = async file => {
     if (!file) return;
+
     setBusy(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const { data } = await axiosClient.post(
-        `/api/template-builder/uploads/header`,
-        form,
-        { params: { mediaType } }
-      );
+      const data = await uploadHeaderMedia({
+        draftId,
+        language,
+        mediaType,
+        file,
+      });
+
       if (data?.handle) {
         onUploaded?.(data.handle);
         toast.success("Media uploaded.");
@@ -24,7 +31,7 @@ export default function HeaderMediaUploader({ mediaType, handle, onUploaded }) {
         toast.warn("Upload succeeded but no handle returned.");
       }
     } catch (err) {
-      toast.error("Upload failed.");
+      toast.error(err?.response?.data?.message || "Upload failed.");
     } finally {
       setBusy(false);
     }
@@ -49,9 +56,14 @@ export default function HeaderMediaUploader({ mediaType, handle, onUploaded }) {
               ? "video/*"
               : ".pdf,application/pdf"
           }
-          onChange={e => onFile(e.target.files?.[0])}
+          onChange={e => {
+            const file = e.target.files?.[0];
+            e.target.value = ""; // ✅ allow re-selecting same file
+            onFile(file);
+          }}
         />
       </label>
+
       <div className="text-xs text-gray-600">
         {handle ? (
           <span>

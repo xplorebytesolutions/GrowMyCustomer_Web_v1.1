@@ -6,7 +6,7 @@ export default function MessagingReportsComingSoon() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-10">
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-10 bg-[#f5f6f7]">
       <div className="max-w-xl w-full bg-white rounded-2xl shadow-lg border border-indigo-100 p-8 relative overflow-hidden">
         {/* subtle background shapes */}
         <div className="pointer-events-none absolute -top-16 -right-10 h-36 w-36 rounded-full bg-indigo-100 opacity-40" />
