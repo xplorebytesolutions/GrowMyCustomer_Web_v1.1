@@ -6,7 +6,6 @@ import {
   Pin,
   ArrowRightCircle,
   Phone,
-  Palette,
   Lock,
   Globe,
   UserCog,

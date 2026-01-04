@@ -1,8 +1,6 @@
 // 📄 File: src/pages/Messaging/MessagingWorkspacePage.jsx
 
 import {
-  MessageSquareText,
-  Clock4,
   ArrowRightCircle,
   MoreVertical,
   Archive,

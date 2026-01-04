@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Settings2,
   Phone,
-  Palette,
   Globe,
   UserCog,
   CreditCard,

@@ -244,6 +244,15 @@ export default function AdminWorkspacePage() {
         <h2 className="text-2xl font-bold text-emerald-800">
           🛡 Admin Workspace
         </h2>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={() => setShowArchived(!showArchived)}
+            className="accent-emerald-600"
+          />
+          Show Archived Tools
+        </label>
       </div>
       <p className="text-sm text-slate-600 mb-4">
         Manage plans, permissions, account health, webhooks, and ESU debugging
