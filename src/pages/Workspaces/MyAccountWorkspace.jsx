@@ -61,7 +61,7 @@ const accountBlocks = [
   },
   {
     id: "role-permission-mapping",
-    label: "Role → Permission Mappings",
+    label: "Role Permission Mapping",
     description: "Create roles and assign permissions to staff users.",
     path: "/app/settings/role-permission-mapping",
     icon: <Lock size={22} />,
@@ -358,7 +358,7 @@ export default function MyAccountWorkspace() {
                               <h3 className="text-md font-semibold text-emerald-800 group-hover:text-emerald-900">
                                 {block.label}
                               </h3>
-                              <p className="text-sm text-slate-600">
+                              <p className="text-sm text-slate-600 workspace-tile-desc">
                                 {block.description}
                               </p>
                             </div>

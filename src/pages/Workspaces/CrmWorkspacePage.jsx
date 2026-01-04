@@ -8,6 +8,7 @@ import {
   Tags,
   BellRing,
   Clock4,
+  StickyNote,
   MoreVertical,
   AlertTriangle,
   SlidersHorizontal, // ✅ NEW (Attribute tile icon)
@@ -31,6 +32,7 @@ const PERM_BY_BLOCK = {
   tags: [FK.CRM_TAGS_VIEW],
   reminders: [FK.CRM_REMINDERS_VIEW],
   timeline: [FK.CRM_TIMELINE_VIEW],
+  notes: [FK.CRM_NOTES_VIEW],
   attributes: FK.CRM_ATTRIBUTE_VIEW, // ✅ NEW TILE
 };
 
@@ -78,6 +80,14 @@ const crmBlocks = [
     path: "/app/crm/timeline",
     icon: <Clock4 size={22} />,
     action: "View Timeline",
+  },
+  {
+    id: "notes",
+    label: "Notes",
+    description: "Capture notes and key details for each contact.",
+    path: "/app/crm/notes",
+    icon: <StickyNote size={22} />,
+    action: "Open Notes",
   },
 ];
 
@@ -339,7 +349,7 @@ export default function CrmWorkspacePage() {
                               <h3 className="text-md font-semibold text-emerald-800 truncate group-hover:text-emerald-900">
                                 {block.label}
                               </h3>
-                              <p className="text-sm text-slate-600">
+                              <p className="text-sm text-slate-600 workspace-tile-desc">
                                 {block.description}
                               </p>
                             </div>

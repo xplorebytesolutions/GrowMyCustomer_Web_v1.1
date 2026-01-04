@@ -255,18 +255,18 @@ export default function SidebarMenu() {
         featureKey: FK.CRM_CONTACT_VIEW,
       },
       {
-        label: "Attribute",
-        path: "/app/crm/attributes",
-        icon: <SlidersHorizontal size={18} />,
-        show: showCRM,
-        featureKey: FK.CRM_ATTRIBUTE_VIEW,
-      },
-      {
         label: "Tags",
         path: "/app/crm/tags",
         icon: <Tags size={18} />,
         show: showCRM,
         featureKey: FK.CRM_TAGS_VIEW,
+      },
+      {
+        label: "Attribute",
+        path: "/app/crm/attributes",
+        icon: <SlidersHorizontal size={18} />,
+        show: showCRM,
+        featureKey: FK.CRM_ATTRIBUTE_VIEW,
       },
       {
         label: "Reminders",
@@ -367,7 +367,7 @@ export default function SidebarMenu() {
         featureKey: FK.MESSAGING_SEND_TEMPLATE,
       },
       {
-        label: "Reports & Analytics",
+        label: "Messaging Reports & Analytics",
         path: "/app/messaging/reports",
         icon: <BarChart3 size={18} />,
         show: showMessaging,
@@ -392,18 +392,18 @@ export default function SidebarMenu() {
     ],
     automation: [
       {
-        label: "Auto Reply Builder",
-        path: "/app/automation/auto-reply-builder",
-        icon: <Bot size={18} />,
-        show: showAutomation,
-        featureKey: FK.AUTOMATION_CREATE_BOT,
-      },
-      {
-        label: "Flow Visual Builder",
+        label: "Create Template Flow",
         path: "/app/cta-flow/visual-builder",
         icon: <Zap size={18} />,
         show: showAutomation,
         featureKey: FK.AUTOMATION_CREATE_TEMPLATE_FLOW,
+      },
+      {
+        label: "Create Auto Reply Bot",
+        path: "/app/automation/auto-reply-builder",
+        icon: <Bot size={18} />,
+        show: showAutomation,
+        featureKey: FK.AUTOMATION_CREATE_BOT,
       },
       {
         label: "Flow Manager",
@@ -412,10 +412,24 @@ export default function SidebarMenu() {
         show: showAutomation,
         featureKey: FK.AUTOMATION_VIEW_FLOW_MANAGE,
       },
+      {
+        label: "Flow Analytics",
+        path: "/app/campaigns/FlowAnalyticsDashboard",
+        icon: <FileBarChart size={18} />,
+        show: showAutomation,
+        featureKey: FK.AUTOMATION_VIEW_FLOW_ANALYTICS,
+      },
     ],
     templatebuilder: [
       {
-        label: "Library",
+        label: "My Drafts",
+        path: "/app/template-builder/drafts",
+        icon: <FileText size={18} />,
+        show: showTemplateBuilder,
+        featureKey: FK.TEMPLATE_BUILDER_CREATE_DRAFT,
+      },
+      {
+        label: "Template Library",
         path: "/app/template-builder/library",
         icon: <FileText size={18} />,
         show: showTemplateBuilder,
@@ -427,13 +441,6 @@ export default function SidebarMenu() {
         icon: <FileText size={18} />,
         show: showTemplateBuilder,
         featureKey: FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW,
-      },
-      {
-        label: "Drafts",
-        path: "/app/template-builder/drafts",
-        icon: <FileText size={18} />,
-        show: showTemplateBuilder,
-        featureKey: FK.TEMPLATE_BUILDER_CREATE_DRAFT,
       },
     ],
     settings: [

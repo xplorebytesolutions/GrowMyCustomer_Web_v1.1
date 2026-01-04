@@ -322,7 +322,7 @@ export default function CatalogWorkspacePage() {
                               <h3 className="text-md font-semibold text-emerald-800 group-hover:text-emerald-900">
                                 {block.label}
                               </h3>
-                              <p className="text-sm text-slate-600">
+                              <p className="text-sm text-slate-600 workspace-tile-desc">
                                 {block.description}
                               </p>
                             </div>
