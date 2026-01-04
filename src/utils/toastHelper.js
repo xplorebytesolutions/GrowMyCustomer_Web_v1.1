@@ -1,13 +1,7 @@
 import { toast } from "react-toastify";
 
-// Success
-export const showSuccess = msg => toast.success(`✅ ${msg}`);
+export const showSuccess = msg => toast.success(msg);
+export const showError = msg => toast.error(msg);
+export const showWarning = msg => toast.warn(msg);
+export const showInfo = msg => toast.info(msg);
 
-// Error
-export const showError = msg => toast.error(`❌ ${msg}`);
-
-// Warning
-export const showWarning = msg => toast.warn(`⚠️ ${msg}`);
-
-// Info
-export const showInfo = msg => toast.info(`ℹ️ ${msg}`);

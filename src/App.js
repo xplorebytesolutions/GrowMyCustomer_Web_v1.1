@@ -2,7 +2,6 @@
 
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 // Auth provider (server-authoritative session/claims)
 // import { AuthProvider } from "./app/providers/AuthProvider";
@@ -845,18 +844,15 @@ function App() {
         {/* Toasts */}
         <ToastContainer
           position="top-right"
-          autoClose={900}
-          hideProgressBar={false}
+          autoClose={2000}
+          hideProgressBar={true}
           newestOnTop
           closeOnClick
-          pauseOnHover
+          pauseOnHover={false}
+          pauseOnFocusLoss={false}
           draggable
+          closeButton={false}
           theme="colored"
-          toastStyle={{
-            borderRadius: "12px",
-            padding: "10px 16px",
-            fontSize: "14px",
-          }}
         />
 
         {/* Global upgrade modal for feature/quota denials */}

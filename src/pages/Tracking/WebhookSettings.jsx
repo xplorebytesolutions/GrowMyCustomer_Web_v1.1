@@ -10,7 +10,6 @@ import {
   Clock,
   ShieldAlert,
 } from "lucide-react";
-import "react-toastify/dist/ReactToastify.css";
 
 const WebhookSettings = () => {
   const [autoCleanup, setAutoCleanup] = useState(false);

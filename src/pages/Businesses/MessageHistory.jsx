@@ -10,8 +10,6 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { ToastContainer } from "react-toastify";
 
 function MessageHistory() {
   const [logs, setLogs] = useState([]);
@@ -148,7 +146,6 @@ function MessageHistory() {
 
   return (
     <div className="bg-white p-6 rounded-xl shadow">
-      <ToastContainer />
       <h2 className="text-xl font-bold mb-4">📜 All Message Logs</h2>
 
       <input
