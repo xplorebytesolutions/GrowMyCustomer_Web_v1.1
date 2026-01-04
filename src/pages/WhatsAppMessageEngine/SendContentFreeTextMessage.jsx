@@ -2,12 +2,51 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
+import {
+  Search,
+  User,
+  Send,
+  MessageSquare,
+  Phone,
+  CheckCircle,
+  AlertCircle,
+  History,
+  X,
+  Plus,
+  Users,
+} from "lucide-react";
+
+// 🎨 Helper for avatar colors
+const getAvatarColor = (name) => {
+  const colors = [
+    "bg-emerald-100 text-emerald-700",
+    "bg-blue-100 text-blue-700",
+    "bg-violet-100 text-violet-700",
+    "bg-amber-100 text-amber-700",
+    "bg-rose-100 text-rose-700",
+    "bg-cyan-100 text-cyan-700",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+const getInitials = (name) => {
+  return name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+};
 
 // 📦 Token-style phone number input
 function PhoneNumberInput({ numbers, setNumbers }) {
   const [input, setInput] = useState("");
 
-  const handleInputChange = e => {
+  const handleInputChange = (e) => {
     const value = e.target.value;
     const lastChar = value.slice(-1);
     const isSeparator = /[\n, ]/.test(lastChar);
@@ -20,7 +59,7 @@ function PhoneNumberInput({ numbers, setNumbers }) {
     }
   };
 
-  const tryAddPhone = value => {
+  const tryAddPhone = (value) => {
     let normalized = value.replace(/[^0-9+]/g, "");
 
     // Auto-add +91 if it's a 10-digit number and no +
@@ -36,7 +75,7 @@ function PhoneNumberInput({ numbers, setNumbers }) {
     }
   };
 
-  const handleKeyDown = e => {
+  const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       tryAddPhone(input.trim());
       setInput("");
@@ -46,31 +85,31 @@ function PhoneNumberInput({ numbers, setNumbers }) {
     }
   };
 
-  const removeNumber = num => {
-    setNumbers(numbers.filter(n => n !== num));
+  const removeNumber = (num) => {
+    setNumbers(numbers.filter((n) => n !== num));
   };
 
   return (
-    <div className="w-full border rounded-xl p-2 flex flex-wrap gap-2 min-h-[60px] bg-white shadow-sm">
+    <div className="w-full border border-gray-200 rounded-xl p-2 flex flex-wrap gap-2 min-h-[56px] bg-gray-50 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all cursor-text">
       {numbers.map((num, idx) => (
         <span
           key={idx}
-          className="flex items-center bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full"
+          className="flex items-center gap-1 bg-white border border-gray-200 text-gray-700 text-xs font-medium px-2 py-1 rounded-full shadow-sm"
         >
           {num}
           <button
             type="button"
-            className="ml-2 text-blue-600 hover:text-red-500"
+            className="text-gray-400 hover:text-red-500 transition-colors"
             onClick={() => removeNumber(num)}
           >
-            &times;
+            <X size={12} />
           </button>
         </span>
       ))}
       <input
         type="text"
-        className="flex-grow p-1 text-sm outline-none"
-        placeholder="Type or paste numbers..."
+        className="flex-grow min-w-[120px] bg-transparent p-1 text-sm outline-none placeholder:text-gray-400"
+        placeholder="Type number & press Enter"
         value={input}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
@@ -86,7 +125,9 @@ export default function SendTextMessagePage() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [messageLogs, setMessageLogs] = useState([]);
-  const [saveContact, setSaveContact] = useState(false); // ✅ toggle state
+  const [saveContact, setSaveContact] = useState(false);
+  const [contactSearch, setContactSearch] = useState("");
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -113,7 +154,7 @@ export default function SendTextMessagePage() {
 
     loadContacts();
     loadHistory();
-  }, []);
+  }, [submitting]); // Reload history after sending
 
   const numbers = [...new Set([...manualNumbers, ...selectedNumbers])];
 
@@ -134,10 +175,15 @@ export default function SendTextMessagePage() {
           {
             recipientNumber: number,
             textContent: message,
-            isSaveContact: saveContact, // ✅ pass toggle value
+            isSaveContact: saveContact,
           }
         );
-        res.data?.success ? success++ : failed++;
+        // Sometimes backend returns specific structure, fallback to typical checks
+        if (res.data?.success || res.status === 200) {
+            success++
+        } else {
+            failed++
+        }
       } catch (err) {
         failed++;
         console.error("Send failed:", number, err);
@@ -146,797 +192,284 @@ export default function SendTextMessagePage() {
 
     toast.success(`✅ Sent: ${success}, ❌ Failed: ${failed}`);
     setSubmitting(false);
+    setMessage("");
+    setManualNumbers([]);
+    setSelectedNumbers([]);
   };
 
+  // Filter contacts
+  const filteredContacts = contacts.filter(
+    (c) =>
+      c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+      c.phoneNumber.includes(contactSearch)
+  );
+
   return (
-    <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
-      <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-purple-700">
-          📤 Send WhatsApp Message
-        </h2>
-        <button
-          onClick={() => navigate("/messages/history")}
-          className="text-sm text-blue-600 hover:underline"
-        >
-          🔍 View Full History
-        </button>
-      </div>
+    <div className="bg-[#F8F9FC] min-h-screen p-6 font-sans">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* 🌟 Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+              <Send className="text-emerald-600" size={24} />
+              Send Direct Message
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">
+              Compose and send instant text messages to your contacts or new numbers.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/messages/history")}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+          >
+            <History size={16} />
+            View Full History
+          </button>
+        </div>
 
-      {/* 🎯 Target Audience */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* 📇 Select from Contacts */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-semibold text-gray-800 mb-2">
-            📇 Select Contacts
-          </h3>
-          <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-            {contacts.length > 0 ? (
-              contacts.map(contact => (
-                <div key={contact.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    value={contact.phoneNumber}
-                    checked={selectedNumbers.includes(contact.phoneNumber)}
-                    onChange={e => {
-                      const value = e.target.value;
-                      setSelectedNumbers(prev =>
-                        e.target.checked
-                          ? [...prev, value]
-                          : prev.filter(n => n !== value)
-                      );
-                    }}
-                  />
-                  <label className="text-sm text-gray-700">
-                    {contact.name} ({contact.phoneNumber})
-                  </label>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* 👈 Left Column: Recipients (Contacts & Manual) */}
+          <div className="lg:col-span-4 space-y-6">
+            
+            {/* 📇 Contact Selector Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
+              <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <Users size={18} className="text-emerald-600" />
+                    Select Contacts
+                  </h3>
+                  <span className="text-xs font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                    {selectedNumbers.length} selected
+                  </span>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-500 italic">
-                No contacts available.
-              </p>
-            )}
-          </div>
-        </div>
+                {/* Search Input */}
+                <div className="relative">
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search name or number..."
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                  />
+                </div>
+              </div>
 
-        {/* ✍️ Manual Entry */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <label className="block font-semibold text-gray-800 mb-2">
-            ✍️ Manual Numbers
-          </label>
-          <PhoneNumberInput
-            numbers={manualNumbers}
-            setNumbers={setManualNumbers}
-          />
-
-          {/* ✅ Toggle Save Contact (specific to manual numbers) */}
-          <div className="flex items-center gap-2 mt-3">
-            <input
-              type="checkbox"
-              id="saveContact"
-              checked={saveContact}
-              onChange={e => setSaveContact(e.target.checked)}
-            />
-            <label htmlFor="saveContact" className="text-sm text-gray-700">
-              Save manual numbers to Contacts after sending
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* 💬 Message Input */}
-      <div className="bg-white rounded-xl shadow p-4">
-        <label className="block font-semibold text-gray-800 mb-2">
-          💬 Message
-        </label>
-        <textarea
-          rows={4}
-          className="w-full p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-          placeholder="Write your message..."
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-        />
-      </div>
-
-      {/* 🔘 Send Button */}
-      <div className="text-right">
-        <button
-          onClick={handleSend}
-          disabled={submitting}
-          className={`px-6 py-3 font-semibold rounded-xl transition ${
-            submitting
-              ? "bg-gray-400 cursor-not-allowed text-white"
-              : "bg-green-600 text-white hover:bg-green-700"
-          }`}
-        >
-          {submitting ? "Sending..." : `Send to ${numbers.length} Recipient(s)`}
-        </button>
-      </div>
-
-      {/* 🕓 Recent Sent Messages */}
-      <div className="bg-white mt-6 p-4 rounded-xl shadow">
-        <h3 className="font-semibold text-lg text-gray-800 mb-4">
-          🕓 Recent Sent Messages
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left border">
-            <thead className="bg-gray-100 text-gray-700">
-              <tr>
-                <th className="px-3 py-2">Recipient</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Sent At</th>
-                <th className="px-3 py-2">Message</th>
-              </tr>
-            </thead>
-            <tbody>
-              {messageLogs.length > 0 ? (
-                messageLogs.map(log => {
-                  const isSuccess =
-                    log.status &&
-                    ["success", "sent", "delivered"].includes(
-                      log.status.toLowerCase()
-                    );
-
-                  return (
-                    <tr key={log.id} className="border-b">
-                      <td className="px-3 py-2">{log.recipientNumber}</td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            isSuccess
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-600"
-                          }`}
-                        >
-                          {log.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        {log.sentAt
-                          ? new Date(log.sentAt).toLocaleString()
-                          : "—"}
-                      </td>
-                      <td
-                        className="px-3 py-2 max-w-[250px] truncate"
-                        title={log.messageContent}
+              {/* Contact List */}
+              <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                {filteredContacts.length > 0 ? (
+                  filteredContacts.map((contact) => {
+                    const isSelected = selectedNumbers.includes(contact.phoneNumber);
+                    return (
+                      <label
+                        key={contact.id}
+                        className={`group flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all border border-transparent ${
+                          isSelected
+                            ? "bg-emerald-50 border-emerald-100"
+                            : "hover:bg-gray-50"
+                        }`}
                       >
-                        {log.messageContent || "(empty)"}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="4" className="text-center text-gray-500 py-4">
-                    No messages sent yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const value = contact.phoneNumber;
+                              setSelectedNumbers((prev) =>
+                                e.target.checked
+                                  ? [...prev, value]
+                                  : prev.filter((n) => n !== value)
+                              );
+                            }}
+                          />
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                              isSelected
+                                ? "bg-emerald-500 text-white shadow-md scale-105"
+                                : getAvatarColor(contact.name || "?")
+                            }`}
+                          >
+                            {isSelected ? (
+                              <CheckCircle size={16} />
+                            ) : (
+                              getInitials(contact.name || "?")
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`text-sm font-medium truncate ${
+                              isSelected ? "text-emerald-900" : "text-gray-700"
+                            }`}
+                          >
+                            {contact.name || "Unknown"}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {contact.phoneNumber}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+                    <Search size={32} className="mb-2 opacity-50" />
+                    <p className="text-sm">No contacts found</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ✍️ Manual Numbers Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <Phone size={18} className="text-emerald-600" />
+                Manual Entry
+              </h3>
+              <PhoneNumberInput
+                numbers={manualNumbers}
+                setNumbers={setManualNumbers}
+              />
+              <div className="mt-4 flex items-start gap-2">
+                <div className="relative flex items-center h-5">
+                  <input
+                    id="saveContact"
+                    type="checkbox"
+                    className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                    checked={saveContact}
+                    onChange={(e) => setSaveContact(e.target.checked)}
+                  />
+                </div>
+                <label htmlFor="saveContact" className="text-xs text-gray-500 leading-tight cursor-pointer select-none">
+                  Automatically save new manual numbers to your Contacts list after sending.
+                </label>
+              </div>
+            </div>
+
+          </div>
+
+          {/* 👉 Right Column: Composer & History */}
+          <div className="lg:col-span-8 space-y-6">
+            
+            {/* 💬 Composer Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative">
+              <div className="absolute top-0 right-0 p-6 pointer-events-none opacity-10">
+                <MessageSquare size={120} />
+              </div>
+              
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2 relative z-10">
+                <MessageSquare size={18} className="text-emerald-600" />
+                Compose Message
+              </h3>
+              
+              <div className="relative z-10">
+                <textarea
+                  rows={6}
+                  className="w-full p-4 text-sm text-gray-700 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none placeholder:text-gray-400"
+                  placeholder="Type your message here... (Hit Shift+Enter for new line)"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+                
+                <div className="flex items-center justify-between mt-3 text-xs text-gray-400">
+                   <span>
+                    Format: 
+                    <span className="font-mono mx-1">*bold*</span>
+                    <span className="font-mono mx-1">_italic_</span>
+                    <span className="font-mono mx-1">~strike~</span>
+                   </span>
+                   <span className={message.length > 1000 ? "text-amber-500" : ""}>
+                     {message.length} characters
+                   </span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end items-center gap-4 relative z-10">
+                <div className="text-right">
+                   <p className="text-xs text-gray-500 mb-1">
+                     Total Recipients: <strong className="text-gray-900">{numbers.length}</strong>
+                   </p>
+                </div>
+                <button
+                  onClick={handleSend}
+                  disabled={submitting || numbers.length === 0 || !message}
+                  className={`flex items-center gap-2 px-8 py-3 rounded-xl font-semibold shadow-lg shadow-emerald-200 transition-all transform active:scale-95 ${
+                    submitting || numbers.length === 0 || !message
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
+                      : "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-xl hover:from-emerald-600 hover:to-teal-700"
+                  }`}
+                >
+                  {submitting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      Send Message <Send size={18} />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 🕰 Timeline History */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <History size={18} className="text-emerald-600" />
+                Recent Activity
+              </h3>
+              
+              <div className="space-y-4">
+                {messageLogs.length > 0 ? (
+                  messageLogs.map((log) => {
+                     const isSuccess = log.status && ["success", "sent", "delivered"].includes(log.status.toLowerCase());
+                     return (
+                      <div key={log.id} className="flex gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-md transition-all">
+                        <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isSuccess ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                          {isSuccess ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                             <p className="text-sm font-semibold text-gray-900">
+                               {log.recipientNumber}
+                             </p>
+                             <span className="text-xs text-gray-400">
+                               {log.sentAt ? new Date(log.sentAt).toLocaleString() : "Just now"}
+                             </span>
+                          </div>
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {log.messageContent || <span className="italic text-gray-400">No content</span>}
+                          </p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${isSuccess ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                              {log.status || "Unknown"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                     );
+                  })
+                ) : (
+                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    <History size={32} className="mx-auto mb-2 opacity-30" />
+                    <p>No recent message history</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+          </div>
+          
         </div>
       </div>
-    </div>
     </div>
   );
 }
-
-// import React, { useState, useEffect } from "react";
-// import { useNavigate } from "react-router-dom";
-// import axiosClient from "../../api/axiosClient";
-// import { toast } from "react-toastify";
-
-// // 📦 Token-style phone number input
-// function PhoneNumberInput({ numbers, setNumbers }) {
-//   const [input, setInput] = useState("");
-
-//   const handleInputChange = e => {
-//     const value = e.target.value;
-//     const lastChar = value.slice(-1);
-//     const isSeparator = /[\n, ]/.test(lastChar);
-
-//     if (isSeparator) {
-//       tryAddPhone(input.trim());
-//       setInput("");
-//     } else {
-//       setInput(value);
-//     }
-//   };
-
-//   const tryAddPhone = value => {
-//     let normalized = value.replace(/[^0-9+]/g, "");
-
-//     // Auto-add +91 if it's a 10-digit number and no +
-//     if (/^\d{10}$/.test(normalized)) {
-//       normalized = "+91" + normalized;
-//     }
-
-//     // Accept if it's a valid E.164 format (10–15 digits with optional +)
-//     if (/^\+?\d{10,15}$/.test(normalized)) {
-//       if (!numbers.includes(normalized)) {
-//         setNumbers([...numbers, normalized]);
-//       }
-//     }
-//   };
-
-//   const handleKeyDown = e => {
-//     if (e.key === "Enter") {
-//       tryAddPhone(input.trim());
-//       setInput("");
-//       e.preventDefault();
-//     } else if (e.key === "Backspace" && input === "") {
-//       setNumbers(numbers.slice(0, -1));
-//     }
-//   };
-
-//   const removeNumber = num => {
-//     setNumbers(numbers.filter(n => n !== num));
-//   };
-
-//   return (
-//     <div className="w-full border rounded-xl p-2 flex flex-wrap gap-2 min-h-[60px] bg-white shadow-sm">
-//       {numbers.map((num, idx) => (
-//         <span
-//           key={idx}
-//           className="flex items-center bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full"
-//         >
-//           {num}
-//           <button
-//             type="button"
-//             className="ml-2 text-blue-600 hover:text-red-500"
-//             onClick={() => removeNumber(num)}
-//           >
-//             &times;
-//           </button>
-//         </span>
-//       ))}
-//       <input
-//         type="text"
-//         className="flex-grow p-1 text-sm outline-none"
-//         placeholder="Type or paste numbers..."
-//         value={input}
-//         onChange={handleInputChange}
-//         onKeyDown={handleKeyDown}
-//       />
-//     </div>
-//   );
-// }
-
-// export default function SendTextMessagePage() {
-//   const [manualNumbers, setManualNumbers] = useState([]);
-//   const [selectedNumbers, setSelectedNumbers] = useState([]);
-//   const [contacts, setContacts] = useState([]);
-//   const [message, setMessage] = useState("");
-//   const [submitting, setSubmitting] = useState(false);
-//   const [messageLogs, setMessageLogs] = useState([]);
-//   const [saveContact, setSaveContact] = useState(false); // ✅ toggle state
-//   const navigate = useNavigate();
-
-//   useEffect(() => {
-//     const loadContacts = async () => {
-//       try {
-//         const res = await axiosClient.get("/contacts/");
-//         setContacts(res.data?.data?.items || []);
-//       } catch (err) {
-//         console.error("❌ Error loading contacts", err);
-//         toast.error("Failed to load contacts.");
-//       }
-//     };
-
-//     const loadHistory = async () => {
-//       try {
-//         const res = await axiosClient.get(
-//           "/reporting/messages/recent?limit=10"
-//         );
-//         setMessageLogs(res.data?.data || []);
-//       } catch (err) {
-//         console.error("❌ Error loading history", err);
-//       }
-//     };
-
-//     loadContacts();
-//     loadHistory();
-//   }, []);
-
-//   const numbers = [...new Set([...manualNumbers, ...selectedNumbers])];
-
-//   const handleSend = async () => {
-//     if (!message || numbers.length === 0) {
-//       toast.warn("⚠️ Please enter a message and at least one valid number.");
-//       return;
-//     }
-
-//     setSubmitting(true);
-//     let success = 0,
-//       failed = 0;
-
-//     for (const number of numbers) {
-//       try {
-//         const res = await axiosClient.post(
-//           "/messageengine/send-contentfree-text",
-//           {
-//             recipientNumber: number,
-//             textContent: message,
-//             isSaveContact: saveContact, // ✅ pass toggle value
-//           }
-//         );
-//         res.data?.success ? success++ : failed++;
-//       } catch (err) {
-//         failed++;
-//         console.error("Send failed:", number, err);
-//       }
-//     }
-
-//     toast.success(`✅ Sent: ${success}, ❌ Failed: ${failed}`);
-//     setSubmitting(false);
-//   };
-
-//   return (
-//     <div className="max-w-5xl mx-auto p-6 space-y-6">
-//       <div className="flex items-center justify-between">
-//         <h2 className="text-2xl font-bold text-purple-700">
-//           📤 Send WhatsApp Message
-//         </h2>
-//         <button
-//           onClick={() => navigate("/messages/history")}
-//           className="text-sm text-blue-600 hover:underline"
-//         >
-//           🔍 View Full History
-//         </button>
-//       </div>
-
-//       {/* 🎯 Target Audience */}
-//       <div className="grid md:grid-cols-2 gap-6">
-//         {/* 📇 Select from Contacts */}
-//         <div className="bg-white rounded-xl shadow p-4">
-//           <h3 className="font-semibold text-gray-800 mb-2">
-//             📇 Select Contacts
-//           </h3>
-//           <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-//             {contacts.length > 0 ? (
-//               contacts.map(contact => (
-//                 <div key={contact.id} className="flex items-center gap-2">
-//                   <input
-//                     type="checkbox"
-//                     value={contact.phoneNumber}
-//                     checked={selectedNumbers.includes(contact.phoneNumber)}
-//                     onChange={e => {
-//                       const value = e.target.value;
-//                       setSelectedNumbers(prev =>
-//                         e.target.checked
-//                           ? [...prev, value]
-//                           : prev.filter(n => n !== value)
-//                       );
-//                     }}
-//                   />
-//                   <label className="text-sm text-gray-700">
-//                     {contact.name} ({contact.phoneNumber})
-//                   </label>
-//                 </div>
-//               ))
-//             ) : (
-//               <p className="text-sm text-gray-500 italic">
-//                 No contacts available.
-//               </p>
-//             )}
-//           </div>
-//         </div>
-
-//         {/* ✍️ Manual Entry */}
-//         {/* <div className="bg-white rounded-xl shadow p-4">
-//           <label className="block font-semibold text-gray-800 mb-2">
-//             ✍️ Manual Numbers
-//           </label>
-//           <PhoneNumberInput
-//             numbers={manualNumbers}
-//             setNumbers={setManualNumbers}
-//           />
-//         </div> */}
-//         {/* ✍️ Manual Entry */}
-//         <div className="bg-white rounded-xl shadow p-4">
-//           <label className="block font-semibold text-gray-800 mb-2">
-//             ✍️ Manual Numbers
-//           </label>
-//           <PhoneNumberInput
-//             numbers={manualNumbers}
-//             setNumbers={setManualNumbers}
-//           />
-
-//           {/* ✅ Toggle Save Contact (specific to manual numbers) */}
-//           <div className="flex items-center gap-2 mt-3">
-//             <input
-//               type="checkbox"
-//               id="saveContact"
-//               checked={saveContact}
-//               onChange={e => setSaveContact(e.target.checked)}
-//             />
-//             <label htmlFor="saveContact" className="text-sm text-gray-700">
-//               Save manual numbers to Contacts after sending
-//             </label>
-//           </div>
-//         </div>
-//       </div>
-
-//       {/* 💬 Message Input */}
-//       <div className="bg-white rounded-xl shadow p-4">
-//         <label className="block font-semibold text-gray-800 mb-2">
-//           💬 Message
-//         </label>
-//         <textarea
-//           rows={4}
-//           className="w-full p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-//           placeholder="Write your message..."
-//           value={message}
-//           onChange={e => setMessage(e.target.value)}
-//         />
-//       </div>
-
-//       {/* 🔘 Send Button */}
-//       <div className="text-right">
-//         <button
-//           onClick={handleSend}
-//           disabled={submitting}
-//           className={`px-6 py-3 font-semibold rounded-xl transition ${
-//             submitting
-//               ? "bg-gray-400 cursor-not-allowed text-white"
-//               : "bg-green-600 text-white hover:bg-green-700"
-//           }`}
-//         >
-//           {submitting ? "Sending..." : `Send to ${numbers.length} Recipient(s)`}
-//         </button>
-//       </div>
-
-//       {/* 🕓 Recent Sent Messages */}
-//       <div className="bg-white mt-6 p-4 rounded-xl shadow">
-//         <h3 className="font-semibold text-lg text-gray-800 mb-4">
-//           🕓 Recent Sent Messages
-//         </h3>
-//         <div className="overflow-x-auto">
-//           <table className="w-full text-sm text-left border">
-//             <thead className="bg-gray-100 text-gray-700">
-//               <tr>
-//                 <th className="px-3 py-2">Recipient</th>
-//                 <th className="px-3 py-2">Status</th>
-//                 <th className="px-3 py-2">Sent At</th>
-//                 <th className="px-3 py-2">Message</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {messageLogs.length > 0 ? (
-//                 messageLogs.map(log => (
-//                   <tr key={log.id} className="border-b">
-//                     <td className="px-3 py-2">{log.recipientNumber}</td>
-//                     <td className="px-3 py-2">
-//                       <span
-//                         className={`px-2 py-1 rounded-full text-xs font-medium ${
-//                           log.status === "Success"
-//                             ? "bg-green-100 text-green-700"
-//                             : "bg-red-100 text-red-600"
-//                         }`}
-//                       >
-//                         {log.status}
-//                       </span>
-//                     </td>
-//                     <td className="px-3 py-2">
-//                       {log.sentAt ? new Date(log.sentAt).toLocaleString() : "—"}
-//                     </td>
-//                     <td
-//                       className="px-3 py-2 max-w-[250px] truncate"
-//                       title={log.messageContent}
-//                     >
-//                       {log.messageContent || "(empty)"}
-//                     </td>
-//                   </tr>
-//                 ))
-//               ) : (
-//                 <tr>
-//                   <td colSpan="4" className="text-center text-gray-500 py-4">
-//                     No messages sent yet.
-//                   </td>
-//                 </tr>
-//               )}
-//             </tbody>
-//           </table>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// import React, { useState, useEffect } from "react";
-// import { useNavigate } from "react-router-dom";
-// import axiosClient from "../../api/axiosClient";
-// import { toast } from "react-toastify";
-
-// // 📦 Token-style phone number input
-// function PhoneNumberInput({ numbers, setNumbers }) {
-//   const [input, setInput] = useState("");
-
-//   const handleInputChange = e => {
-//     const value = e.target.value;
-//     const lastChar = value.slice(-1);
-//     const isSeparator = /[\n, ]/.test(lastChar);
-
-//     if (isSeparator) {
-//       tryAddPhone(input.trim());
-//       setInput("");
-//     } else {
-//       setInput(value);
-//     }
-//   };
-
-//   const tryAddPhone = value => {
-//     let normalized = value.replace(/[^0-9+]/g, "");
-
-//     // Auto-add +91 if it's a 10-digit number and no +
-//     if (/^\d{10}$/.test(normalized)) {
-//       normalized = "+91" + normalized;
-//     }
-
-//     // Accept if it's a valid E.164 format (10–15 digits with optional +)
-//     if (/^\+?\d{10,15}$/.test(normalized)) {
-//       if (!numbers.includes(normalized)) {
-//         setNumbers([...numbers, normalized]);
-//       }
-//     }
-//   };
-
-//   const handleKeyDown = e => {
-//     if (e.key === "Enter") {
-//       tryAddPhone(input.trim());
-//       setInput("");
-//       e.preventDefault();
-//     } else if (e.key === "Backspace" && input === "") {
-//       setNumbers(numbers.slice(0, -1));
-//     }
-//   };
-
-//   const removeNumber = num => {
-//     setNumbers(numbers.filter(n => n !== num));
-//   };
-
-//   return (
-//     <div className="w-full border rounded-xl p-2 flex flex-wrap gap-2 min-h-[60px] bg-white shadow-sm">
-//       {numbers.map((num, idx) => (
-//         <span
-//           key={idx}
-//           className="flex items-center bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full"
-//         >
-//           {num}
-//           <button
-//             type="button"
-//             className="ml-2 text-blue-600 hover:text-red-500"
-//             onClick={() => removeNumber(num)}
-//           >
-//             &times;
-//           </button>
-//         </span>
-//       ))}
-//       <input
-//         type="text"
-//         className="flex-grow p-1 text-sm outline-none"
-//         placeholder="Type or paste numbers..."
-//         value={input}
-//         onChange={handleInputChange}
-//         onKeyDown={handleKeyDown}
-//       />
-//     </div>
-//   );
-// }
-
-// export default function SendTextMessagePage() {
-//   const [manualNumbers, setManualNumbers] = useState([]);
-//   const [selectedNumbers, setSelectedNumbers] = useState([]);
-//   const [contacts, setContacts] = useState([]);
-//   const [message, setMessage] = useState("");
-//   const [submitting, setSubmitting] = useState(false);
-//   const [messageLogs, setMessageLogs] = useState([]);
-//   const navigate = useNavigate();
-
-//   useEffect(() => {
-//     const loadContacts = async () => {
-//       try {
-//         const res = await axiosClient.get("/contacts");
-//         setContacts(res.data?.data?.items || []);
-//       } catch (err) {
-//         console.error("❌ Error loading contacts", err);
-//         toast.error("Failed to load contacts.");
-//       }
-//     };
-
-//     const loadHistory = async () => {
-//       try {
-//         const res = await axiosClient.get(
-//           "/reporting/messages/recent?limit=10"
-//         );
-//         setMessageLogs(res.data?.data || []);
-//       } catch (err) {
-//         console.error("❌ Error loading history", err);
-//       }
-//     };
-
-//     loadContacts();
-//     loadHistory();
-//   }, []);
-
-//   const numbers = [...new Set([...manualNumbers, ...selectedNumbers])];
-
-//   const handleSend = async () => {
-//     if (!message || numbers.length === 0) {
-//       toast.warn("⚠️ Please enter a message and at least one valid number.");
-//       return;
-//     }
-
-//     setSubmitting(true);
-//     let success = 0,
-//       failed = 0;
-
-//     for (const number of numbers) {
-//       try {
-//         const res = await axiosClient.post(
-//           "/messageengine/send-contentfree-text",
-//           {
-//             recipientNumber: number,
-//             textContent: message,
-//           }
-//         );
-//         res.data?.success ? success++ : failed++;
-//       } catch (err) {
-//         failed++;
-//         console.error("Send failed:", number, err);
-//       }
-//     }
-
-//     toast.success(`✅ Sent: ${success}, ❌ Failed: ${failed}`);
-//     setSubmitting(false);
-//   };
-
-//   return (
-//     <div className="max-w-5xl mx-auto p-6 space-y-6">
-//       <div className="flex items-center justify-between">
-//         <h2 className="text-2xl font-bold text-purple-700">
-//           📤 Send WhatsApp Message
-//         </h2>
-//         <button
-//           onClick={() => navigate("/messages/history")}
-//           className="text-sm text-blue-600 hover:underline"
-//         >
-//           🔍 View Full History
-//         </button>
-//       </div>
-
-//       {/* 🎯 Target Audience */}
-//       <div className="grid md:grid-cols-2 gap-6">
-//         {/* 📇 Select from Contacts */}
-//         <div className="bg-white rounded-xl shadow p-4">
-//           <h3 className="font-semibold text-gray-800 mb-2">
-//             📇 Select Contacts
-//           </h3>
-//           <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-//             {contacts.length > 0 ? (
-//               contacts.map(contact => (
-//                 <div key={contact.id} className="flex items-center gap-2">
-//                   <input
-//                     type="checkbox"
-//                     value={contact.phoneNumber}
-//                     checked={selectedNumbers.includes(contact.phoneNumber)}
-//                     onChange={e => {
-//                       const value = e.target.value;
-//                       setSelectedNumbers(prev =>
-//                         e.target.checked
-//                           ? [...prev, value]
-//                           : prev.filter(n => n !== value)
-//                       );
-//                     }}
-//                   />
-//                   <label className="text-sm text-gray-700">
-//                     {contact.name} ({contact.phoneNumber})
-//                   </label>
-//                 </div>
-//               ))
-//             ) : (
-//               <p className="text-sm text-gray-500 italic">
-//                 No contacts available.
-//               </p>
-//             )}
-//           </div>
-//         </div>
-
-//         {/* ✍️ Manual Entry */}
-//         <div className="bg-white rounded-xl shadow p-4">
-//           <label className="block font-semibold text-gray-800 mb-2">
-//             ✍️ Manual Numbers
-//           </label>
-//           <PhoneNumberInput
-//             numbers={manualNumbers}
-//             setNumbers={setManualNumbers}
-//           />
-//         </div>
-//       </div>
-
-//       {/* 💬 Message Input */}
-//       <div className="bg-white rounded-xl shadow p-4">
-//         <label className="block font-semibold text-gray-800 mb-2">
-//           💬 Message
-//         </label>
-//         <textarea
-//           rows={4}
-//           className="w-full p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-//           placeholder="Write your message..."
-//           value={message}
-//           onChange={e => setMessage(e.target.value)}
-//         />
-//       </div>
-
-//       {/* 🔘 Send Button */}
-//       <div className="text-right">
-//         <button
-//           onClick={handleSend}
-//           disabled={submitting}
-//           className={`px-6 py-3 font-semibold rounded-xl transition ${
-//             submitting
-//               ? "bg-gray-400 cursor-not-allowed text-white"
-//               : "bg-green-600 text-white hover:bg-green-700"
-//           }`}
-//         >
-//           {submitting ? "Sending..." : `Send to ${numbers.length} Recipient(s)`}
-//         </button>
-//       </div>
-
-//       {/* 🕓 Recent Sent Messages */}
-//       <div className="bg-white mt-6 p-4 rounded-xl shadow">
-//         <h3 className="font-semibold text-lg text-gray-800 mb-4">
-//           🕓 Recent Sent Messages
-//         </h3>
-//         <div className="overflow-x-auto">
-//           <table className="w-full text-sm text-left border">
-//             <thead className="bg-gray-100 text-gray-700">
-//               <tr>
-//                 <th className="px-3 py-2">Recipient</th>
-//                 <th className="px-3 py-2">Status</th>
-//                 <th className="px-3 py-2">Sent At</th>
-//                 <th className="px-3 py-2">Message</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {messageLogs.length > 0 ? (
-//                 messageLogs.map(log => (
-//                   <tr key={log.id} className="border-b">
-//                     <td className="px-3 py-2">{log.recipientNumber}</td>
-//                     <td className="px-3 py-2">
-//                       <span
-//                         className={`px-2 py-1 rounded-full text-xs font-medium ${
-//                           log.status === "Success"
-//                             ? "bg-green-100 text-green-700"
-//                             : "bg-red-100 text-red-600"
-//                         }`}
-//                       >
-//                         {log.status}
-//                       </span>
-//                     </td>
-//                     <td className="px-3 py-2">
-//                       {log.sentAt ? new Date(log.sentAt).toLocaleString() : "—"}
-//                     </td>
-//                     <td
-//                       className="px-3 py-2 max-w-[250px] truncate"
-//                       title={log.messageContent}
-//                     >
-//                       {log.messageContent || "(empty)"}
-//                     </td>
-//                   </tr>
-//                 ))
-//               ) : (
-//                 <tr>
-//                   <td colSpan="4" className="text-center text-gray-500 py-4">
-//                     No messages sent yet.
-//                   </td>
-//                 </tr>
-//               )}
-//             </tbody>
-//           </table>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }

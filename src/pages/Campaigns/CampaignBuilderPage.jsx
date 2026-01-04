@@ -474,11 +474,7 @@ export default function CampaignBuilderPage() {
               <div className="p-5 space-y-5">
                 <div>
                    {/* Divider / Header */}
-                    <div className="mb-3 border-b border-slate-100 pb-2">
-                         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                            1. Campaign & Sender
-                        </h3>
-                    </div>
+
                   <div className="grid gap-4 md:grid-cols-2">
                     {/* Name */}
                     <div>
@@ -532,11 +528,7 @@ export default function CampaignBuilderPage() {
 
                 {/* SECTION: template */}
                 <div>
-                  <div className="mb-3 border-b border-slate-100 pb-2 mt-2">
-                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                        2. Content & Variables
-                     </h3>
-                   </div>
+
                   <div className="space-y-4">
                     {/* Template Selector */}
                     <div className="relative">
@@ -772,9 +764,7 @@ export default function CampaignBuilderPage() {
                 {/* SECTION: settings */}
                 <div>
                    <div className="mb-3 border-b border-slate-100 pb-2 mt-2">
-                       <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          3. Configuration
-                       </h3>
+{/* 3. Configuration removed */}
                    </div>
                   <div className="space-y-4">
                     {/* Flow Toggle */}
@@ -972,9 +962,7 @@ export default function CampaignBuilderPage() {
               <span>
                 Scheduled for: <strong>{new Date(scheduledAt).toLocaleString()}</strong>
               </span>
-            ) : (
-               <span>Ready to launch</span>
-            )}
+            ) : null}
           </div>
           <div className="flex gap-3">
              <button

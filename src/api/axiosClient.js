@@ -231,16 +231,23 @@ axiosClient.interceptors.response.use(
       "❌ Something went wrong.";
 
     const cfg = error?.config || {};
+    const suppressToast =
+      cfg.__silentToast || cfg.__silent || cfg.headers?.["x-suppress-toast"];
     const suppress401 =
+      suppressToast ||
       cfg.__silent401 ||
       cfg.headers?.["x-suppress-401-toast"] ||
       isOnAuthPage();
     const suppress403 =
+      suppressToast ||
       cfg.__silent403 ||
       cfg.headers?.["x-suppress-403-toast"] ||
       isOnAuthPage();
     const suppress429 =
-      cfg.__silent429 || cfg.headers?.["x-suppress-429-toast"] || false;
+      suppressToast ||
+      cfg.__silent429 ||
+      cfg.headers?.["x-suppress-429-toast"] ||
+      false;
 
     // 🔍 Detect login / signup calls so we don't redirect those 401s
     const isLoginCall =
@@ -305,7 +312,7 @@ axiosClient.interceptors.response.use(
     }
 
     // Generic non-401/403/429
-    if (!showingAuthToast) {
+    if (!suppressToast && !showingAuthToast) {
       toast.error(msg);
       showingAuthToast = true;
       setTimeout(() => (showingAuthToast = false), 1500);
