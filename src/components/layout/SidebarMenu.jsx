@@ -1,6 +1,6 @@
 // 📄 src/components/layout/SidebarMenu.jsx
 import { useCallback, useEffect, useRef, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
 import {
   UsersRound,
@@ -25,7 +25,6 @@ import {
   Clock4,
   StickyNote,
   ShoppingCart,
-  BarChart2,
   Zap,
   Send,
   FileText,
@@ -39,8 +38,30 @@ import { WORKSPACE_PERMS } from "../../capabilities/workspacePerms";
 import { FK } from "../../capabilities/featureKeys";
 import { requestUpgrade } from "../../utils/upgradeBus";
 
+// Modules where the parent icon should open flyout (even on first click),
+// while keeping the workspace page available at its route.
+const ALWAYS_FLYOUT_KEY = {
+  crm: true,
+  campaigns: true,
+  catalog: true,
+  messaging: true,
+  automation: true,
+  inbox: true,
+  templatebuilder: true,
+  admin: true,
+};
+
+const moduleKeyFromPath = path => {
+  const p = String(path || "");
+  const seg = p.split("/")[2] || "";
+  if (seg === "template-builder") return "templatebuilder";
+  if (seg === "cta-flow") return "automation";
+  return seg;
+};
+
 export default function SidebarMenu() {
   const location = useLocation();
+  const navigate = useNavigate();
   const railRef = useRef(null);
   const flyoutRef = useRef(null);
   const [flyoutOpen, setFlyoutOpen] = useState(false);
@@ -575,18 +596,28 @@ export default function SidebarMenu() {
   const isTemplateBuilderFlyout = effectiveKey === "templatebuilder";
   const isAdminFlyout = effectiveKey === "admin";
 
-  const moduleKeyFromPath = path => {
-    const p = String(path || "");
-    const seg = p.split("/")[2] || "";
-    if (seg === "template-builder") return "templatebuilder";
-    if (seg === "cta-flow") return "automation";
-    return seg;
-  };
-
-  const closeFlyout = useCallback(() => {
+  const closeFlyout = useCallback((opts = {}) => {
     setFlyoutOpen(false);
     setFlyoutKey(null);
-  }, []);
+
+    // If we opened a workspace in "flyout test" mode, restore normal workspace URL
+    // when the flyout closes (unless we're closing due to a submenu navigation).
+    const shouldRestoreFlyoutUrl = opts.restoreFlyoutUrl !== false;
+    if (!shouldRestoreFlyoutUrl) return;
+
+    const sp = new URLSearchParams(location.search || "");
+    if (sp.get("flyout") !== "1") return;
+
+    const key = moduleKeyFromPath(location.pathname);
+    const isWorkspaceRoot =
+      String(location.pathname || "")
+        .split("/")
+        .filter(Boolean).length === 2;
+
+    if (isWorkspaceRoot && ALWAYS_FLYOUT_KEY[key]) {
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.pathname, location.search, navigate]);
 
   const openFlyoutForKey = key => {
     if (!key || !submenuByKey[key] || submenuByKey[key].length === 0) return;
@@ -731,49 +762,73 @@ export default function SidebarMenu() {
         <div className="relative z-10 flex-1 pt-4 pb-3 space-y-2 overflow-y-auto overflow-x-hidden no-scrollbar">
           {visibleSections
             .flatMap(s => s.items)
-            .map(item => (
-              <NavLink
-                key={`rail-${item.path}`}
-                to={item.path}
-                title={item.label}
-                onClick={e => {
-                  const key = moduleKeyFromPath(item.path);
-                  const hasSubmenu =
-                    Array.isArray(submenuByKey[key]) &&
-                    submenuByKey[key].length > 0;
+            .map(item => {
+              const key = moduleKeyFromPath(item.path);
+              const hasSubmenu =
+                Array.isArray(submenuByKey[key]) && submenuByKey[key].length > 0;
 
-                  const isSameModule = key && activeKey === key;
+              const openFlyoutInsteadOfNavigating = !!ALWAYS_FLYOUT_KEY[key];
 
-                  // Rule:
-                  // - If switching to a DIFFERENT module => navigate to that module's workspace home.
-                  // - If clicking the SAME module while already inside it => open submenu switcher
-                  //   (flyout).
-                  if (hasSubmenu && isSameModule) {
-                    e.preventDefault();
-                    openFlyoutForKey(key);
-                    return;
-                  }
+              return (
+                <NavLink
+                  key={`rail-${item.path}`}
+                  to={item.path}
+                  title={item.label}
+                  onClick={e => {
+                    const isSameModule = key && activeKey === key;
 
-                  // No submenu: close any open flyout and allow navigation.
-                  if (flyoutOpen) closeFlyout();
-                }}
-                className="group relative ml-2.5 flex flex-col items-center justify-center w-14 h-14 rounded-md outline-none
-                  focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#064E3B]"
-              >
-                {({ isActive }) => (
+                    // Workspaces: open submenu on click (including first click), and hide the
+                    // workspace tiles by using a query param on the workspace route.
+                    if (hasSubmenu && openFlyoutInsteadOfNavigating) {
+                      e.preventDefault();
+
+                      const willToggleClose = flyoutOpen && flyoutKey === key;
+                      openFlyoutForKey(key);
+                      if (willToggleClose) return;
+
+                      const workspacePath = item.path;
+                      const isWorkspaceHome = location.pathname === workspacePath;
+                      const isInsideModule = activeKey === key;
+
+                      if (!isInsideModule || isWorkspaceHome) {
+                        navigate(`${workspacePath}?flyout=1`);
+                      }
+                      return;
+                    }
+
+                    // Rule:
+                    // - If switching to a DIFFERENT module => navigate to that module's workspace home.
+                    // - If clicking the SAME module while already inside it => open submenu switcher
+                    //   (flyout).
+                    if (hasSubmenu && isSameModule) {
+                      e.preventDefault();
+                      openFlyoutForKey(key);
+                      return;
+                    }
+
+                    // No submenu: close any open flyout and allow navigation.
+                    if (flyoutOpen) closeFlyout();
+                  }}
+                  className="group relative ml-2.5 flex flex-col items-center justify-center w-14 h-14 rounded-md outline-none
+                    focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#064E3B]"
+                >
+                  {({ isActive }) => {
+                    const isSelected =
+                      isActive || (flyoutOpen && flyoutKey === key);
+                    return (
                   <>
                     {/* Active styles are isolated to the icon wrapper only */}
                     <span
                       className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200
                         ${
-                          isActive
+                          isSelected
                             ? "bg-[rgba(255,255,255,0.10)] scale-105"
                             : "bg-transparent group-hover:bg-[rgba(255,255,255,0.06)] group-hover:scale-105"
                         }`}
                     >
                       <span
                         className={`transition-colors ${
-                          isActive
+                          isSelected
                             ? "text-[#34D399]"
                             : "text-[rgba(255,255,255,0.85)] group-hover:text-[#34D399]"
                         }`}
@@ -785,7 +840,7 @@ export default function SidebarMenu() {
                     {/* Text stays static (no scaling / no background) */}
                     <span
                       className={`mt-1 max-w-[72px] truncate px-1 text-center text-[10.5px] font-inter font-medium tracking-wide leading-[12px]
-                        ${isActive ? "text-white" : "text-emerald-50/70"}`}
+                        ${isSelected ? "text-white" : "text-emerald-50/70"}`}
                     >
                       {item.short || item.label}
                     </span>
@@ -797,9 +852,11 @@ export default function SidebarMenu() {
                       </span>
                     )}
                   </>
-                )}
-              </NavLink>
-            ))}
+                    );
+                  }}
+                </NavLink>
+              );
+            })}
         </div>
       </div>
 
@@ -918,7 +975,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -1046,7 +1103,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -1174,7 +1231,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -1302,7 +1359,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -1430,7 +1487,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -1558,7 +1615,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -1686,7 +1743,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -1814,7 +1871,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -1943,7 +2000,7 @@ export default function SidebarMenu() {
                                       });
                                       return;
                                     }
-                                    closeFlyout();
+                                    closeFlyout({ restoreFlyoutUrl: false });
                                   }}
                                   className={({ isActive }) =>
                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
@@ -2030,7 +2087,7 @@ export default function SidebarMenu() {
                                 });
                                 return;
                               }
-                              closeFlyout();
+                              closeFlyout({ restoreFlyoutUrl: false });
                             }}
                             className={({ isActive }) =>
                               `group flex items-center gap-3 min-h-12 px-3 py-2 rounded-md transition-colors transition-shadow outline-none

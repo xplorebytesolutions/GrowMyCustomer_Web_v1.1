@@ -10,7 +10,7 @@ import {
   MessageSquareText,
   AlertTriangle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 
@@ -65,7 +65,12 @@ const campaignBlocks = [
 
 export default function CampaignWorkspacePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoading, entLoading, can, hasAllAccess } = useAuth();
+
+  // Test mode: opened from the parent sidebar menu to evaluate flyout navigation.
+  const hideWorkspaceTiles =
+    new URLSearchParams(location.search || "").get("flyout") === "1";
 
   const [pinned, setPinned] = useState(
     JSON.parse(localStorage.getItem("campaign-pinned") || "[]")
@@ -131,6 +136,15 @@ export default function CampaignWorkspacePage() {
       <div className="p-10 text-center text-lg text-gray-500">
         Loading campaign features…
       </div>
+    );
+  }
+
+  if (hideWorkspaceTiles) {
+    return (
+      <div
+        className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]"
+        data-test-id="campaign-root"
+      />
     );
   }
 

@@ -11,7 +11,7 @@ import {
   FileBarChart,
   AlertTriangle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
@@ -69,7 +69,11 @@ const automationBlocks = [
 
 export default function AutomationWorkspace() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoading, can, hasAllAccess, entLoading } = useAuth();
+
+  const hideWorkspaceTiles =
+    new URLSearchParams(location.search || "").get("flyout") === "1";
 
   // --- LocalStorage keys under "automation-*"
   const [pinned, setPinned] = useState(
@@ -145,6 +149,15 @@ export default function AutomationWorkspace() {
       <div className="p-10 text-center text-lg text-gray-500">
         Loading automation features…
       </div>
+    );
+  }
+
+  if (hideWorkspaceTiles) {
+    return (
+      <div
+        className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]"
+        data-test-id="automation-root"
+      />
     );
   }
 

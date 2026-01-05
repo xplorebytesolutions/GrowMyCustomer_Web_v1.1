@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   SlidersHorizontal, // ✅ NEW (Attribute tile icon)
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
@@ -93,7 +93,11 @@ const crmBlocks = [
 
 export default function CrmWorkspacePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoading, entLoading, hasAllAccess, can } = useAuth();
+
+  const hideWorkspaceTiles =
+    new URLSearchParams(location.search || "").get("flyout") === "1";
 
   // --- LocalStorage keys under "crm-*"
   const [pinned, setPinned] = useState(
@@ -173,6 +177,15 @@ export default function CrmWorkspacePage() {
       <div className="p-10 text-center text-lg text-gray-500">
         Loading CRM features…
       </div>
+    );
+  }
+
+  if (hideWorkspaceTiles) {
+    return (
+      <div
+        className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]"
+        data-test-id="crm-root"
+      />
     );
   }
 

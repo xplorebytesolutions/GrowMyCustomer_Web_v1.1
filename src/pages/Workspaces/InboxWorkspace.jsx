@@ -8,7 +8,7 @@ import {
   ArrowRightCircle,
   AlertTriangle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
@@ -47,7 +47,11 @@ const inboxBlocks = [
 
 export default function InboxWorkspace() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoading, entLoading, can, hasAllAccess } = useAuth();
+
+  const hideWorkspaceTiles =
+    new URLSearchParams(location.search || "").get("flyout") === "1";
 
   const [pinned, setPinned] = useState(
     JSON.parse(localStorage.getItem("inbox-pinned") || "[]")
@@ -124,6 +128,10 @@ export default function InboxWorkspace() {
         Loading inbox…
       </div>
     );
+  }
+
+  if (hideWorkspaceTiles) {
+    return <div className="p-6" data-test-id="inbox-root" />;
   }
 
   return (

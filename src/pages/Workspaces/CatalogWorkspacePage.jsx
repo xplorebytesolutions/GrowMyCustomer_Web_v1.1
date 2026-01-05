@@ -10,7 +10,7 @@ import {
   Zap,
   AlertTriangle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
@@ -57,7 +57,11 @@ const catalogBlocks = [
 
 export default function CatalogWorkspacePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoading, entLoading, can, hasAllAccess, planId } = useAuth();
+
+  const hideWorkspaceTiles =
+    new URLSearchParams(location.search || "").get("flyout") === "1";
 
   const [pinned, setPinned] = useState(
     JSON.parse(localStorage.getItem("catalog-pinned") || "[]")
@@ -141,6 +145,15 @@ export default function CatalogWorkspacePage() {
 
   const anyVisible = blocksWithAccess.length > 0;
   const anyAllowed = blocksWithAccess.some(b => b.allowed);
+
+  if (hideWorkspaceTiles) {
+    return (
+      <div
+        className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]"
+        data-test-id="catalog-root"
+      />
+    );
+  }
 
   return (
     <div

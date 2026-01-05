@@ -11,7 +11,7 @@ import {
   LucideBotMessageSquare,
   FileCode2,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
@@ -135,8 +135,12 @@ const allAdminBlocks = [
 
 export default function AdminWorkspacePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { role, hasAllAccess, can, isLoading, entLoading } = useAuth();
   const userRole = String(role || "").toLowerCase();
+
+  const hideWorkspaceTiles =
+    new URLSearchParams(location.search || "").get("flyout") === "1";
 
   const defaultOrder = allAdminBlocks.map(b => b.id);
   const loadOrder = () => {
@@ -223,6 +227,10 @@ export default function AdminWorkspacePage() {
         Loading admin tools…
       </div>
     );
+  }
+
+  if (hideWorkspaceTiles) {
+    return <div className="p-6" data-test-id="admin-workspace-root" />;
   }
 
   return (

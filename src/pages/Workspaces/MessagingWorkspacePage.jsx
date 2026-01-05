@@ -10,7 +10,7 @@ import {
   BarChart3,
   AlertTriangle,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
@@ -171,7 +171,11 @@ function MessagingQuotaSummary() {
 
 export default function MessagingWorkspacePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLoading, can, hasAllAccess, entLoading } = useAuth();
+
+  const hideWorkspaceTiles =
+    new URLSearchParams(location.search || "").get("flyout") === "1";
 
   const [pinned, setPinned] = useState(
     JSON.parse(localStorage.getItem("messaging-pinned") || "[]")
@@ -239,6 +243,15 @@ export default function MessagingWorkspacePage() {
 
   const anyVisible = blocksWithAccess.length > 0;
   const anyAllowed = blocksWithAccess.some(b => b.allowed);
+
+  if (hideWorkspaceTiles) {
+    return (
+      <div
+        className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]"
+        data-test-id="messaging-root"
+      />
+    );
+  }
 
   return (
     <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]" data-test-id="messaging-root">
