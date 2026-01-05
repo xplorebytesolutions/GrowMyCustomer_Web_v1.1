@@ -427,42 +427,69 @@ export default function SendTextMessagePage() {
                 Recent Activity
               </h3>
               
-              <div className="space-y-4">
-                {messageLogs.length > 0 ? (
-                  messageLogs.map((log) => {
-                     const isSuccess = log.status && ["success", "sent", "delivered"].includes(log.status.toLowerCase());
-                     return (
-                      <div key={log.id} className="flex gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-md transition-all">
-                        <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isSuccess ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                          {isSuccess ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                             <p className="text-sm font-semibold text-gray-900">
-                               {log.recipientNumber}
-                             </p>
-                             <span className="text-xs text-gray-400">
-                               {log.sentAt ? new Date(log.sentAt).toLocaleString() : "Just now"}
-                             </span>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-10">
+                        #
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Recipient
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-1/2">
+                        Message
+                      </th>
+                       <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">
+                        Time
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {messageLogs.length > 0 ? (
+                      messageLogs.map((log, index) => {
+                        const status = log.status?.toLowerCase() || "";
+                        const isFailure = ["failed", "undelivered", "rejected", "error"].some(s => status.includes(s));
+                        
+                        return (
+                          <tr key={log.id} className="hover:bg-gray-50/50 transition-colors group text-sm">
+                            <td className="px-4 py-3 text-center">
+                               <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isFailure ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                 {isFailure ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
+                               </div>
+                            </td>
+                            <td className="px-4 py-3 font-medium text-gray-900">
+                              {log.recipientNumber}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={log.messageContent}>
+                               {log.messageContent || <span className="italic text-gray-400">No content</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide ${isFailure ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                                {log.status || "Unknown"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-gray-500 text-xs whitespace-nowrap">
+                              {log.sentAt ? new Date(log.sentAt).toLocaleString() : "Just now"}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="px-4 py-12 text-center text-gray-400">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                             <History size={24} className="opacity-30" />
+                             <p>No recent message history</p>
                           </div>
-                          <p className="text-sm text-gray-600 line-clamp-2">
-                            {log.messageContent || <span className="italic text-gray-400">No content</span>}
-                          </p>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${isSuccess ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                              {log.status || "Unknown"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                     );
-                  })
-                ) : (
-                  <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                    <History size={32} className="mx-auto mb-2 opacity-30" />
-                    <p>No recent message history</p>
-                  </div>
-                )}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
             

@@ -19,6 +19,12 @@ const apiBaseUrl = normalizeBaseUrl(rawBase);
 // ---------------- Token key (single source of truth) --------
 export const TOKEN_KEY = "xbyte_token";
 
+// ✅ SuperAdmin selected business keys (must match AuthProvider)
+const SA_BIZ_ID_KEY = "sa_selectedBusinessId";
+
+// ✅ Header name used by backend for business override (SuperAdmin scope)
+const BIZ_HEADER = "X-Business-Id";
+
 // ---------------- Axios instance ----------------------------
 const axiosClient = axios.create({
   baseURL: apiBaseUrl,
@@ -29,10 +35,103 @@ const axiosClient = axios.create({
   withCredentials: false, // using Bearer tokens, not cookies
 });
 
+// ------------------------------------------------------------
+// ✅ JWT helper (no dependencies)
+// ------------------------------------------------------------
+function safeParseJwt(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length < 2) return null;
+    const payloadB64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+
+    // base64 decode with padding
+    const padded = payloadB64 + "===".slice((payloadB64.length + 3) % 4);
+
+    const json = decodeURIComponent(
+      atob(padded)
+        .split("")
+        .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function extractRoleFromClaims(claims) {
+  if (!claims) return null;
+
+  // Common locations/keys across systems
+  // - "role": "superadmin"
+  // - "roles": ["superadmin"]
+  // - Microsoft WS-Fed style role claim:
+  //   "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+  const direct =
+    claims.role ||
+    claims.Role ||
+    claims.userRole ||
+    claims.UserRole ||
+    claims["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
+    claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role"];
+
+  if (typeof direct === "string") return direct;
+
+  const arr = claims.roles || claims.Roles;
+  if (Array.isArray(arr) && arr.length > 0) return arr[0];
+
+  return null;
+}
+
+function isSuperAdminToken(token) {
+  const claims = safeParseJwt(token);
+  const role = String(extractRoleFromClaims(claims) || "").toLowerCase();
+  return role === "admin" || role === "superadmin";
+}
+
+function readSelectedBusinessId() {
+  try {
+    const id = localStorage.getItem(SA_BIZ_ID_KEY);
+    return id && String(id).trim() ? String(id).trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Attach Authorization header if token exists
 axiosClient.interceptors.request.use(config => {
   const token = localStorage.getItem(TOKEN_KEY);
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // ----------------------------------------------------------
+  // ✅ SuperAdmin business context injection
+  //
+  // Rules:
+  // 1) Only attach if token role == superadmin
+  // 2) Only attach if a selected business exists
+  // 3) Allow per-request opt-out via:
+  //    config.__skipBizHeader = true
+  //    or header "x-skip-biz-header"
+  // ----------------------------------------------------------
+  const skipBiz =
+    config?.__skipBizHeader === true ||
+    config?.headers?.["x-skip-biz-header"] === "1" ||
+    config?.headers?.["x-skip-biz-header"] === 1 ||
+    config?.headers?.["x-skip-biz-header"] === true;
+
+  if (!skipBiz && token && isSuperAdminToken(token)) {
+    const selectedBizId = readSelectedBusinessId();
+    if (selectedBizId) {
+      config.headers[BIZ_HEADER] = selectedBizId;
+    } else {
+      // Ensure we don't send a stale header
+      if (config.headers && config.headers[BIZ_HEADER]) {
+        delete config.headers[BIZ_HEADER];
+      }
+    }
+  }
+
   return config;
 });
 
@@ -567,20 +666,44 @@ export default axiosClient;
 //       "❌ Something went wrong.";
 
 //     const cfg = error?.config || {};
+//     const suppressToast =
+//       cfg.__silentToast || cfg.__silent || cfg.headers?.["x-suppress-toast"];
 //     const suppress401 =
+//       suppressToast ||
 //       cfg.__silent401 ||
 //       cfg.headers?.["x-suppress-401-toast"] ||
 //       isOnAuthPage();
 //     const suppress403 =
+//       suppressToast ||
 //       cfg.__silent403 ||
 //       cfg.headers?.["x-suppress-403-toast"] ||
 //       isOnAuthPage();
 //     const suppress429 =
-//       cfg.__silent429 || cfg.headers?.["x-suppress-429-toast"] || false;
+//       suppressToast ||
+//       cfg.__silent429 ||
+//       cfg.headers?.["x-suppress-429-toast"] ||
+//       false;
 
-//     // 401 → clear token, soft-redirect to login
+//     // 🔍 Detect login / signup calls so we don't redirect those 401s
+//     const isLoginCall =
+//       typeof cfg.url === "string" &&
+//       (cfg.url.includes("/auth/login") || cfg.url.includes("/auth/signup"));
+
+//     // 401 → clear token, soft-redirect to login (except for /auth/login itself)
 //     if (status === 401) {
+//       // Let normal login errors bubble up to the login form
+//       if (isLoginCall) {
+//         return Promise.reject(error);
+//       }
+
 //       localStorage.removeItem(TOKEN_KEY);
+
+//       // Mark that this was a session-expired redirect
+//       try {
+//         sessionStorage.setItem("auth_last_reason", "session-expired");
+//       } catch {
+//         // ignore
+//       }
 
 //       if (!suppress401 && !showingAuthToast) {
 //         toast.error("⏰ Session expired. Please log in again.");
@@ -594,7 +717,8 @@ export default axiosClient;
 //             (window.location?.search || "") +
 //             (window.location?.hash || "")
 //         );
-//         window.location.href = `/login?redirectTo=${redirectTo}`;
+//         // include reason=session-expired so Login page can show a banner
+//         window.location.href = `/login?reason=session-expired&redirectTo=${redirectTo}`;
 //       }
 
 //       return Promise.reject(error);
@@ -623,7 +747,7 @@ export default axiosClient;
 //     }
 
 //     // Generic non-401/403/429
-//     if (!showingAuthToast) {
+//     if (!suppressToast && !showingAuthToast) {
 //       toast.error(msg);
 //       showingAuthToast = true;
 //       setTimeout(() => (showingAuthToast = false), 1500);

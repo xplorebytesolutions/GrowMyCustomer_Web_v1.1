@@ -55,14 +55,19 @@ export default function useSignalR({
     }
 
     // ✅ Build connection
+    // Append SA business context if selected
+    let finalUrl = hubUrl;
+    const saBizId = localStorage.getItem("sa_selectedBusinessId");
+    if (saBizId) {
+      finalUrl += `?bizId=${encodeURIComponent(saBizId)}`;
+    }
+
     const conn = new signalR.HubConnectionBuilder()
-      .withUrl(hubUrl, {
+      .withUrl(finalUrl, {
         accessTokenFactory: () => localStorage.getItem(TOKEN_KEY) || "",
-        // Prefer WS; fallback allowed
         transport:
           signalR.HttpTransportType.WebSockets |
           signalR.HttpTransportType.LongPolling,
-        // ✅ IMPORTANT: DO NOT force skipNegotiation here (can cause real failures)
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000])
       .configureLogging(signalR.LogLevel.Information)
@@ -109,7 +114,8 @@ export default function useSignalR({
 
         setIsConnected(true);
         toast.dismiss(REALTIME_TOAST_ID);
-        console.log("✅ SignalR connected:", hubUrl);
+        // console.log("✅ SignalR connected:", hubUrl);
+        console.log("✅ SignalR connected:", finalUrl);
       } catch (err) {
         if (!mountedRef.current) return;
 

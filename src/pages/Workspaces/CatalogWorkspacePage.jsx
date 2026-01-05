@@ -7,7 +7,6 @@ import {
   MoreVertical,
   ShoppingCart,
   PlusCircle,
-  BarChart2,
   Zap,
   AlertTriangle,
 } from "lucide-react";
@@ -24,7 +23,6 @@ import { requestUpgrade } from "../../utils/upgradeBus";
 const PERM_BY_BLOCK = {
   "product-catalog": [FK.CATALOG_VIEW], // view products
   "product-form": [FK.CATALOG_CREATE], // create products
-  "catalog-dashboard": [FK.CATALOG_VIEW],
   "catalog-automation": [FK.CATALOG_AUTOMATION], // plan-gated only for now
 };
 
@@ -45,14 +43,7 @@ const catalogBlocks = [
     icon: <PlusCircle size={22} />,
     action: "Add Product",
   },
-  {
-    id: "catalog-dashboard",
-    label: "Catalog Dashboard",
-    description: "Get insights into catalog performance and user interactions.",
-    path: "/app/catalog/insights",
-    icon: <BarChart2 size={22} />,
-    action: "View Insights",
-  },
+
   {
     id: "catalog-automation",
     label: "Auto-Responders",
@@ -152,7 +143,10 @@ export default function CatalogWorkspacePage() {
   const anyAllowed = blocksWithAccess.some(b => b.allowed);
 
   return (
-    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]" data-test-id="catalog-root">
+    <div
+      className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]"
+      data-test-id="catalog-root"
+    >
       {/* sequential border animation (top→right→bottom→left) – emerald themed, same as CRM/Campaign */}
       <style>{`
         @keyframes drawRight { from { transform: scaleX(0) } to { transform: scaleX(1) } }

@@ -66,12 +66,12 @@ function ProductCatalog() {
   return (
     <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-purple-600">
+        <h2 className="text-2xl font-bold text-emerald-800">
           🛒 Product Catalog
         </h2>
         <button
-          onClick={() => navigate("/dashboard/productcatalog/add")}
-          className="bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition text-sm"
+          onClick={() => navigate("/app/catalog/form")}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition text-sm"
         >
           ➕ Add Product
         </button>
@@ -95,7 +95,7 @@ function ProductCatalog() {
                 {product.name}
               </h3>
               <p className="text-sm text-gray-500">{product.description}</p>
-              <p className="text-purple-600 font-bold mt-2">
+              <p className="text-emerald-700 font-bold mt-2">
                 ₹{product.price} {product.currency}
               </p>
 
@@ -109,9 +109,9 @@ function ProductCatalog() {
 
                 <button
                   onClick={() =>
-                    navigate(`/dashboard/productcatalog/edit/${product.id}`)
+                    navigate(`/app/catalog/form/${product.id}`)
                   }
-                  className="w-full bg-yellow-500 text-white py-2 rounded-xl hover:bg-yellow-600 text-sm"
+                  className="w-full bg-slate-700 text-white py-2 rounded-xl hover:bg-slate-800 text-sm"
                 >
                   ✏️ Edit
                 </button>

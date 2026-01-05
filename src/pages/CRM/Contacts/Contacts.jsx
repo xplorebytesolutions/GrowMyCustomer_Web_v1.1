@@ -155,30 +155,32 @@ export default function Contacts() {
         {/* Workspace header */}
         <div className="mb-5">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="mt-1.5 text-xl font-semibold text-slate-900">
-                Contacts
-              </h1>
-
-              <p className="mt-1 text-sm text-slate-600 max-w-2xl">
-                Organize leads, segment customers, and run bulk actions.
-              </p>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                  Active tab: {activeTab}
-                </span>
-
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-semibold bg-white text-slate-700 border border-slate-200">
-                  Selected: {selectedIds.length}
-                </span>
+            <div className="flex items-start gap-3">
+              <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-white border border-emerald-200/60 shadow-sm">
+                <div className="h-10 w-10 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                  <User className="h-5 w-5 text-emerald-800" />
+                </div>
               </div>
-            </div>
 
-            <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl bg-white border border-emerald-200/60 shadow-sm">
-              <div className="h-10 w-10 rounded-2xl bg-emerald-100 flex items-center justify-center">
-                <User className="h-5 w-5 text-emerald-800" />
+              <div>
+                <h1 className="mt-1.5 text-xl font-semibold text-slate-900">
+                  Contacts
+                </h1>
+
+                <p className="mt-1 text-sm text-slate-600 max-w-2xl">
+                  Organize leads, segment customers, and run bulk actions.
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                    Active tab: {activeTab}
+                  </span>
+
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-semibold bg-white text-slate-700 border border-slate-200">
+                    Selected: {selectedIds.length}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

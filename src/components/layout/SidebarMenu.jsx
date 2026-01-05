@@ -217,8 +217,8 @@ export default function SidebarMenu() {
     const blockedReason = !featureAllowed
       ? "feature"
       : !planAllowed
-        ? "plan"
-        : null;
+      ? "plan"
+      : null;
 
     return { allowed, blockedReason };
   };
@@ -334,13 +334,7 @@ export default function SidebarMenu() {
         show: showCatalog,
         featureKey: FK.CATALOG_CREATE,
       },
-      {
-        label: "Catalog Dashboard",
-        path: "/app/catalog/insights",
-        icon: <BarChart2 size={18} />,
-        show: showCatalog,
-        featureKey: FK.CATALOG_VIEW,
-      },
+
       {
         label: "Auto-Responders",
         path: "/app/catalog/automation",
@@ -665,13 +659,13 @@ export default function SidebarMenu() {
       >
         <span className="relative flex items-center">
           {/* Triangular pointer arrow */}
-          <span 
+          <span
             className="absolute -left-2 top-1/2 -translate-y-1/2 
                        border-t-[6px] border-t-transparent
                        border-r-[8px] border-r-gray-800
                        border-b-[6px] border-b-transparent"
           />
-          
+
           {/* Tooltip box */}
           <span className="bg-gray-800 text-white text-sm font-medium px-3 py-1.5 rounded shadow-lg">
             {text}
@@ -791,11 +785,7 @@ export default function SidebarMenu() {
                     {/* Text stays static (no scaling / no background) */}
                     <span
                       className={`mt-1 max-w-[72px] truncate px-1 text-center text-[10.5px] font-inter font-medium tracking-wide leading-[12px]
-                        ${
-                          isActive
-                            ? "text-white"
-                            : "text-emerald-50/70"
-                        }`}
+                        ${isActive ? "text-white" : "text-emerald-50/70"}`}
                     >
                       {item.short || item.label}
                     </span>
@@ -840,22 +830,22 @@ export default function SidebarMenu() {
               isCrmFlyout
                 ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
                 : isCampaignsFlyout
-                  ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                  : isCatalogFlyout
-                    ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                  : isMessagingFlyout
-                      ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                  : isTemplateBuilderFlyout
-                        ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                          : isAutomationFlyout
-                            ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                          : isInboxFlyout
-                            ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                            : isSettingsFlyout
-                              ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                              : isAdminFlyout
-                                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                                : "w-80 bg-white shadow-xl shadow-black/10"
+                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                : isCatalogFlyout
+                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                : isMessagingFlyout
+                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                : isTemplateBuilderFlyout
+                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                : isAutomationFlyout
+                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                : isInboxFlyout
+                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                : isSettingsFlyout
+                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                : isAdminFlyout
+                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                : "w-80 bg-white shadow-xl shadow-black/10"
             } border-r border-slate-200 z-40`}
             onMouseEnter={() => setIsHoveringFlyout(true)}
             onMouseLeave={() => setIsHoveringFlyout(false)}
@@ -1045,82 +1035,81 @@ export default function SidebarMenu() {
                             return (
                               <li key={`flyout-campaigns-${item.path}`}>
                                 <NavLink
-                                    to={item.path}
-                                    onClick={e => {
-                                      if (!allowed) {
-                                        e.preventDefault();
-                                        triggerSubmenuUpgrade({
-                                          blockedReason,
-                                          item,
-                                          source: "sidebar.flyout.campaigns",
-                                        });
-                                        return;
-                                      }
-                                      closeFlyout();
-                                    }}
-                                    className={({ isActive }) =>
-                                      `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
+                                  to={item.path}
+                                  onClick={e => {
+                                    if (!allowed) {
+                                      e.preventDefault();
+                                      triggerSubmenuUpgrade({
+                                        blockedReason,
+                                        item,
+                                        source: "sidebar.flyout.campaigns",
+                                      });
+                                      return;
+                                    }
+                                    closeFlyout();
+                                  }}
+                                  className={({ isActive }) =>
+                                    `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
                                     focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-inset
                                     ${
                                       isActive
                                         ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                         : "bg-transparent text-slate-900"
                                     } ${
-                                        allowed
-                                          ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                          : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                      }`
-                                    }
-                                    aria-disabled={!allowed}
+                                      allowed
+                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                    }`
+                                  }
+                                  aria-disabled={!allowed}
+                                >
+                                  <span
+                                    className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      allowed
+                                        ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
+                                        : "bg-amber-50 border-amber-200"
+                                    }`}
                                   >
                                     <span
-                                      className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      className={`transition-colors ${
                                         allowed
-                                          ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
-                                          : "bg-amber-50 border-amber-200"
+                                          ? "text-slate-700 group-hover:text-[#0a322b]"
+                                          : "text-amber-700"
                                       }`}
                                     >
-                                      <span
-                                        className={`transition-colors ${
-                                          allowed
-                                            ? "text-slate-700 group-hover:text-[#0a322b]"
-                                            : "text-amber-700"
-                                        }`}
-                                      >
-                                        {item.icon}
-                                      </span>
+                                      {item.icon}
                                     </span>
+                                  </span>
 
-                                    <span className="min-w-0 flex-1 flex items-center gap-2 truncate">
-                                      <span
-                                        className={`truncate text-[14px] font-medium tracking-tight ${
-                                          allowed
-                                            ? "text-slate-900"
-                                            : "text-slate-600"
-                                        }`}
-                                      >
-                                        {item.label}
-                                      </span>
-                                      {!allowed && (
-                                        <span className="inline-flex items-center text-amber-700">
-                                          <Lock size={14} />
-                                        </span>
-                                      )}
+                                  <span className="min-w-0 flex-1 flex items-center gap-2 truncate">
+                                    <span
+                                      className={`truncate text-[14px] font-medium tracking-tight ${
+                                        allowed
+                                          ? "text-slate-900"
+                                          : "text-slate-600"
+                                      }`}
+                                    >
+                                      {item.label}
                                     </span>
-
                                     {!allowed && (
-                                      <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-amber-500 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                                        Upgrade
+                                      <span className="inline-flex items-center text-amber-700">
+                                        <Lock size={14} />
                                       </span>
                                     )}
-                                  </NavLink>
-                                </li>
-                              );
+                                  </span>
+
+                                  {!allowed && (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-amber-500 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                      Upgrade
+                                    </span>
+                                  )}
+                                </NavLink>
+                              </li>
+                            );
                           })}
                         </ul>
                       </div>
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -1187,36 +1176,36 @@ export default function SidebarMenu() {
                                     }
                                     closeFlyout();
                                   }}
-                                   className={({ isActive }) =>
-                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
+                                  className={({ isActive }) =>
+                                    `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
                                     focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-inset
                                      ${
                                        isActive
-                                        ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
-                                        : "bg-transparent text-slate-900"
+                                         ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
+                                         : "bg-transparent text-slate-900"
                                      } ${
-                                        allowed
-                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                      }`
-                                    }
-                                    aria-disabled={!allowed}
-                                  >
-                                    <span
-                                      className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
-                                        allowed
+                                      allowed
+                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                    }`
+                                  }
+                                  aria-disabled={!allowed}
+                                >
+                                  <span
+                                    className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      allowed
                                         ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
                                         : "bg-amber-50 border-amber-200"
-                                      }`}
-                                    >
-                                      <span
-                                        className={`transition-colors ${
-                                          allowed
+                                    }`}
+                                  >
+                                    <span
+                                      className={`transition-colors ${
+                                        allowed
                                           ? "text-slate-700 group-hover:text-[#0a322b]"
                                           : "text-amber-700"
-                                        }`}
-                                      >
-                                        {item.icon}
+                                      }`}
+                                    >
+                                      {item.icon}
                                     </span>
                                   </span>
 
@@ -1315,36 +1304,36 @@ export default function SidebarMenu() {
                                     }
                                     closeFlyout();
                                   }}
-                                   className={({ isActive }) =>
-                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
+                                  className={({ isActive }) =>
+                                    `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
                                     focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-inset
                                       ${
                                         isActive
-                                        ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
-                                        : "bg-transparent text-slate-900"
+                                          ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
+                                          : "bg-transparent text-slate-900"
                                       } ${
-                                         allowed
-                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                       }`
-                                    }
-                                    aria-disabled={!allowed}
-                                  >
-                                    <span
-                                      className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
-                                        allowed
+                                      allowed
+                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                    }`
+                                  }
+                                  aria-disabled={!allowed}
+                                >
+                                  <span
+                                    className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      allowed
                                         ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
                                         : "bg-amber-50 border-amber-200"
-                                      }`}
-                                    >
-                                      <span
-                                        className={`transition-colors ${
-                                          allowed
+                                    }`}
+                                  >
+                                    <span
+                                      className={`transition-colors ${
+                                        allowed
                                           ? "text-slate-700 group-hover:text-[#0a322b]"
                                           : "text-amber-700"
-                                        }`}
-                                      >
-                                        {item.icon}
+                                      }`}
+                                    >
+                                      {item.icon}
                                     </span>
                                   </span>
 
@@ -1443,36 +1432,36 @@ export default function SidebarMenu() {
                                     }
                                     closeFlyout();
                                   }}
-                                   className={({ isActive }) =>
-                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
+                                  className={({ isActive }) =>
+                                    `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
                                     focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-inset
                                       ${
                                         isActive
-                                        ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
-                                        : "bg-transparent text-slate-900"
+                                          ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
+                                          : "bg-transparent text-slate-900"
                                       } ${
-                                         allowed
-                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                       }`
-                                    }
-                                    aria-disabled={!allowed}
-                                  >
-                                    <span
-                                      className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
-                                        allowed
+                                      allowed
+                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                    }`
+                                  }
+                                  aria-disabled={!allowed}
+                                >
+                                  <span
+                                    className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      allowed
                                         ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
                                         : "bg-amber-50 border-amber-200"
-                                      }`}
-                                    >
-                                      <span
-                                        className={`transition-colors ${
-                                          allowed
+                                    }`}
+                                  >
+                                    <span
+                                      className={`transition-colors ${
+                                        allowed
                                           ? "text-slate-700 group-hover:text-[#0a322b]"
                                           : "text-amber-700"
-                                        }`}
-                                      >
-                                        {item.icon}
+                                      }`}
+                                    >
+                                      {item.icon}
                                     </span>
                                   </span>
 
@@ -1571,43 +1560,45 @@ export default function SidebarMenu() {
                                     }
                                     closeFlyout();
                                   }}
-                                   className={({ isActive }) =>
-                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
+                                  className={({ isActive }) =>
+                                    `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
                                     focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-inset
                                      ${
                                        isActive
-                                        ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
-                                        : "bg-transparent text-slate-900"
+                                         ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
+                                         : "bg-transparent text-slate-900"
                                      } ${
-                                        allowed
-                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                      }`
-                                    }
-                                    aria-disabled={!allowed}
+                                      allowed
+                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                    }`
+                                  }
+                                  aria-disabled={!allowed}
+                                >
+                                  <span
+                                    className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      allowed
+                                        ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
+                                        : "bg-amber-50 border-amber-200"
+                                    }`}
                                   >
                                     <span
-                                      className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      className={`transition-colors ${
                                         allowed
-                                          ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
-                                          : "bg-amber-50 border-amber-200"
+                                          ? "text-slate-700 group-hover:text-[#0a322b]"
+                                          : "text-amber-700"
                                       }`}
                                     >
-                                      <span
-                                        className={`transition-colors ${
-                                          allowed
-                                            ? "text-slate-700 group-hover:text-[#0a322b]"
-                                            : "text-amber-700"
-                                        }`}
-                                      >
-                                        {item.icon}
-                                      </span>
+                                      {item.icon}
                                     </span>
+                                  </span>
 
                                   <span className="min-w-0 flex-1 flex items-center gap-2 truncate">
                                     <span
                                       className={`truncate text-[14px] font-medium tracking-tight ${
-                                        allowed ? "text-slate-900" : "text-slate-600"
+                                        allowed
+                                          ? "text-slate-900"
+                                          : "text-slate-600"
                                       }`}
                                     >
                                       {item.label}
@@ -1697,43 +1688,45 @@ export default function SidebarMenu() {
                                     }
                                     closeFlyout();
                                   }}
-                                   className={({ isActive }) =>
-                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
+                                  className={({ isActive }) =>
+                                    `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
                                     focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-inset
                                      ${
                                        isActive
-                                        ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
-                                        : "bg-transparent text-slate-900"
+                                         ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
+                                         : "bg-transparent text-slate-900"
                                      } ${
-                                        allowed
-                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                      }`
-                                    }
-                                    aria-disabled={!allowed}
+                                      allowed
+                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                    }`
+                                  }
+                                  aria-disabled={!allowed}
+                                >
+                                  <span
+                                    className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      allowed
+                                        ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
+                                        : "bg-amber-50 border-amber-200"
+                                    }`}
                                   >
                                     <span
-                                      className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      className={`transition-colors ${
                                         allowed
-                                          ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
-                                          : "bg-amber-50 border-amber-200"
+                                          ? "text-slate-700 group-hover:text-[#0a322b]"
+                                          : "text-amber-700"
                                       }`}
                                     >
-                                      <span
-                                        className={`transition-colors ${
-                                          allowed
-                                            ? "text-slate-700 group-hover:text-[#0a322b]"
-                                            : "text-amber-700"
-                                        }`}
-                                      >
-                                        {item.icon}
-                                      </span>
+                                      {item.icon}
                                     </span>
+                                  </span>
 
                                   <span className="min-w-0 flex-1 flex items-center gap-2 truncate">
                                     <span
                                       className={`truncate text-[14px] font-medium tracking-tight ${
-                                        allowed ? "text-slate-900" : "text-slate-600"
+                                        allowed
+                                          ? "text-slate-900"
+                                          : "text-slate-600"
                                       }`}
                                     >
                                       {item.label}
@@ -1823,43 +1816,45 @@ export default function SidebarMenu() {
                                     }
                                     closeFlyout();
                                   }}
-                                   className={({ isActive }) =>
-                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
+                                  className={({ isActive }) =>
+                                    `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
                                     focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-inset
                                      ${
                                        isActive
-                                        ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
-                                        : "bg-transparent text-slate-900"
+                                         ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
+                                         : "bg-transparent text-slate-900"
                                      } ${
-                                        allowed
-                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                      }`
-                                    }
-                                    aria-disabled={!allowed}
+                                      allowed
+                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                    }`
+                                  }
+                                  aria-disabled={!allowed}
+                                >
+                                  <span
+                                    className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      allowed
+                                        ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
+                                        : "bg-amber-50 border-amber-200"
+                                    }`}
                                   >
                                     <span
-                                      className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      className={`transition-colors ${
                                         allowed
-                                          ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
-                                          : "bg-amber-50 border-amber-200"
+                                          ? "text-slate-700 group-hover:text-[#0a322b]"
+                                          : "text-amber-700"
                                       }`}
                                     >
-                                      <span
-                                        className={`transition-colors ${
-                                          allowed
-                                            ? "text-slate-700 group-hover:text-[#0a322b]"
-                                            : "text-amber-700"
-                                        }`}
-                                      >
-                                        {item.icon}
-                                      </span>
+                                      {item.icon}
                                     </span>
+                                  </span>
 
                                   <span className="min-w-0 flex-1 flex items-center gap-2 truncate">
                                     <span
                                       className={`truncate text-[14px] font-medium tracking-tight ${
-                                        allowed ? "text-slate-900" : "text-slate-600"
+                                        allowed
+                                          ? "text-slate-900"
+                                          : "text-slate-600"
                                       }`}
                                     >
                                       {item.label}
@@ -1943,49 +1938,52 @@ export default function SidebarMenu() {
                                       triggerSubmenuUpgrade({
                                         blockedReason,
                                         item,
-                                        source: "sidebar.flyout.templatebuilder",
+                                        source:
+                                          "sidebar.flyout.templatebuilder",
                                       });
                                       return;
                                     }
                                     closeFlyout();
                                   }}
-                                   className={({ isActive }) =>
-                                     `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
+                                  className={({ isActive }) =>
+                                    `group flex items-center gap-2 rounded-lg px-2 py-1.5 outline-none transition-colors transition-shadow
                                     focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-inset
                                      ${
                                        isActive
-                                        ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
-                                        : "bg-transparent text-slate-900"
+                                         ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
+                                         : "bg-transparent text-slate-900"
                                      } ${
-                                        allowed
-                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                      }`
-                                    }
-                                    aria-disabled={!allowed}
+                                      allowed
+                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                    }`
+                                  }
+                                  aria-disabled={!allowed}
+                                >
+                                  <span
+                                    className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      allowed
+                                        ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
+                                        : "bg-amber-50 border-amber-200"
+                                    }`}
                                   >
                                     <span
-                                      className={`flex items-center justify-center w-8 h-8 rounded-md border transition-colors transition-shadow ${
+                                      className={`transition-colors ${
                                         allowed
-                                          ? "bg-white border-slate-200 group-hover:bg-[#0a322b]/[0.10] group-hover:border-[#0a322b]/[0.18] group-hover:shadow-sm"
-                                          : "bg-amber-50 border-amber-200"
+                                          ? "text-slate-700 group-hover:text-[#0a322b]"
+                                          : "text-amber-700"
                                       }`}
                                     >
-                                      <span
-                                        className={`transition-colors ${
-                                          allowed
-                                            ? "text-slate-700 group-hover:text-[#0a322b]"
-                                            : "text-amber-700"
-                                        }`}
-                                      >
-                                        {item.icon}
-                                      </span>
+                                      {item.icon}
                                     </span>
+                                  </span>
 
                                   <span className="min-w-0 flex-1 flex items-center gap-2 truncate">
                                     <span
                                       className={`truncate text-[14px] font-medium tracking-tight ${
-                                        allowed ? "text-slate-900" : "text-slate-600"
+                                        allowed
+                                          ? "text-slate-900"
+                                          : "text-slate-600"
                                       }`}
                                     >
                                       {item.label}
@@ -2042,13 +2040,13 @@ export default function SidebarMenu() {
                                   ? "is-active bg-[#0a322b]/[0.10] ring-1 ring-[#0a322b]/[0.18] shadow-sm"
                                   : "bg-transparent"
                               } ${
-                                  allowed
-                                   ? "border border-transparent hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                   : "border border-dashed border-amber-300 bg-amber-50/30 hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/50"
-                                }`
-                             }
-                             aria-disabled={!allowed}
-                           >
+                                allowed
+                                  ? "border border-transparent hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                  : "border border-dashed border-amber-300 bg-amber-50/30 hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/50"
+                              }`
+                            }
+                            aria-disabled={!allowed}
+                          >
                             <span
                               className={`flex items-center justify-center w-9 h-9 rounded-md transition-colors transition-shadow
                               ${

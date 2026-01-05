@@ -234,7 +234,9 @@ export function useChatInboxController() {
       : null;
     if (byConversationId) return byConversationId;
     if (!conversation.contactId) return null;
-    return clearedUnreadByContactRef.current.get(conversation.contactId) || null;
+    return (
+      clearedUnreadByContactRef.current.get(conversation.contactId) || null
+    );
   }, []);
 
   const getClearedUnreadEntryByContactId = useCallback(contactId => {
@@ -428,6 +430,9 @@ export function useChatInboxController() {
             contactPhone: item.contactPhone,
             lastMessagePreview: item.lastMessagePreview,
             lastMessageAt: item.lastMessageAt,
+            // unreadCount: isSelected
+            //   ? 0
+            //   : (localUnread ?? item.unreadCount) || 0,
             unreadCount: isSelected
               ? 0
               : (localUnread ?? item.unreadCount) || 0,
@@ -964,9 +969,11 @@ export function useChatInboxController() {
   }, [selectedConversationId, fetchMessagesPage]);
 
   // 🔔 Mark as read when opening a conversation (HTTP + SignalR)
+  // 🔔 Mark as read when opening a conversation (HTTP + SignalR)
   useEffect(() => {
     if (!selectedConversationId) return;
 
+    // 1️⃣ Immediate UI clear (optimistic)
     setAllConversations(prev =>
       prev.map(c =>
         c.id === selectedConversationId ? { ...c, unreadCount: 0 } : c
@@ -983,23 +990,25 @@ export function useChatInboxController() {
 
     markReadTimerRef.current = setTimeout(() => {
       const businessId = localStorage.getItem("businessId");
-      const userId = localStorage.getItem("userId");
       const contactId = selectedConversation?.contactId;
-      if (!contactId || !businessId || !userId) return;
+
+      // ✅ userId REMOVED — backend uses JWT claims
+      if (!businessId || !contactId) return;
 
       const payload = {
         businessId,
         contactId,
-        userId,
+        lastReadAtUtc: new Date().toISOString(),
       };
 
       axiosClient.post("/chat-inbox/mark-read", payload).catch(err => {
         console.error("Failed to mark conversation as read:", err);
       });
 
+      // SignalR sync (best-effort)
       if (connection && isConnected) {
         connection.invoke("MarkAsRead", contactId).catch(err => {
-          console.warn("SignalR MarkAsRead failed (non-fatal):", err);
+          console.warn("SignalR MarkAsRead failed:", err);
         });
       }
     }, 200);
@@ -1300,7 +1309,11 @@ export function useChatInboxController() {
           const nextUnread =
             mappedMsg.isInbound && !isOpen ? baseUnread + 1 : baseUnread;
 
-          if (typeof localUnread === "number" && mappedMsg.isInbound && !isOpen) {
+          if (
+            typeof localUnread === "number" &&
+            mappedMsg.isInbound &&
+            !isOpen
+          ) {
             setLocalUnreadOverride(c, nextUnread);
           }
 
@@ -1385,7 +1398,8 @@ export function useChatInboxController() {
                 (open.contactPhone && c.contactPhone === open.contactPhone));
 
             if (typeof localUnread === "number") {
-              const nextUnread = payload.unreadCount > 0 ? Math.max(localUnread, 1) : 0;
+              const nextUnread =
+                payload.unreadCount > 0 ? Math.max(localUnread, 1) : 0;
               if (!isOpen && nextUnread !== localUnread) {
                 setLocalUnreadOverride(c, nextUnread);
               }
@@ -1455,7 +1469,12 @@ export function useChatInboxController() {
         );
       }
     },
-    [fetchConversations, getClearedUnreadEntryByContactId, getLocalUnreadOverride, setLocalUnreadOverride]
+    [
+      fetchConversations,
+      getClearedUnreadEntryByContactId,
+      getLocalUnreadOverride,
+      setLocalUnreadOverride,
+    ]
   );
 
   // 🔔 SignalR: MessageStatusChanged handler (outbound delivery/read ticks)

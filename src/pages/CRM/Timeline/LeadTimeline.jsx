@@ -57,7 +57,7 @@ function LeadTimeline() {
         </div>
         <button
           onClick={() => fetchTimeline()}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded shadow text-sm"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded shadow text-sm"
         >
           🔄 Refresh
         </button>

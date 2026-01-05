@@ -28,13 +28,13 @@ function TimelineEventCard({ entry }) {
   return (
     <div className="relative">
       {/* 🔵 Dot */}
-      <div className="absolute -left-7 top-5 w-4 h-4 bg-purple-600 rounded-full border-2 border-white shadow"></div>
+      <div className="absolute -left-7 top-5 w-4 h-4 bg-emerald-600 rounded-full border-2 border-white shadow"></div>
 
       {/* 🧩 Event Card */}
       <div className="bg-white rounded-xl shadow-md p-4">
         <div className="flex justify-between items-center mb-2">
           {/* 🧠 Icon + Event Type */}
-          <div className="flex items-center gap-2 text-purple-700 font-semibold">
+          <div className="flex items-center gap-2 text-emerald-800 font-semibold">
             <span className="text-xl">{getIcon()}</span>
             <span>{entry.eventType}</span>
           </div>

@@ -217,9 +217,6 @@ export default function AttributesPage() {
       <div className="max-w-6xl mx-auto px-6 py-6">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              CRM Workspace
-            </p>
             <div className="flex items-center gap-2 mt-1">
               <div className="h-8 w-8 rounded-md bg-emerald-100 flex items-center justify-center">
                 <SlidersHorizontal size={16} className="text-emerald-700" />
@@ -239,7 +236,7 @@ export default function AttributesPage() {
                 type="checkbox"
                 checked={showInactive}
                 onChange={e => setShowInactive(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
               />
               Show inactive
             </label>
@@ -250,7 +247,7 @@ export default function AttributesPage() {
               disabled={!canManage}
               className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold ${
                 canManage
-                  ? "bg-purple-600 text-white hover:bg-purple-700"
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
                   : "bg-slate-200 text-slate-400 cursor-not-allowed"
               }`}
             >
@@ -362,7 +359,7 @@ export default function AttributesPage() {
                             disabled={!canManage}
                             className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${
                               canManage
-                                ? "text-purple-600 hover:bg-purple-50"
+                                ? "text-emerald-700 hover:bg-emerald-50"
                                 : "text-slate-400 cursor-not-allowed"
                             }`}
                           >
@@ -420,4 +417,3 @@ export default function AttributesPage() {
     </div>
   );
 }
-

@@ -50,7 +50,7 @@ import Contact360 from "./pages/CRM/Contact360/Contact360";
 // Catalog
 import ProductCatalog from "./pages/Businesses/ProductCatalog";
 import ProductForm from "./pages/Businesses/ProductForm";
-import CatalogDashboard from "./pages/Businesses/CatalogDashboard";
+
 import BusinessApprovals from "./pages/Businesses/BusinessApprovals";
 
 // Campaigns
@@ -292,10 +292,10 @@ function App() {
               }
             />
             <Route
-              path="catalog/insights"
+              path="catalog/form/:productId"
               element={
-                <FeatureGuard code={FK.CATALOG_VIEW}>
-                  <CatalogDashboard />
+                <FeatureGuard code={FK.CATALOG_CREATE}>
+                  <ProductForm />
                 </FeatureGuard>
               }
             />
