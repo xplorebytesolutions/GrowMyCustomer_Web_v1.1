@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { ChevronDown, X } from "lucide-react";
 import { toast } from "react-toastify";
@@ -10,6 +10,7 @@ export default function SuperAdminBusinessSelector({
   onSelect,
   onClear,
 }) {
+  const rootRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
@@ -60,8 +61,33 @@ export default function SuperAdminBusinessSelector({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event) {
+      const root = rootRef.current;
+      if (!root) return;
+      if (root.contains(event.target)) return;
+      setOpen(false);
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown, true);
+    document.addEventListener("touchstart", handlePointerDown, true);
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown, true);
+      document.removeEventListener("touchstart", handlePointerDown, true);
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -130,7 +156,6 @@ export default function SuperAdminBusinessSelector({
                   <div className="text-sm font-semibold text-gray-900 truncate">
                     {b.name}
                   </div>
-                  <div className="text-xs text-gray-500 truncate">{b.id}</div>
                 </button>
               ))
             )}
