@@ -298,7 +298,6 @@ function App() {
             />
 
             {/* ----- Messaging Workspace + child routes ----- */}
-            {/* ----- Messaging Workspace + child routes ----- */}
             <Route
               path="messaging"
               element={
