@@ -1,17 +1,13 @@
-// 📄 File: src/App.jsx
-
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
 // Auth provider (server-authoritative session/claims)
 // import { AuthProvider } from "./app/providers/AuthProvider";
 import AuthProvider from "./app/providers/AuthProvider";
-// 🔐 Guards
 import ProtectedRoute from "./app/routes/guards/ProtectedRoute";
 import AdminRouteGuard from "./app/routes/guards/AdminRouteGuard";
 import FeatureGuard from "./capabilities/FeatureGuard";
 
-// 🔑 Permission Keys (codes)
 import { FK } from "./capabilities/featureKeys";
 
 // Public Pages
@@ -31,7 +27,6 @@ import CrmWorkspacePage from "./pages/Workspaces/CrmWorkspacePage";
 import CatalogWorkspacePage from "./pages/Workspaces/CatalogWorkspacePage";
 import CampaignWorkspacePage from "./pages/Workspaces/CampaignWorkspacePage";
 import AdminWorkspacePage from "./pages/Workspaces/AdminWorkspacePage";
-import InsightsWorkspacePage from "./pages/Workspaces/InsightsWorkspacePage";
 import MessagingWorkspacePage from "./pages/Workspaces/MessagingWorkspacePage";
 import AutomationWorkspace from "./pages/Workspaces/AutomationWorkspace";
 import InboxWorkspace from "./pages/Workspaces/InboxWorkspace";
@@ -93,6 +88,8 @@ import WebhookSettings from "./pages/Tracking/WebhookSettings";
 import LibraryBrowsePage from "./pages/TemplateBuilder/LibraryBrowsePage";
 import DraftEditorPage from "./pages/TemplateBuilder/DraftEditorPage";
 import ApprovedTemplatesPage from "./pages/TemplateBuilder/ApprovedTemplatesPage";
+import TemplateBuilderLayout from "./pages/TemplateBuilder/TemplateBuilderLayout";
+import DraftsListPage from "./pages/TemplateBuilder/DraftsListPage";
 
 // Payment / Billing
 import BillingPage from "./pages/Payment/BillingPage";
@@ -143,7 +140,7 @@ const isDev = process.env.NODE_ENV === "development";
 function App() {
   return (
     <AuthProvider>
-      {/* 🔐 Wrap entire app tree with EntitlementsProvider */}
+      {/* Wrap entire app tree with EntitlementsProvider */}
       <EntitlementsProvider>
         <Routes>
           {/* ---------- Public Routes ---------- */}
@@ -533,27 +530,55 @@ function App() {
                 </FeatureGuard>
               }
             />
-            <Route
-              path="template-builder/library"
-              element={
-                <FeatureGuard code={FK.TEMPLATE_BUILDER_LIBRARY_BROWSE}>
-                  <LibraryBrowsePage />
-                </FeatureGuard>
-              }
-            />
+
+            {/* Unified Template Builder Layout */}
+            <Route path="template-builder" element={<TemplateBuilderLayout />}>
+              <Route index element={<Navigate to="library" replace />} />
+              
+              <Route
+                path="library"
+                element={
+                  <FeatureGuard code={FK.TEMPLATE_BUILDER_LIBRARY_BROWSE}>
+                   <LibraryBrowsePage />
+                  </FeatureGuard>
+                }
+              />
+              <Route
+                path="drafts"
+                element={
+                  <FeatureGuard code={FK.TEMPLATE_BUILDER_CREATE_DRAFT}>
+                    <DraftsListPage />
+                  </FeatureGuard>
+                }
+              />
+              <Route
+                path="pending"
+                element={
+                  <FeatureGuard code={FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW}>
+                   <ApprovedTemplatesPage forcedStatus="PENDING" />
+                 </FeatureGuard>
+                }
+              />
+              <Route
+                path="approved"
+                element={
+                  <FeatureGuard code={FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW}>
+                   <ApprovedTemplatesPage />
+                 </FeatureGuard>
+                }
+              />
+            </Route>
 
             <Route
-              path="template-builder/approved"
+              path="template-builder/drafts/:draftId"
               element={
-                <FeatureGuard
-                  code={FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW}
-                >
-                  <ApprovedTemplatesPage />
+                <FeatureGuard code={FK.TEMPLATE_BUILDER_CREATE_DRAFT}>
+                  <DraftEditorPage />
                 </FeatureGuard>
               }
             />
             <Route
-              path="template-builder/drafts"
+              path="template-builder/drafts/:draftId"
               element={
                 <FeatureGuard code={FK.TEMPLATE_BUILDER_CREATE_DRAFT}>
                   <DraftEditorPage />

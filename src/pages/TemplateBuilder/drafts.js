@@ -1,5 +1,4 @@
-// 📄 src/api/templateBuilder/drafts.js
-import axiosClient from "../axiosClient";
+import axiosClient from "../../api/axiosClient";
 
 // Draft CRUD (under /drafts)
 export async function createDraft(payload) {
@@ -20,7 +19,7 @@ export async function getDraft(draftId) {
 }
 
 /**
- * ✅ Backend: POST /api/template-builder/drafts/{draftId}/variants
+ * Backend: POST /api/template-builder/drafts/{draftId}/variants
  */
 export async function upsertVariant(draftId, payload) {
   const { data } = await axiosClient.post(
@@ -31,7 +30,7 @@ export async function upsertVariant(draftId, payload) {
 }
 
 /**
- * ✅ Backend: GET /api/template-builder/drafts/{draftId}/status
+ * Backend: GET /api/template-builder/drafts/{draftId}/status
  */
 export async function getStatus(draftId) {
   const { data } = await axiosClient.get(
@@ -41,7 +40,7 @@ export async function getStatus(draftId) {
 }
 
 /**
- * ✅ Backend: GET /api/template-builder/preview?draftId=...&language=...
+ * Backend: GET /api/template-builder/preview?draftId=...&language=...
  */
 export async function getPreview(draftId, language = "en_US") {
   const { data } = await axiosClient.get("/template-builder/preview", {
@@ -73,16 +72,25 @@ export async function nameCheck(draftId, language = "en_US") {
   return data;
 }
 
-export async function duplicateDraft(draftId) {
+export async function duplicateDraft(draftId, key) {
   const { data } = await axiosClient.post(
-    `/template-builder/${encodeURIComponent(draftId)}/duplicate`
+    `/template-builder/drafts/${encodeURIComponent(draftId)}/duplicate`,
+    { key }
   );
   return data;
 }
 
 export async function deleteDraft(draftId) {
   const { data } = await axiosClient.delete(
-    `/template-builder/${encodeURIComponent(draftId)}`
+    `/template-builder/drafts/${encodeURIComponent(draftId)}`
+  );
+  return data;
+}
+
+export async function deleteApprovedTemplate(name, language = "en_US") {
+  const { data } = await axiosClient.delete(
+    `/template-builder/templates/${encodeURIComponent(name)}`,
+    { params: { language } }
   );
   return data;
 }

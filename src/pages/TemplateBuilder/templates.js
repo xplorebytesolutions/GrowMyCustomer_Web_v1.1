@@ -1,5 +1,4 @@
-// 📄 src/api/templateBuilder/templates.js
-import axiosClient from "../axiosClient";
+import axiosClient from "../../api/axiosClient";
 
 /**
  * DELETE /api/template-builder/templates/{name}?language=

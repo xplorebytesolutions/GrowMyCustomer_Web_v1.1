@@ -1,40 +1,651 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { ChevronLeft, Trash2, Info } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  Eye,
+  RefreshCw,
+  X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { toast } from "react-toastify";
+import dayjs from "dayjs";
+
+import axiosClient from "../../api/axiosClient";
+import { useAuth } from "../../app/providers/AuthProvider";
 import { Card } from "../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+} from "../../components/ui/dialog";
+import WhatsAppTemplatePreview from "./components/WhatsAppTemplatePreview";
+import TemplateBuilderTabs from "./components/TemplateBuilderTabs";
+import { deleteApprovedTemplate } from "./drafts";
+import DeleteConfirmationModal from "./components/DeleteConfirmationModal";
 
-// NOTE: Minimal scaffold. We only know DELETE /templates/{name}?language=
-// In Step 29, once we confirm a list endpoint (e.g., GET /api/whatsapp-templates),
-// we’ll replace the “empty state” with a real grid, using axiosClient.
+const SYNC_ENDPOINT = bid => `templates/sync/${bid}`; // POST
 
-export default function ApprovedTemplatesPage() {
+const isGuid = v =>
+  !!v &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    v
+  );
+
+function useDebouncedValue(value, delay = 250) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
+}
+
+function normalizeLanguage(code) {
+  const v = String(code || "");
+  if (!v) return "—";
+  if (v === "en_US") return "English (US)";
+  return v;
+}
+
+function statusLabel(status) {
+  const s = String(status || "").toUpperCase();
+  return s === "APPROVED" ? "Active" : "Rejected";
+}
+
+function statusPillClass(status) {
+  const s = String(status || "").toUpperCase();
+  return s === "APPROVED"
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : "bg-red-50 text-red-700 border-red-200";
+}
+
+function safeIsoDate(v) {
+  try {
+    const d = v ? new Date(v) : null;
+    return d && !Number.isNaN(d.getTime()) ? d.toISOString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractPlaceholderMax(text) {
+  const s = String(text || "");
+  const re = /\{\{\s*(\d+)\s*\}\}/g;
+  let max = 0;
+  let m;
+  while ((m = re.exec(s))) {
+    const n = Number(m[1]);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  return max;
+}
+
+function mapHeaderKindToType(headerKind) {
+  const hk = String(headerKind || "").toLowerCase();
+  if (hk === "text") return "TEXT";
+  if (hk === "image") return "IMAGE";
+  if (hk === "video") return "VIDEO";
+  if (hk === "document") return "DOCUMENT";
+  return "NONE";
+}
+
+function normalizeButtonsForPreview(buttons) {
+  const list = Array.isArray(buttons) ? buttons : [];
+  return list
+    .map(b => {
+      const type = String(b?.type || "").toUpperCase();
+      const text = String(b?.text || "");
+      const param = b?.parameterValue ?? b?.ParameterValue ?? null;
+      if (!type) return null;
+      if (type === "URL")
+        return { type: "URL", text, url: String(param || "") };
+      if (type === "PHONE" || type === "PHONE_NUMBER")
+        return {
+          type: "PHONE_NUMBER",
+          text,
+          phone_number: String(param || ""),
+        };
+      if (type === "QUICK_REPLY") return { type: "QUICK_REPLY", text };
+      return { type, text };
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+
+export default function ApprovedTemplatesPage({ forcedStatus }) {
+  const { effectiveBusinessId, businessId: ctxBusinessId } = useAuth();
+
+  const businessId = useMemo(
+    () =>
+      effectiveBusinessId ||
+      ctxBusinessId ||
+      localStorage.getItem("businessId") ||
+      null,
+    [ctxBusinessId, effectiveBusinessId]
+  );
+  const hasValidBusiness = isGuid(businessId);
+
+  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [deletingInfo, setDeletingInfo] = useState(null); // { name, language }
+  const [templates, setTemplates] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Use forcedStatus if provided, otherwise default to empty (All)
+  const [status, setStatus] = useState(forcedStatus || "");
+  const [sp] = useSearchParams();
+  const q = sp.get("q") || "";
+  const categoryFilter = sp.get("category") || "ALL";
+  const qDebounced = useDebouncedValue(q, 250);
+
+  const [sortKey, setSortKey] = useState("updatedAt");
+  const [sortDir, setSortDir] = useState("desc"); // asc | desc
+
+  const [selected, setSelected] = useState(() => new Set());
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewMeta, setPreviewMeta] = useState(null); 
+
+  const previewCacheRef = useRef(new Map());
+
+  // Update status when forcedStatus changes (e.g. navigation between tabs)
+  useEffect(() => {
+    setPage(1);
+    if (forcedStatus) setStatus(forcedStatus);
+    else setStatus("");
+  }, [forcedStatus]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [qDebounced, categoryFilter]);
+
+  const loadTemplates = useCallback(async () => {
+    if (!hasValidBusiness) return;
+    setLoading(true);
+    try {
+      const res = await axiosClient.get(`templates/${businessId}`, {
+        params: {
+          q: qDebounced.trim() || undefined,
+          status: status || undefined,
+          category: categoryFilter !== "ALL" ? categoryFilter : undefined,
+          page,
+          pageSize,
+          sortKey,
+          sortDir
+        },
+        __silentToast: true,
+      });
+
+      if (res?.data?.success) {
+        setTemplates(Array.isArray(res.data.templates) ? res.data.templates : []);
+        setTotalCount(res.data.totalCount || 0);
+        setTotalPages(res.data.totalPages || 0);
+      } else {
+        toast.error("Failed to load templates.");
+        setTemplates([]);
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Error loading templates.");
+      setTemplates([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [businessId, hasValidBusiness, qDebounced, status, categoryFilter, page, pageSize, sortKey, sortDir]);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
+
+  const handleSync = async () => {
+    if (!hasValidBusiness || syncing) return;
+    setSyncing(true);
+    try {
+      const { data } = await axiosClient.post(SYNC_ENDPOINT(businessId));
+      if (data.success) {
+        toast.success(data.message || "Sync started...");
+        loadTemplates();
+      } else {
+        toast.error(data.message || "Sync failed");
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Sync error");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDeleteClick = (name, language) => {
+    setDeletingInfo({ name, language });
+  };
+
+  const confirmDeleteApproved = async () => {
+    if (!deletingInfo) return;
+    const { name, language } = deletingInfo;
+    
+    try {
+      await deleteApprovedTemplate(name, language);
+      toast.success("Template deleted successfully");
+      setTemplates(prev => 
+        prev.filter(t => !((t.name || t.Name) === name && (t.languageCode || t.LanguageCode) === language))
+      );
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to delete template");
+    } finally {
+      setDeletingInfo(null);
+    }
+  };
+
+  const setSort = nextKey => {
+    setPage(1);
+    if (sortKey === nextKey) {
+      setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(nextKey);
+      setSortDir("asc");
+    }
+  };
+
+  // Now server-side paged, so sortedTemplates is just the current page
+  const sortedTemplates = templates;
+
+  const summary = useMemo(() => {
+    return {
+      count: totalCount,
+      selected: selected.size,
+    };
+  }, [selected.size, totalCount]);
+
+  const allSelected = useMemo(() => {
+    if (sortedTemplates.length === 0) return false;
+    return sortedTemplates.every(t => selected.has(`${t.name ?? t.Name}::${t.languageCode ?? t.LanguageCode}`));
+  }, [selected, sortedTemplates]);
+
+  const toggleAll = () => {
+         setSelected(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        next.clear();
+        return next;
+      }
+      for (const t of sortedTemplates) {
+        const key = `${t.name ?? t.Name}::${t.languageCode ?? t.LanguageCode}`;
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const toggleOne = (name, languageCode) => {
+     const key = `${name}::${languageCode}`;
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const loadPreview = useCallback(
+    async (name, languageCode) => {
+      if (!hasValidBusiness || !name) return;
+
+      const cacheKey = `${name}::${languageCode || ""}`;
+      const cached = previewCacheRef.current.get(cacheKey);
+      if (cached) {
+        setPreviewMeta(cached);
+        setPreviewOpen(true);
+        return;
+      }
+
+      try {
+        const res = await axiosClient.get(
+          `templates/${businessId}/${encodeURIComponent(name)}`,
+          {
+            params: { language: languageCode || undefined },
+            __silentToast: true,
+          }
+        );
+
+        const tpl = res?.data?.template || res?.data || null;
+        const meta = {
+          name: tpl?.name ?? tpl?.Name ?? name,
+          languageCode: tpl?.languageCode ?? tpl?.LanguageCode ?? languageCode,
+          category: tpl?.category ?? tpl?.Category ?? "",
+          status: tpl?.status ?? tpl?.Status ?? "",
+          body: tpl?.body ?? tpl?.Body ?? "",
+          headerKind: tpl?.headerKind ?? tpl?.HeaderKind ?? "none",
+          buttons: tpl?.buttons ?? tpl?.Buttons ?? [],
+        };
+
+        previewCacheRef.current.set(cacheKey, meta);
+        setPreviewMeta(meta);
+        setPreviewOpen(true);
+      } catch (e) {
+        toast.error(e?.response?.data?.message || "Failed to load template preview.");
+      }
+    },
+    [businessId, hasValidBusiness]
+  );
+
+  const previewDraft = useMemo(() => {
+    if (!previewMeta) return null;
+    const bodyText = String(previewMeta.body || "");
+    const max = extractPlaceholderMax(bodyText);
+    const examples = [];
+    for (let i = 1; i <= max; i++) {
+      examples.push(i === 1 ? "12345" : `Example ${i}`);
+    }
+
+    return {
+      name: previewMeta.name,
+      category: previewMeta.category,
+      language: previewMeta.languageCode || "en_US",
+      headerType: mapHeaderKindToType(previewMeta.headerKind),
+      headerText: "",
+      headerMediaUrl: null,
+      bodyText,
+      footerText: "",
+      buttons: normalizeButtonsForPreview(previewMeta.buttons),
+      examples,
+    };
+  }, [previewMeta]);
+
+  const SortIcon = ({ columnKey }) => {
+    if (sortKey !== columnKey)
+      return <ArrowUpDown size={14} className="text-slate-300" />;
+    return sortDir === "asc" ? (
+      <ArrowUp size={14} className="text-slate-600" />
+    ) : (
+      <ArrowDown size={14} className="text-slate-600" />
+    );
+  };
+
+  const pageTitle = forcedStatus
+    ? forcedStatus === "PENDING"
+      ? "Pending Approval"
+      : `${forcedStatus} Templates`
+    : "Approved Templates";
+
   return (
-    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
-      <Link
-        to="/app/template-builder/library"
-        className="text-purple-600 hover:underline flex items-center gap-2 mb-4"
-      >
-        <ChevronLeft size={18} /> Back to Library
-      </Link>
-
-      <h2 className="text-2xl font-bold text-purple-800 mb-2">
-        Approved Templates
-      </h2>
-      <p className="text-sm text-gray-600 mb-4">
-        View your approved templates here and delete them from Meta if needed.
-      </p>
-
-      <Card className="p-6 flex items-start gap-3">
-        <Info className="text-indigo-500 mt-0.5" size={18} />
-        <div className="text-sm text-gray-700">
-          We’ll load the approved list after API confirmation in Step 29. The
-          delete action will call:
-          <pre className="mt-2 text-xs bg-gray-50 p-2 rounded border">
-            DELETE
-            /api/template-builder/templates/&lt;name&gt;?language=&lt;en_US&gt;
-          </pre>
+    <div className="space-y-4 font-sans max-h-[calc(100vh-140px)] flex flex-col">
+       {/* Sync & Refresh Toolbar */}
+       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
+         <div>
+          <h2 className="text-lg font-bold text-slate-900">{pageTitle}</h2>
+          <p className="text-xs text-slate-500">
+            Total: {summary.count} • Selected: {summary.selected}
+          </p>
         </div>
-      </Card>
+
+        <div className="flex items-center gap-2">
+           <button
+            type="button"
+            onClick={handleSync}
+            disabled={!hasValidBusiness || syncing}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+            title="Sync templates from Meta"
+          >
+            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Syncing..." : "Sync from Meta"}
+          </button>
+        </div>
+      </div>
+
+
+       {/* Content Table */}
+      {!hasValidBusiness ? (
+        <Card className="p-6 text-slate-700">
+          Select a business (top bar) and try again.
+        </Card>
+      ) : (
+        <div className="flex gap-6 items-start">
+          <Card className="flex-1 overflow-hidden border border-slate-200">
+            <div className="overflow-auto">
+              <table className="w-full text-sm table-fixed">
+                <thead className="bg-white border-b border-slate-200">
+                  <tr className="text-left text-slate-700">
+                    <th className="w-12 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleAll}
+                      />
+                    </th>
+                    <th
+                      className="w-[360px] px-4 py-3 font-semibold cursor-pointer select-none"
+                      onClick={() => setSort("name")}
+                    >
+                      <div className="inline-flex items-center gap-2">
+                        Template name <SortIcon columnKey="name" />
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 font-semibold cursor-pointer select-none"
+                      onClick={() => setSort("category")}
+                    >
+                      <div className="inline-flex items-center gap-2">
+                        Category <SortIcon columnKey="category" />
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 font-semibold cursor-pointer select-none"
+                      onClick={() => setSort("language")}
+                    >
+                      <div className="inline-flex items-center gap-2">
+                        Language <SortIcon columnKey="language" />
+                      </div>
+                    </th>
+                    <th
+                      className="w-[220px] px-4 py-3 font-semibold cursor-pointer select-none"
+                      onClick={() => setSort("status")}
+                    >
+                      <div className="inline-flex items-center gap-2">
+                        Status <SortIcon columnKey="status" />
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 font-semibold">Top block reason</th>
+                    <th
+                      className="w-[160px] px-4 py-3 font-semibold cursor-pointer select-none"
+                      onClick={() => setSort("updatedAt")}
+                    >
+                      <div className="inline-flex items-center gap-2">
+                        Last edited <SortIcon columnKey="updatedAt" />
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white">
+                  {sortedTemplates.map(t => {
+                    const name = t?.name ?? t?.Name ?? "";
+                    const languageCode = t?.languageCode ?? t?.LanguageCode ?? "en_US";
+                    const category = t?.category ?? t?.Category ?? "—";
+                    const statusVal = t?.status ?? t?.Status ?? "—";
+                    const key = `${name}::${languageCode}`;
+                    const checked = selected.has(key);
+                    const bodyPreview = String(
+                      t?.bodyPreview ??
+                        t?.BodyPreview ??
+                        t?.body ??
+                        t?.Body ??
+                        ""
+                    ).trim();
+                    const updatedAt =
+                      t?.updatedAt ??
+                      t?.UpdatedAt ??
+                      t?.lastSyncedAt ??
+                      t?.LastSyncedAt ??
+                      null;
+
+                    return (
+                      <tr
+                        key={key}
+                        className="border-b border-slate-100 hover:bg-slate-50"
+                      >
+                        <td className="px-4 py-4">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleOne(name, languageCode)}
+                          />
+                        </td>
+                        <td className="px-4 py-4 w-[360px]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 max-w-[280px]">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-900 truncate">
+                                  {name || "—"}
+                                </span>
+                                  <button
+                                    type="button"
+                                    className="text-slate-400 hover:text-emerald-700"
+                                    title="Preview"
+                                    onClick={() => loadPreview(name, languageCode)}
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-all ml-1"
+                                    title="Delete Template"
+                                    onClick={() => handleDeleteClick(name, languageCode)}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                              </div>
+                              {bodyPreview ? (
+                                <div className="text-xs text-slate-500 mt-1 truncate">
+                                  {bodyPreview}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">{category || "—"}</td>
+                        <td className="px-4 py-4">{normalizeLanguage(languageCode)}</td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={
+                              "inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold " +
+                              statusPillClass(statusVal)
+                            }
+                          >
+                            {statusLabel(statusVal)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-slate-700">--</td>
+                        <td className="px-4 py-4 text-slate-700 whitespace-nowrap">
+                          {updatedAt ? dayjs(updatedAt).format("D MMM YYYY") : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 0 && (
+                <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200 sm:px-6">
+                  <div className="flex justify-between flex-1 sm:hidden">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-slate-700">
+                        Showing <span className="font-medium">{(page - 1) * pageSize + 1}</span> to <span className="font-medium">{Math.min(page * pageSize, totalCount)}</span> of{' '}
+                        <span className="font-medium">{totalCount}</span> results
+                      </p>
+                    </div>
+                    <div>
+                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button
+                          onClick={() => setPage(p => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                          className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          <span className="sr-only">Previous</span>
+                          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                        
+                        <span className="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">
+                          Page {page} of {totalPages}
+                        </span>
+
+                        <button
+                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                          disabled={page === totalPages || totalPages === 0}
+                          className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          <span className="sr-only">Next</span>
+                          <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      <Dialog 
+        open={previewOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewOpen(false);
+            setPreviewMeta(null);
+          }
+        }}
+      >
+      <DialogContent className="max-w-[380px] p-0 overflow-hidden !border-none !bg-transparent !shadow-none [&>button]:hidden">
+        {previewDraft && (
+          <div className="flex flex-col items-center w-full relative">
+             <button
+                type="button"
+                onClick={() => setPreviewOpen(false)}
+                className="absolute -top-10 right-0 p-2 text-white/80 hover:text-white transition-colors focus:outline-none"
+                title="Close Preview"
+             >
+               <X size={24} />
+             </button>
+
+             <div className="w-full">
+                <WhatsAppTemplatePreview draft={previewDraft} />
+             </div>
+          </div>
+        )}
+      </DialogContent>
+      </Dialog>
+
+      <DeleteConfirmationModal
+        isOpen={!!deletingInfo}
+        onClose={() => setDeletingInfo(null)}
+        onConfirm={confirmDeleteApproved}
+        title="Delete Approved Template?"
+        description="This will permanently delete the template from your account and Meta. This action cannot be undone."
+      />
     </div>
   );
 }

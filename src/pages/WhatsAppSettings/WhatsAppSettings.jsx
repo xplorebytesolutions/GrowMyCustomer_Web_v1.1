@@ -1,14 +1,13 @@
 // 📄 src/pages/Settings/WhatsAppSettings.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
+import { useAuth } from "../../app/providers/AuthProvider";
 import { 
   Save, 
   Trash2, 
   CheckCircle, 
   Phone, 
-  Hash, 
-  Tag, 
   Plus, 
   RefreshCw, 
   Star,
@@ -33,11 +32,22 @@ const TOKEN_KEY = "xbyte_token";
 const GUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function getBusinessId() {
+function getBusinessIdFromStorage() {
   try {
-    const saved = localStorage.getItem("business_id");
-    if (saved && GUID_RE.test(saved)) return saved;
+    // Keep in sync with AuthProvider / axiosClient
+    const keys = ["sa_selectedBusinessId", "businessId", "business_id"];
+    for (const key of keys) {
+      const saved = localStorage.getItem(key);
+      if (saved && GUID_RE.test(saved)) return saved;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
+function getBusinessIdFromJwt() {
+  try {
     const jwt = localStorage.getItem(TOKEN_KEY);
     if (!jwt) return null;
 
@@ -59,6 +69,16 @@ function getBusinessId() {
   } catch {
     return null;
   }
+}
+
+function resolveBusinessId(effectiveBusinessIdFromContext) {
+  if (
+    typeof effectiveBusinessIdFromContext === "string" &&
+    GUID_RE.test(effectiveBusinessIdFromContext)
+  ) {
+    return effectiveBusinessIdFromContext;
+  }
+  return getBusinessIdFromStorage() || getBusinessIdFromJwt();
 }
 
 // Normalize provider names
@@ -96,6 +116,9 @@ const blank = {
 };
 
 export default function WhatsAppSettings() {
+  const auth = useAuth();
+  const effectiveBusinessIdFromContext = auth?.effectiveBusinessId || null;
+
   const [formData, setFormData] = useState(blank);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -126,16 +149,57 @@ export default function WhatsAppSettings() {
 
   const [connectingEsu, setConnectingEsu] = useState(false);
 
-  const businessId = useMemo(getBusinessId, []);
+  const businessId = useMemo(
+    () => resolveBusinessId(effectiveBusinessIdFromContext),
+    [effectiveBusinessIdFromContext]
+  );
   const hasBusinessContext = !!businessId;
 
-  const withBiz = (cfg = {}) =>
-    businessId
-      ? {
-          ...cfg,
-          headers: { ...(cfg.headers || {}), "X-Business-Id": businessId },
-        }
-      : cfg;
+  const withBiz = useCallback(
+    (cfg = {}) =>
+      businessId
+        ? {
+            ...cfg,
+            headers: { ...(cfg.headers || {}), "X-Business-Id": businessId },
+          }
+        : cfg,
+    [businessId]
+  );
+
+  // ===== Draft persistence (prevents "fields disappear" on navigation/tab switch) =====
+  const draftKey = useCallback(
+    () => `xb_whatsapp_settings_draft:v1:${businessId || "no-biz"}`,
+    [businessId]
+  );
+  const DRAFT_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+  const [canPersistDraft, setCanPersistDraft] = useState(false);
+  const hasUserEditedRef = useRef(false);
+  const prevBizIdRef = useRef(businessId);
+
+  const restoreFromDraft = useCallback(() => {
+    try {
+      const raw = sessionStorage.getItem(draftKey());
+      if (!raw) return false;
+
+      const data = JSON.parse(raw);
+      if (!data || data.v !== 1) return false;
+      if (data.businessId !== businessId) return false;
+      if (data.at && Date.now() - new Date(data.at).getTime() > DRAFT_TTL_MS) {
+        sessionStorage.removeItem(draftKey());
+        return false;
+      }
+
+      if (data.formData && typeof data.formData === "object") {
+        setFormData(p => ({ ...p, ...data.formData }));
+      }
+      if (typeof data.hasSavedOnce === "boolean") setHasSavedOnce(data.hasSavedOnce);
+      if (typeof data.savedProvider === "string") setSavedProvider(data.savedProvider);
+
+      return true;
+    } catch {
+      return false;
+    }
+  }, [DRAFT_TTL_MS, businessId, draftKey]);
 
   // ===== Numbers API helpers =====
   const listNumbers = async provider => {
@@ -206,6 +270,55 @@ export default function WhatsAppSettings() {
     [formData.provider]
   );
   const showFetchButton = hasSavedOnce;
+
+  // Restore draft immediately on biz change (or first mount)
+  useEffect(() => {
+    const bizChanged =
+      prevBizIdRef.current !== undefined && prevBizIdRef.current !== businessId;
+    prevBizIdRef.current = businessId;
+
+    hasUserEditedRef.current = false;
+    setCanPersistDraft(false);
+
+    const restored = restoreFromDraft();
+    if (restored) {
+      hasUserEditedRef.current = true; // treat restored state as user-owned
+      setCanPersistDraft(true);
+      return;
+    }
+
+    if (bizChanged) {
+      setFormData(blank);
+      setSenders([]);
+      setHasSavedOnce(false);
+      setSavedProvider(null);
+    }
+  }, [businessId, restoreFromDraft]);
+
+  // Persist draft (debounced) so tab/menu switching doesn't wipe inputs
+  useEffect(() => {
+    if (!canPersistDraft) return;
+
+    const t = setTimeout(() => {
+      try {
+        sessionStorage.setItem(
+          draftKey(),
+          JSON.stringify({
+            v: 1,
+            businessId,
+            at: new Date().toISOString(),
+            formData,
+            hasSavedOnce,
+            savedProvider,
+          })
+        );
+      } catch {
+        // ignore
+      }
+    }, 350);
+
+    return () => clearTimeout(t);
+  }, [businessId, canPersistDraft, draftKey, formData, hasSavedOnce, savedProvider]);
 
   // ===== ESU: load connection status (JWT-based) =====
   useEffect(() => {
@@ -310,10 +423,11 @@ export default function WhatsAppSettings() {
         // No settings configured yet (expected state)
         if (!settings || Object.keys(settings).length === 0) {
           // UX hint (safe even if removed later; logic below still holds)
-          toast.info("ℹ️ No WhatsApp settings found. You can create them now.");
+          toast.info("No WhatsApp settings found. You can create them now.");
           setHasSavedOnce(false);
           setSavedProvider(null);
           setSenders([]);
+          setCanPersistDraft(true);
           return;
         }
 
@@ -322,15 +436,17 @@ export default function WhatsAppSettings() {
 
         setFormData(prev => ({
           ...prev,
-          provider,
-          apiUrl: settings.apiUrl || "",
-          apiKey: secret,
-          wabaId: settings.wabaId || "",
-          senderDisplayName: settings.senderDisplayName || "",
-          webhookSecret: settings.webhookSecret || "",
-          webhookVerifyToken: settings.webhookVerifyToken || "",
-          webhookCallbackUrl: settings.webhookCallbackUrl || "",
-          isActive: settings.isActive ?? true,
+          provider: provider || prev.provider,
+          apiUrl: settings.apiUrl || prev.apiUrl || "",
+          apiKey: secret || prev.apiKey || "",
+          wabaId: settings.wabaId || prev.wabaId || "",
+          senderDisplayName: settings.senderDisplayName || prev.senderDisplayName || "",
+          webhookSecret: settings.webhookSecret || prev.webhookSecret || "",
+          webhookVerifyToken:
+            settings.webhookVerifyToken || prev.webhookVerifyToken || "",
+          webhookCallbackUrl:
+            settings.webhookCallbackUrl || prev.webhookCallbackUrl || "",
+          isActive: settings.isActive ?? prev.isActive ?? true,
         }));
 
         setSavedProvider(provider);
@@ -341,6 +457,7 @@ export default function WhatsAppSettings() {
           !!settings.apiToken ||
           !!settings.wabaId;
         setHasSavedOnce(!!existed);
+        setCanPersistDraft(true);
 
         await fetchNumbers(provider);
       } catch (err) {
@@ -361,7 +478,7 @@ export default function WhatsAppSettings() {
       mounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [businessId]);
 
   // // ===== Initial load of saved settings + numbers =====
   // useEffect(() => {
@@ -464,16 +581,22 @@ export default function WhatsAppSettings() {
   // ===== Global form handlers =====
   const handleChange = e => {
     const { name, value } = e.target;
+    hasUserEditedRef.current = true;
+    setCanPersistDraft(true);
     setFormData(p => ({ ...p, [name]: value }));
   };
 
   const handleToggle = e => {
     const { name, checked } = e.target;
+    hasUserEditedRef.current = true;
+    setCanPersistDraft(true);
     setFormData(p => ({ ...p, [name]: checked }));
   };
 
   const handleProviderChange = e => {
     const provider = normalizeProvider(e.target.value);
+    hasUserEditedRef.current = true;
+    setCanPersistDraft(true);
     setFormData(p => ({ ...p, provider }));
   };
 
@@ -506,6 +629,7 @@ export default function WhatsAppSettings() {
 
       setHasSavedOnce(true);
       setSavedProvider(payload.provider);
+      setCanPersistDraft(true);
 
       toast.success("Settings saved.");
     } catch (err) {
@@ -627,9 +751,7 @@ export default function WhatsAppSettings() {
       isTokenExpiringSoon,
       isFullyHealthy,
       phoneCount,
-      hasWaba,
       tokenExpiresAtUtc,
-      debug,
     } = esuStatus;
 
     const formattedExpiry = tokenExpiresAtUtc

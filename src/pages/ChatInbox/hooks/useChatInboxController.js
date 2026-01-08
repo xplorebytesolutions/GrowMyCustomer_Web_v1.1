@@ -430,9 +430,7 @@ export function useChatInboxController() {
             contactPhone: item.contactPhone,
             lastMessagePreview: item.lastMessagePreview,
             lastMessageAt: item.lastMessageAt,
-            // unreadCount: isSelected
-            //   ? 0
-            //   : (localUnread ?? item.unreadCount) || 0,
+
             unreadCount: isSelected
               ? 0
               : (localUnread ?? item.unreadCount) || 0,

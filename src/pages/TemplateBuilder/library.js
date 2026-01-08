@@ -1,5 +1,4 @@
-// 📄 src/api/templateBuilder/library.js
-import axiosClient from "../axiosClient";
+import axiosClient from "../../api/axiosClient";
 
 /**
  * Browse library

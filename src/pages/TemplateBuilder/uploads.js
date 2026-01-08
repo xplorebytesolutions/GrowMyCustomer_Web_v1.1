@@ -1,5 +1,4 @@
-// 📄 src/api/templateBuilder/uploads.js
-import axiosClient from "../axiosClient";
+import axiosClient from "../../api/axiosClient";
 
 /**
  * POST /template-builder/uploads/header (multipart/form-data)

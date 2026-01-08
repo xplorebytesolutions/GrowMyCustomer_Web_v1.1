@@ -38,17 +38,10 @@ const PERM_BY_BLOCK = {
   "template.builder.create.draft": [FK.TEMPLATE_BUILDER_CREATE_DRAFT],
 };
 
+
+
 /* ---------- Tiles ---------- */
 const templateBlocks = [
-  {
-    id: "template.builder.create.draft",
-    label: "My Drafts",
-    description:
-      "Edit header/body/buttons, upload media, preview & submit to Meta.",
-    path: "/app/template-builder/drafts",
-    icon: <ListChecks size={22} />,
-    action: "Manage Drafts",
-  },
   {
     id: "template.builder.library.browse",
     label: "Template Library",
@@ -57,6 +50,15 @@ const templateBlocks = [
     path: "/app/template-builder/library",
     icon: <FolderKanban size={22} />,
     action: "Open Library",
+  },
+  {
+    id: "template.builder.create.draft",
+    label: "My Drafts",
+    description:
+      "Edit header/body/buttons, upload media, preview & submit to Meta.",
+    path: "/app/template-builder/drafts",
+    icon: <ListChecks size={22} />,
+    action: "Manage Drafts",
   },
   {
     id: "template.builder.approved.templates.view",
