@@ -82,7 +82,7 @@ const SignupForTrial = () => {
       }
 
       toast.success(
-        "Account created successfully! Welcome to GrowMyCustomer!"
+        "Account created successfully! Welcome to XploreByte!"
       );
       navigate("/login");
     } catch (err) {
@@ -110,12 +110,15 @@ const SignupForTrial = () => {
         <div className="lg:w-1/2 bg-gradient-to-br from-emerald-50 to-cyan-50 p-6 lg:p-8 flex flex-col justify-center overflow-hidden">
           {/* Logo */}
           <div className="mb-6">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-0.5">
               <img 
-                src="/new_logo_gmc.png" 
-                alt="GrowMyCustomer"
-                className="h-20 w-auto object-contain"
+                src="/logo/Transparent_logo.png" 
+                alt="Logo"
+                className="h-16 w-auto object-contain"
               />
+              <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
+                XploreByte
+              </span>
             </div>
           </div>
 
@@ -142,7 +145,7 @@ const SignupForTrial = () => {
               <span className="text-lg font-bold">1 Month FREE Trial</span>
             </div>
             <p className="text-emerald-100 text-sm">
-              Start your WhatsApp Business journey with our GrowMyCustomer platform
+              Start your WhatsApp Business journey with our XploreByte platform
             </p>
           </div>
 
@@ -239,7 +242,7 @@ const SignupForTrial = () => {
           {/* Form Title */}
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              Create Your GrowMyCustomer Account
+              Create Your XploreByte Account
             </h2>
             <p className="text-gray-600 text-sm">
               Start your 1-month free trial today

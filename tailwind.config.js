@@ -6,6 +6,11 @@ module.exports = {
       fontFamily: {
         inter: ["Inter", "sans-serif"],
         whatsapp: ["Segoe UI", "sans-serif"],
+        roboto: ["Roboto", "sans-serif"],
+        outfit: ["Outfit", "sans-serif"],
+        montserrat: ["Montserrat", "sans-serif"],
+        brand: ["Poppins", "Montserrat", "sans-serif"],
+        poppins: ["Poppins", "sans-serif"],
       },
       colors: {
         sapphire: {

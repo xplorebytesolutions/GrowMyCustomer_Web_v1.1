@@ -156,8 +156,11 @@ export default function Login() {
           {/* Content sits above the pattern */}
           <div className="relative z-10">
             <div className="mb-8">
-              <div className="flex items-center space-x-3 mb-6">
-                <img src="/new_logo_gmc.png" alt="GrowMyCustomer" className="h-20 w-auto object-contain" />
+              <div className="flex items-center gap-0.5 mb-6">
+                <img src="/logo/Transparent_logo.png" alt="Logo" className="h-16 w-auto object-contain" />
+                <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
+                  XploreByte
+                </span>
               </div>
 
               <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Bell } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import UserMenuDropdown from "../common/UserMenuDropdown";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { usePlan } from "../../pages/auth/hooks/usePlan";
@@ -24,7 +24,12 @@ const ROLE_STYLES = {
 };
 
 export default function Topbar() {
+  const location = useLocation();
   const navigate = useNavigate();
+
+  const isWelcomePage =
+    location.pathname === "/app/welcomepage" ||
+    location.pathname === "/app/WelcomePage";
 
   const {
     userName,
@@ -100,27 +105,33 @@ export default function Topbar() {
   }, [hasPlanError, planId, planError, roleKey, userName]);
 
   return (
-    <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
-      <div className="pl-2 lg:pl-4 pr-4 lg:pr-8 py-[9px]">
+    <header
+      className={`sticky top-0 z-50 shadow-sm border-b border-gray-100 transition-all duration-500 ${
+        isWelcomePage
+          ? "bg-white bg-[linear-gradient(90deg,rgba(0,0,0,0.05)_0%,transparent_20%)]"
+          : "bg-white"
+      }`}
+    >
+      <div className="pl-2 lg:pl-4 pr-4 lg:pr-8 py-1">
         <div className="flex items-center justify-between gap-6">
-          {/* Left Side - Brand */}
-          <div className="flex items-center gap-4">
+          {/* Unified Brand Lockup */}
+          <div className="flex items-center">
             <button
               type="button"
               onClick={() => navigate("/app/welcomepage")}
-              className="flex items-center gap-4 hover:opacity-90 transition-all duration-300 group"
-              title="GrowMyCustomer"
+              className="flex items-center gap-0.5 hover:opacity-90 transition-all duration-300 group"
+              title="XploreByte"
             >
               <img
-                src="/new_logo_gmc.png"
-                alt="GrowMyCustomer"
-                className="h-12 w-auto transition-transform duration-300 group-hover:scale-105 object-contain"
+                src="/logo/Transparent_logo.png"
+                alt="XploreByte"
+                className="h-14 w-auto transition-transform duration-300 group-hover:scale-105 object-contain"
               />
+              <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
+                XploreByte
+              </span>
             </button>
           </div>
-
-          {/* Visual Separator */}
-          <div className="hidden lg:block h-8 w-px bg-gray-200 flex-shrink-0" />
 
           {/* Right Side - User Info & Actions */}
           <div className="flex items-center gap-4 ml-auto">
