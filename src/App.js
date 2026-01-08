@@ -298,6 +298,7 @@ function App() {
             />
 
             {/* ----- Messaging Workspace + child routes ----- */}
+            {/* ----- Messaging Workspace + child routes ----- */}
             <Route
               path="messaging"
               element={
@@ -534,12 +535,12 @@ function App() {
             {/* Unified Template Builder Layout */}
             <Route path="template-builder" element={<TemplateBuilderLayout />}>
               <Route index element={<Navigate to="library" replace />} />
-              
+
               <Route
                 path="library"
                 element={
                   <FeatureGuard code={FK.TEMPLATE_BUILDER_LIBRARY_BROWSE}>
-                   <LibraryBrowsePage />
+                    <LibraryBrowsePage />
                   </FeatureGuard>
                 }
               />
@@ -554,17 +555,21 @@ function App() {
               <Route
                 path="pending"
                 element={
-                  <FeatureGuard code={FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW}>
-                   <ApprovedTemplatesPage forcedStatus="PENDING" />
-                 </FeatureGuard>
+                  <FeatureGuard
+                    code={FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW}
+                  >
+                    <ApprovedTemplatesPage forcedStatus="PENDING" />
+                  </FeatureGuard>
                 }
               />
               <Route
                 path="approved"
                 element={
-                  <FeatureGuard code={FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW}>
-                   <ApprovedTemplatesPage />
-                 </FeatureGuard>
+                  <FeatureGuard
+                    code={FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW}
+                  >
+                    <ApprovedTemplatesPage />
+                  </FeatureGuard>
                 }
               />
             </Route>
