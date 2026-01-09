@@ -4,7 +4,6 @@ import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
 import {
   Search,
-  User,
   Send,
   MessageSquare,
   Phone,
@@ -12,7 +11,6 @@ import {
   AlertCircle,
   History,
   X,
-  Plus,
   Users,
 } from "lucide-react";
 
@@ -60,15 +58,15 @@ function PhoneNumberInput({ numbers, setNumbers }) {
   };
 
   const tryAddPhone = (value) => {
-    let normalized = value.replace(/[^0-9+]/g, "");
+    let normalized = value.replace(/\D/g, "");
 
     // Auto-add +91 if it's a 10-digit number and no +
     if (/^\d{10}$/.test(normalized)) {
-      normalized = "+91" + normalized;
+      normalized = "91" + normalized;
     }
 
     // Accept if it's a valid E.164 format (10–15 digits with optional +)
-    if (/^\+?\d{10,15}$/.test(normalized)) {
+    if (/^\d{10,15}$/.test(normalized)) {
       if (!numbers.includes(normalized)) {
         setNumbers([...numbers, normalized]);
       }
@@ -127,6 +125,7 @@ export default function SendTextMessagePage() {
   const [messageLogs, setMessageLogs] = useState([]);
   const [saveContact, setSaveContact] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
+  const [manualContactName, setManualContactName] = useState("");
 
   const navigate = useNavigate();
 
@@ -158,6 +157,46 @@ export default function SendTextMessagePage() {
 
   const numbers = [...new Set([...manualNumbers, ...selectedNumbers])];
 
+  const digitsOnly = (val) => String(val || "").replace(/\D/g, "");
+
+  const getContactDisplayName = (contact) => {
+    const name = String(contact?.name || "").trim();
+    const profileName = String(
+      contact?.profileName || contact?.ProfileName || ""
+    ).trim();
+
+    if (name && name !== "WhatsApp User") return name;
+    if (profileName) return profileName;
+    return name || "Unknown";
+  };
+
+  const findContactByNumber = (num) => {
+    const targetDigits = digitsOnly(num);
+    return contacts.find((c) => digitsOnly(c?.phoneNumber) === targetDigits);
+  };
+
+  const resolveContactNameForSave = (num) => {
+    const contact = findContactByNumber(num);
+    const displayName = getContactDisplayName(contact);
+    if (
+      displayName &&
+      displayName !== "WhatsApp User" &&
+      displayName !== "Unknown"
+    ) {
+      return displayName;
+    }
+
+    if (
+      manualNumbers.length === 1 &&
+      digitsOnly(manualNumbers[0]) === digitsOnly(num)
+    ) {
+      const manual = manualContactName.trim();
+      return manual || undefined;
+    }
+
+    return undefined;
+  };
+
   const handleSend = async () => {
     if (!message || numbers.length === 0) {
       toast.warn("⚠️ Please enter a message and at least one valid number.");
@@ -170,12 +209,15 @@ export default function SendTextMessagePage() {
 
     for (const number of numbers) {
       try {
+        const contactName =
+          saveContact ? resolveContactNameForSave(number) : undefined;
         const res = await axiosClient.post(
           "/messageengine/send-contentfree-text",
           {
             recipientNumber: number,
             textContent: message,
             isSaveContact: saveContact,
+            contactName,
           }
         );
         // Sometimes backend returns specific structure, fallback to typical checks
@@ -195,13 +237,14 @@ export default function SendTextMessagePage() {
     setMessage("");
     setManualNumbers([]);
     setSelectedNumbers([]);
+    setManualContactName("");
   };
 
   // Filter contacts
   const filteredContacts = contacts.filter(
     (c) =>
-      c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
-      c.phoneNumber.includes(contactSearch)
+      getContactDisplayName(c).toLowerCase().includes(contactSearch.toLowerCase()) ||
+      String(c.phoneNumber || "").includes(contactSearch)
   );
 
   return (
@@ -293,13 +336,13 @@ export default function SendTextMessagePage() {
                             className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                               isSelected
                                 ? "bg-emerald-500 text-white shadow-md scale-105"
-                                : getAvatarColor(contact.name || "?")
+                                : getAvatarColor(getContactDisplayName(contact) || "?")
                             }`}
                           >
                             {isSelected ? (
                               <CheckCircle size={16} />
                             ) : (
-                              getInitials(contact.name || "?")
+                              getInitials(getContactDisplayName(contact) || "?")
                             )}
                           </div>
                         </div>
@@ -309,7 +352,7 @@ export default function SendTextMessagePage() {
                               isSelected ? "text-emerald-900" : "text-gray-700"
                             }`}
                           >
-                            {contact.name || "Unknown"}
+                            {getContactDisplayName(contact)}
                           </p>
                           <p className="text-xs text-gray-500 truncate">
                             {contact.phoneNumber}
@@ -351,6 +394,21 @@ export default function SendTextMessagePage() {
                   Automatically save new manual numbers to your Contacts list after sending.
                 </label>
               </div>
+
+              {saveContact && manualNumbers.length === 1 && numbers.length === 1 && (
+                <div className="mt-3">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Contact name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={manualContactName}
+                    onChange={(e) => setManualContactName(e.target.value)}
+                    placeholder="Leave empty to use WhatsApp profile name if available"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                  />
+                </div>
+              )}
             </div>
 
           </div>
