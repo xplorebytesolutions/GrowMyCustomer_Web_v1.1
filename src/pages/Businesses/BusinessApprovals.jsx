@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, PauseCircle, Search, XCircle } from "lucide-react";
+import { Check, ChevronDown, PauseCircle, Search, Trash2, XCircle } from "lucide-react";
 import { createPortal } from "react-dom";
 import { confirmAlert } from "react-confirm-alert";
 import { toast } from "react-toastify";
@@ -501,6 +501,29 @@ export default function BusinessApprovals() {
         })
       );
   };
+    
+  const handleDelete = (id) => {
+    const key = String(id);
+    setLoadingIds(prev => ({ ...prev, [key]: true }));
+
+    axiosClient
+      .delete(`/businesses/${id}`, { withCredentials: true })
+      .then(() => {
+        toast.success("Business permanently deleted");
+        setBusinesses(prev => prev.filter(b => String(b.businessId) !== key));
+      })
+      .catch(err => {
+        const msg = err?.response?.data?.message || err.message || "Failed to delete business";
+        toast.error(msg);
+      })
+      .finally(() =>
+        setLoadingIds(prev => {
+          const copy = { ...prev };
+          delete copy[key];
+          return copy;
+        })
+      );
+  };
 
   const activeTabLabel =
     STATUS_TABS.find(t => t.key === activeTab)?.label || "Businesses";
@@ -634,7 +657,10 @@ export default function BusinessApprovals() {
                 <th className="px-4 py-3 text-left">Email</th>
                 <th className="px-4 py-3 text-left">Contact</th>
                 <th className="px-4 py-3 text-left">Plan</th>
-                <th className="px-4 py-3 text-left">Created</th>
+                <th className="px-4 py-3 text-left">Created At</th>
+                {activeTab === STATUS.approved && (
+                  <th className="px-4 py-3 text-left">Approved At</th>
+                )}
                 <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
@@ -716,6 +742,49 @@ export default function BusinessApprovals() {
                         onConfirm: () => handleStatusChange(id, "hold"),
                       }),
                   });
+                } else if (status === STATUS.approved) {
+                  menuItems.push({
+                    key: "hold",
+                    label: "Put on hold",
+                    icon: <PauseCircle size={14} />,
+                    className:
+                      "w-full px-3 py-2 text-left text-xs font-semibold text-amber-800 hover:bg-amber-50 flex items-center gap-2",
+                    onClick: () =>
+                      confirmAction({
+                        action: "Hold",
+                        businessName: b.companyName,
+                        onConfirm: () => handleStatusChange(id, "hold"),
+                      }),
+                  });
+                  menuItems.push({
+                    key: "reject",
+                    label: "Reject",
+                    icon: <XCircle size={14} />,
+                    className:
+                      "w-full px-3 py-2 text-left text-xs font-semibold text-red-700 hover:bg-red-50 flex items-center gap-2",
+                    onClick: () =>
+                      confirmAction({
+                        action: "Reject",
+                        businessName: b.companyName,
+                        onConfirm: () => handleStatusChange(id, "reject"),
+                      }),
+                  });
+                }
+
+                if (status !== STATUS.approved) {
+                  menuItems.push({
+                    key: "delete",
+                    label: "Delete Permanently",
+                    icon: <Trash2 size={14} />,
+                    className:
+                      "w-full px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-slate-100 mt-1",
+                    onClick: () =>
+                      confirmAction({
+                        action: "HARD DELETE",
+                        businessName: b.companyName,
+                        onConfirm: () => handleDelete(id),
+                      }),
+                  });
                 }
 
                 return (
@@ -748,6 +817,11 @@ export default function BusinessApprovals() {
                     <td className="px-4 py-3 text-slate-700">
                       {formatDate(b.createdAt)}
                     </td>
+                    {activeTab === STATUS.approved && (
+                      <td className="px-4 py-3 text-slate-700">
+                        {formatDate(b.approvedAt)}
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${badge.className}`}
