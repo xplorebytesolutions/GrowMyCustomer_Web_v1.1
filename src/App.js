@@ -68,7 +68,6 @@ import TemplateMessagingComingSoon from "./pages/Messaging/TemplateMessagingComi
 import MessagingReportsComingSoon from "./pages/Messaging/MessagingReportsComingSoon";
 
 // Inbox & Automation
-import InboxWrapper from "./pages/Inbox/InboxWrapper";
 import ChatInbox from "./pages/ChatInbox/ChatInbox";
 import AutoReplyBuilder from "./pages/AutoReplyBuilder/AutoReplyBuilder";
 import CTAFlowVisualBuilder from "./pages/CTAFlowVisualBuilder/CTAFlowVisualBuilder";
