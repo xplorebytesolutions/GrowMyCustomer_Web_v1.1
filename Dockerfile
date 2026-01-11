@@ -4,8 +4,10 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files (and any scripts needed during install) and install dependencies
 COPY package*.json ./
+# postinstall runs `node scripts/copy-pdf-worker.js`, so copy it before `npm install`
+COPY scripts/copy-pdf-worker.js ./scripts/copy-pdf-worker.js
 # We use 'npm install' instead of 'ci' to be more forgiving with version conflicts
 RUN npm install
 
