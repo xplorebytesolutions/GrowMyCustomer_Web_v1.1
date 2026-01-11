@@ -460,14 +460,7 @@ function App() {
                 </FeatureGuard>
               }
             />
-            <Route
-              path="inbox/livechat"
-              element={
-                <FeatureGuard code={FK.INBOX_VIEW}>
-                  <InboxWrapper />
-                </FeatureGuard>
-              }
-            />
+
             <Route
               path="inbox/chatinbox"
               element={

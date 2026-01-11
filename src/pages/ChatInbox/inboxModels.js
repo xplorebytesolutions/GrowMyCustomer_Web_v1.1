@@ -111,6 +111,15 @@ export const CONVERSATION_SOURCE_TYPES =
  * @property {string} id
  * @property {MessageDirection} direction
  * @property {string} text
+ * @property {string | null | undefined} [mediaId]
+ * @property {"image" | "document" | "video" | "audio" | "location" | null | undefined} [mediaType]
+ * @property {string | null | undefined} [fileName]
+ * @property {string | null | undefined} [mimeType]
+ * @property {string | null | undefined} [localPreviewUrl] - objectURL for sender preview (UI-only)
+ * @property {number | null | undefined} [locationLatitude]
+ * @property {number | null | undefined} [locationLongitude]
+ * @property {string | null | undefined} [locationName]
+ * @property {string | null | undefined} [locationAddress]
  * @property {string} sentAt
  * @property {string | undefined} [senderName]
  */

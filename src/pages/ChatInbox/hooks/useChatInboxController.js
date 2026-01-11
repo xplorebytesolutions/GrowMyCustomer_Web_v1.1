@@ -34,6 +34,51 @@ const normalizePagedResult = data => {
 const DEFAULT_CONVERSATIONS_PAGE_SIZE = 50;
 const DEFAULT_MESSAGES_PAGE_SIZE = 50;
 
+const CHAT_INBOX_MEDIA_MAX_BYTES = 10 * 1024 * 1024; // 10MB (must match backend limit)
+const CHAT_INBOX_ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "video/mp4",
+  "video/3gpp",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/aac",
+  "audio/ogg",
+]);
+
+const inferChatInboxMediaType = mime => {
+  const base = String(mime || "")
+    .split(";")[0]
+    .toLowerCase()
+    .trim();
+  if (base === "application/pdf") return "document";
+  if (base.startsWith("video/")) return "video";
+  if (base.startsWith("audio/")) return "audio";
+  return "image";
+};
+
+const toFiniteNumberOrNull = value => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const toLatitudeOrNull = value => {
+  const n = toFiniteNumberOrNull(value);
+  return n !== null && n >= -90 && n <= 90 ? n : null;
+};
+
+const toLongitudeOrNull = value => {
+  const n = toFiniteNumberOrNull(value);
+  return n !== null && n >= -180 && n <= 180 ? n : null;
+};
+
+const buildChatInboxMediaContentUrl = mediaId =>
+  `/chat-inbox/media/${encodeURIComponent(String(mediaId || "").trim())}/content`;
+
 const CHAT_INBOX_ACTIVE_TAB_KEY = businessId =>
   `chatInbox:activeTab:${businessId || "global"}`;
 
@@ -105,6 +150,7 @@ export function useChatInboxController() {
 
   // 🔹 Sending & assignment state
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
@@ -166,6 +212,27 @@ export function useChatInboxController() {
   const messagesRequestIdRef = useRef(0);
   const messagesLoadTimerRef = useRef(null);
   const markReadTimerRef = useRef(null);
+  const mediaObjectUrlByIdRef = useRef(new Map());
+  const mediaObjectUrlFetchRef = useRef(new Map());
+  const mediaBlobFetchRef = useRef(new Map());
+  const localObjectUrlByTempIdRef = useRef(new Map());
+  const [mediaObjectUrlById, setMediaObjectUrlById] = useState({});
+  const [pdfPreviewById, setPdfPreviewById] = useState({});
+  const [mediaViewer, setMediaViewer] = useState({
+    open: false,
+    type: null,
+    mediaId: null,
+    url: null,
+    fileName: null,
+    items: null,
+    index: 0,
+    loading: false,
+  });
+  const messagesRef = useRef(messages);
+  const mediaViewerRef = useRef(mediaViewer);
+  const pdfPreviewFetchRef = useRef(new Map());
+  const pdfJsImportRef = useRef(null);
+  const pdfJsModuleRef = useRef(null);
 
   // Keep frequently-read paging state in refs so effects/callbacks stay stable
   const selectedConversationIdRef = useRef(selectedConversationId);
@@ -175,6 +242,444 @@ export function useChatInboxController() {
   const messagesNextCursorRef = useRef(messagesNextCursor);
   const messagesHasMoreRef = useRef(messagesHasMore);
   const isMessagesLoadingOlderRef = useRef(isMessagesLoadingOlder);
+
+  useEffect(() => {
+    return () => {
+      for (const url of mediaObjectUrlByIdRef.current.values()) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      }
+      for (const url of localObjectUrlByTempIdRef.current.values()) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      }
+      mediaObjectUrlByIdRef.current.clear();
+      mediaObjectUrlFetchRef.current.clear();
+      mediaBlobFetchRef.current.clear();
+      localObjectUrlByTempIdRef.current.clear();
+      pdfPreviewFetchRef.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    mediaViewerRef.current = mediaViewer;
+  }, [mediaViewer]);
+
+  const upsertMediaObjectUrl = useCallback((mediaId, objectUrl) => {
+    const key = String(mediaId || "").trim();
+    if (!key || !objectUrl) return;
+
+    const existing = mediaObjectUrlByIdRef.current.get(key);
+    if (existing && existing !== objectUrl) {
+      try {
+        URL.revokeObjectURL(existing);
+      } catch {}
+    }
+
+    mediaObjectUrlByIdRef.current.set(key, objectUrl);
+    setMediaObjectUrlById(prev => ({ ...prev, [key]: objectUrl }));
+  }, []);
+
+  const fetchMediaBlob = useCallback(async (mediaId, opts = {}) => {
+    const key = String(mediaId || "").trim();
+    if (!key) return null;
+
+    const inflight = mediaBlobFetchRef.current.get(key);
+    if (inflight) return inflight;
+
+    const silent = Boolean(opts?.silent);
+
+    const promise = axiosClient
+      .get(buildChatInboxMediaContentUrl(key), {
+        responseType: "blob",
+        __silentToast: true,
+      })
+      .then(res => res?.data || null)
+      .catch(error => {
+        console.error("Failed to fetch media content:", error);
+        if (!silent) {
+          toast.error(
+            error.response?.data?.message ||
+              "Failed to load media preview. Please retry."
+          );
+        }
+        return null;
+      })
+      .finally(() => {
+        mediaBlobFetchRef.current.delete(key);
+      });
+
+    mediaBlobFetchRef.current.set(key, promise);
+    return promise;
+  }, []);
+
+  const fetchMediaObjectUrl = useCallback(
+    async (mediaId, opts = {}) => {
+      const key = String(mediaId || "").trim();
+      if (!key) return null;
+
+      const cached = mediaObjectUrlByIdRef.current.get(key);
+      if (cached) return cached;
+
+      const inflight = mediaObjectUrlFetchRef.current.get(key);
+      if (inflight) return inflight;
+
+      const promise = (async () => {
+        const blob = await fetchMediaBlob(key, opts);
+        if (!blob) return null;
+
+        if (
+          typeof URL === "undefined" ||
+          typeof URL.createObjectURL !== "function"
+        ) {
+          return null;
+        }
+
+        const url = URL.createObjectURL(blob);
+        upsertMediaObjectUrl(key, url);
+        return url;
+      })()
+        .catch(error => {
+          console.error("Failed to fetch media content:", error);
+          toast.error(
+            error.response?.data?.message ||
+              "Failed to load media preview. Please retry."
+          );
+          return null;
+        })
+        .finally(() => {
+          mediaObjectUrlFetchRef.current.delete(key);
+        });
+
+      mediaObjectUrlFetchRef.current.set(key, promise);
+      return promise;
+    },
+    [fetchMediaBlob, upsertMediaObjectUrl]
+  );
+
+  const buildImageViewerItems = useCallback(() => {
+    const list = Array.isArray(messagesRef.current) ? messagesRef.current : [];
+    const items = list
+      .map(m => {
+        const mt = String(m?.mediaType ?? m?.MediaType ?? "")
+          .trim()
+          .toLowerCase();
+        if (mt !== "image") return null;
+
+        const mediaId = String(m?.mediaId ?? m?.MediaId ?? "").trim();
+        if (!mediaId) return null;
+
+        const fileName = String(m?.fileName ?? m?.FileName ?? "").trim() || null;
+        const sentAt = m?.sentAt ?? m?.sentAtUtc ?? m?.createdAt ?? null;
+
+        return { mediaId, fileName, sentAt };
+      })
+      .filter(Boolean);
+
+    items.sort((a, b) => {
+      const ta = a?.sentAt ? Date.parse(a.sentAt) : 0;
+      const tb = b?.sentAt ? Date.parse(b.sentAt) : 0;
+      return ta - tb;
+    });
+
+    // De-dupe by mediaId (keep first occurrence)
+    const seen = new Set();
+    return items.filter(i => {
+      if (!i?.mediaId) return false;
+      if (seen.has(i.mediaId)) return false;
+      seen.add(i.mediaId);
+      return true;
+    });
+  }, []);
+
+  const handleOpenMedia = useCallback(
+    async msg => {
+      const mediaId = msg?.mediaId ?? msg?.MediaId ?? null;
+      const mt = String(msg?.mediaType ?? msg?.MediaType ?? "")
+        .trim()
+        .toLowerCase();
+      if (!mediaId || (mt !== "image" && mt !== "document" && mt !== "video"))
+        return;
+
+      const url =
+        msg?.localPreviewUrl ||
+        (await fetchMediaObjectUrl(String(mediaId), { silent: false }));
+      if (!url) return;
+
+      const name = String(msg?.fileName ?? msg?.FileName ?? "").trim();
+
+      if (mt === "image") {
+        const items = buildImageViewerItems();
+        const id = String(mediaId).trim();
+        let index = items.findIndex(i => i.mediaId === id);
+        if (index < 0) {
+          items.push({ mediaId: id, fileName: name || null, sentAt: null });
+          index = items.length - 1;
+        }
+
+        // Prefetch neighbors quietly (best-effort)
+        const prev = items[index - 1]?.mediaId;
+        const next = items[index + 1]?.mediaId;
+        if (prev) fetchMediaObjectUrl(prev, { silent: true });
+        if (next) fetchMediaObjectUrl(next, { silent: true });
+
+        setMediaViewer({
+          open: true,
+          type: "image",
+          mediaId: id,
+          url,
+          fileName: name || null,
+          items,
+          index,
+          loading: false,
+        });
+        return;
+      }
+
+      if (mt === "video") {
+        const id = String(mediaId).trim();
+        setMediaViewer({
+          open: true,
+          type: "video",
+          mediaId: id,
+          url,
+          fileName: name || null,
+          items: null,
+          index: 0,
+          loading: false,
+        });
+        return;
+      }
+
+      // Documents: keep a simple new-tab open/download for now.
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noreferrer noopener";
+      if (name) a.download = name;
+      a.click();
+    },
+    [buildImageViewerItems, fetchMediaObjectUrl]
+  );
+
+  const handleCloseMediaViewer = useCallback(() => {
+    setMediaViewer({
+      open: false,
+      type: null,
+      mediaId: null,
+      url: null,
+      fileName: null,
+      items: null,
+      index: 0,
+      loading: false,
+    });
+  }, []);
+
+  const handleMediaViewerSelectIndex = useCallback(
+    async nextIndex => {
+      const v = mediaViewerRef.current;
+      if (!v?.open || v.type !== "image") return;
+      const items = Array.isArray(v.items) ? v.items : [];
+      if (items.length === 0) return;
+
+      const idx = Number(nextIndex);
+      if (!Number.isFinite(idx) || idx < 0 || idx >= items.length) return;
+      if (idx === v.index && v.url) return;
+
+      const target = items[idx];
+      if (!target?.mediaId) return;
+
+      setMediaViewer(prev => ({ ...prev, loading: true }));
+      const url = await fetchMediaObjectUrl(target.mediaId, { silent: false });
+      if (!url) {
+        setMediaViewer(prev => ({ ...prev, loading: false }));
+        return;
+      }
+
+      const prevId = items[idx - 1]?.mediaId;
+      const nextId = items[idx + 1]?.mediaId;
+      if (prevId) fetchMediaObjectUrl(prevId, { silent: true });
+      if (nextId) fetchMediaObjectUrl(nextId, { silent: true });
+
+      setMediaViewer(prev => ({
+        ...prev,
+        open: true,
+        type: "image",
+        mediaId: target.mediaId,
+        url,
+        fileName: target.fileName || null,
+        items,
+        index: idx,
+        loading: false,
+      }));
+    },
+    [fetchMediaObjectUrl]
+  );
+
+  const handleMediaViewerPrev = useCallback(() => {
+    const v = mediaViewerRef.current;
+    if (!v?.open || v.type !== "image") return;
+    if (!Array.isArray(v.items) || v.items.length <= 1) return;
+    if (v.index <= 0) return;
+    handleMediaViewerSelectIndex(v.index - 1);
+  }, [handleMediaViewerSelectIndex]);
+
+  const handleMediaViewerNext = useCallback(() => {
+    const v = mediaViewerRef.current;
+    if (!v?.open || v.type !== "image") return;
+    if (!Array.isArray(v.items) || v.items.length <= 1) return;
+    if (v.index >= v.items.length - 1) return;
+    handleMediaViewerSelectIndex(v.index + 1);
+  }, [handleMediaViewerSelectIndex]);
+
+  const ensureImagePreview = useCallback(
+    mediaId => {
+      const key = String(mediaId || "").trim();
+      if (!key) return;
+      fetchMediaObjectUrl(key, { silent: true });
+    },
+    [fetchMediaObjectUrl]
+  );
+
+  const ensurePdfPreview = useCallback(
+    async (mediaId, opts = {}) => {
+      const key = String(mediaId || "").trim();
+      if (!key) return;
+      if (pdfPreviewById[key]) return;
+      if (pdfPreviewFetchRef.current.has(key)) return;
+
+      const promise = (async () => {
+        const localPreviewUrl = String(opts?.localPreviewUrl || "").trim();
+        const skipRemote = Boolean(opts?.skipRemote);
+
+        const blob = await (async () => {
+          if (localPreviewUrl) {
+            try {
+              const res = await fetch(localPreviewUrl);
+              if (res?.ok) return await res.blob();
+            } catch {
+              // ignore local preview fetch errors
+            }
+          }
+
+          if (skipRemote) return null;
+
+          return await fetchMediaBlob(key, { silent: true });
+        })();
+        if (!blob) return;
+
+        // In test/SSR environments, canvas may not exist; skip thumbnail generation.
+        if (
+          typeof document === "undefined" ||
+          typeof URL === "undefined" ||
+          typeof blob.arrayBuffer !== "function"
+        ) {
+          setPdfPreviewById(prev => ({
+            ...prev,
+            [key]: {
+              pages: null,
+              sizeBytes: Number(blob.size) || null,
+              thumbDataUrl: null,
+            },
+          }));
+          return;
+        }
+
+        try {
+          let pdfjs = pdfJsModuleRef.current;
+          if (!pdfjs) {
+            if (!pdfJsImportRef.current) {
+              pdfJsImportRef.current = import("pdfjs-dist/legacy/build/pdf.mjs");
+            }
+            pdfjs = await pdfJsImportRef.current;
+            pdfJsModuleRef.current = pdfjs;
+          }
+
+          // Fix runtime error: configure pdf.js worker URL for CRA/Webpack builds.
+          // (Even with disableWorker=true, some builds still try to initialize a PDFWorker.)
+          try {
+            const gwo = pdfjs?.GlobalWorkerOptions;
+            if (gwo && !gwo.workerSrc) {
+              const publicUrl =
+                typeof process !== "undefined" &&
+                process?.env &&
+                typeof process.env.PUBLIC_URL === "string"
+                  ? process.env.PUBLIC_URL
+                  : "";
+
+              // This file is copied from node_modules by `node scripts/copy-pdf-worker.js`
+              // (hooked up via `postinstall`), so the dev server/build can serve it reliably.
+              gwo.workerSrc = `${publicUrl}/pdf.worker.min.mjs`;
+            }
+          } catch {
+            // If import.meta.url isn't supported by the bundler, we still try to proceed with disableWorker below.
+          }
+
+          const buffer = await blob.arrayBuffer();
+          const doc = await pdfjs.getDocument({
+            data: buffer,
+            disableWorker: true,
+          }).promise;
+
+          const pages = Number(doc?.numPages) || null;
+
+          let thumbDataUrl = null;
+          try {
+            const page = await doc.getPage(1);
+            const viewport = page.getViewport({ scale: 0.35 });
+
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext?.("2d");
+            if (ctx) {
+              canvas.width = Math.max(1, Math.floor(viewport.width));
+              canvas.height = Math.max(1, Math.floor(viewport.height));
+
+              await page.render({ canvasContext: ctx, viewport }).promise;
+              thumbDataUrl = canvas.toDataURL("image/png");
+              page.cleanup?.();
+            }
+          } catch {
+            thumbDataUrl = null;
+          } finally {
+            try {
+              await doc.destroy?.();
+            } catch {}
+          }
+
+          setPdfPreviewById(prev => ({
+            ...prev,
+            [key]: {
+              pages,
+              sizeBytes: Number(blob.size) || null,
+              thumbDataUrl,
+            },
+          }));
+        } catch (error) {
+          console.error("Failed to generate PDF preview:", error);
+          setPdfPreviewById(prev => ({
+            ...prev,
+            [key]: {
+              pages: null,
+              sizeBytes: Number(blob.size) || null,
+              thumbDataUrl: null,
+            },
+          }));
+        }
+      })().finally(() => {
+        pdfPreviewFetchRef.current.delete(key);
+      });
+
+      pdfPreviewFetchRef.current.set(key, promise);
+      await promise;
+    },
+    [fetchMediaBlob, pdfPreviewById]
+  );
 
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
@@ -778,6 +1283,17 @@ export function useChatInboxController() {
               m.renderedBody ||
               m.RenderedBody ||
               "",
+            mediaId: m.mediaId ?? m.MediaId ?? null,
+            mediaType: m.mediaType ?? m.MediaType ?? null,
+            fileName: m.fileName ?? m.FileName ?? null,
+            mimeType: m.mimeType ?? m.MimeType ?? null,
+            locationLatitude:
+              m.locationLatitude ?? m.LocationLatitude ?? m.latitude ?? null,
+            locationLongitude:
+              m.locationLongitude ?? m.LocationLongitude ?? m.longitude ?? null,
+            locationName: m.locationName ?? m.LocationName ?? m.name ?? null,
+            locationAddress:
+              m.locationAddress ?? m.LocationAddress ?? m.address ?? null,
             sentAt: m.sentAtUtc || m.sentAt || m.createdAt || m.timestamp,
             status: statusRaw,
             errorMessage: m.errorMessage,
@@ -1180,6 +1696,21 @@ export function useChatInboxController() {
 
       const mappedMsg = mapHubMessageToChat(payload);
       if (!mappedMsg) return;
+      const mappedMediaType = String(mappedMsg.mediaType || "")
+        .trim()
+        .toLowerCase();
+      const mappedHasMedia =
+        Boolean(mappedMsg.mediaId) &&
+        (mappedMediaType === "image" ||
+          mappedMediaType === "document" ||
+          mappedMediaType === "video" ||
+          mappedMediaType === "audio");
+      const mappedLat = toLatitudeOrNull(mappedMsg.locationLatitude);
+      const mappedLon = toLongitudeOrNull(mappedMsg.locationLongitude);
+      const mappedHasLocation =
+        mappedMediaType === "location" &&
+        mappedLat !== null &&
+        mappedLon !== null;
 
       // 1) Update messages if this conversation is open
       setMessages(prev => {
@@ -1274,7 +1805,8 @@ export function useChatInboxController() {
         const isEmptyText =
           !mappedMsg.text || String(mappedMsg.text).trim().length === 0;
 
-        if (isEmptyText) {
+        // Media-only inbound messages can have empty text (no caption). We still want to show the bubble.
+        if (isEmptyText && !mappedHasMedia && !mappedHasLocation) {
           return prev; // <-- prevents "-" ghost bubbles
         }
         return [...prev, mappedMsg];
@@ -1315,9 +1847,23 @@ export function useChatInboxController() {
             setLocalUnreadOverride(c, nextUnread);
           }
 
+          const trimmedText = String(mappedMsg.text || "").trim();
+          const fallbackPreview = mappedHasMedia
+            ? mappedMediaType === "image"
+              ? "Photo"
+              : mappedMediaType === "document"
+              ? String(mappedMsg.fileName || "").trim() || "PDF"
+              : mappedMediaType === "video"
+              ? String(mappedMsg.fileName || "").trim() || "Video"
+              : String(mappedMsg.fileName || "").trim() || "Audio"
+            : mappedHasLocation
+            ? String(mappedMsg.locationName || "").trim() || "Location"
+            : null;
+
           return {
             ...c,
-            lastMessagePreview: mappedMsg.text || c.lastMessagePreview,
+            lastMessagePreview:
+              trimmedText || fallbackPreview || c.lastMessagePreview,
             lastMessageAt: mappedMsg.sentAt || c.lastMessageAt,
             lastInboundAt: mappedMsg.isInbound
               ? mappedMsg.sentAt || c.lastInboundAt
@@ -1565,7 +2111,7 @@ export function useChatInboxController() {
   ]);
 
   // 📨 Send message (HTTP is source of truth)
-  const handleSendMessage = async () => {
+  const handleSendMessage = async outbound => {
     if (!selectedConversation) {
       toast.warn("Please select a conversation first.");
       return;
@@ -1583,15 +2129,58 @@ export function useChatInboxController() {
       return;
     }
 
-    const trimmed = newMessage.trim();
-    if (!trimmed) {
+    const mediaId = outbound?.mediaId ?? outbound?.MediaId ?? null;
+    const mediaTypeRaw = outbound?.mediaType ?? outbound?.MediaType ?? null;
+    const fileName = outbound?.fileName ?? outbound?.FileName ?? null;
+    const mimeType = outbound?.mimeType ?? outbound?.MimeType ?? null;
+    const localPreviewUrl = outbound?.localPreviewUrl ?? null;
+    const locationLatitude =
+      outbound?.locationLatitude ?? outbound?.LocationLatitude ?? null;
+    const locationLongitude =
+      outbound?.locationLongitude ?? outbound?.LocationLongitude ?? null;
+    const locationName = outbound?.locationName ?? outbound?.LocationName ?? null;
+    const locationAddress =
+      outbound?.locationAddress ?? outbound?.LocationAddress ?? null;
+
+    const caption =
+      typeof outbound?.text === "string"
+        ? outbound.text
+        : typeof outbound?.Text === "string"
+        ? outbound.Text
+        : newMessage;
+
+    const trimmedCaption = String(caption || "").trim();
+    const hasMedia = Boolean(String(mediaId || "").trim());
+    const latNum = toLatitudeOrNull(locationLatitude);
+    const lonNum = toLongitudeOrNull(locationLongitude);
+    const hasLocation =
+      latNum !== null && lonNum !== null;
+
+    if (hasLocation && (hasMedia || trimmedCaption)) {
+      toast.error("Location message cannot include text or an attachment.");
+      return;
+    }
+
+    if (!hasMedia && !trimmedCaption && !hasLocation) {
       toast.warn("Type a message before sending.");
+      return;
+    }
+
+    const mediaType = hasLocation
+      ? "location"
+      : String(mediaTypeRaw || "")
+          .trim()
+          .toLowerCase() ||
+        (hasMedia ? inferChatInboxMediaType(mimeType) : "");
+
+    if (hasMedia && mediaType === "audio" && trimmedCaption) {
+      toast.error("Audio messages do not support captions.");
       return;
     }
 
     const businessId = localStorage.getItem("businessId");
     if (!businessId) {
-      toast.error("❌ Missing business context. Please login again.");
+      toast.error("Missing business context. Please login again.");
       return;
     }
 
@@ -1629,12 +2218,25 @@ export function useChatInboxController() {
     const tempId = `temp-${Date.now()}`;
     const nowIso = new Date().toISOString();
 
+    if (localPreviewUrl) {
+      localObjectUrlByTempIdRef.current.set(tempId, localPreviewUrl);
+    }
+
     const optimisticMsg = {
       id: tempId,
       clientMessageId: tempId,
       direction: "out",
       isInbound: false,
-      text: trimmed,
+      text: trimmedCaption,
+      mediaId: hasMedia ? String(mediaId).trim() : null,
+      mediaType: hasLocation ? "location" : hasMedia ? mediaType : null,
+      fileName: hasMedia ? fileName : null,
+      mimeType: hasMedia ? mimeType : null,
+      localPreviewUrl: hasMedia ? localPreviewUrl : null,
+      locationLatitude: hasLocation ? latNum : null,
+      locationLongitude: hasLocation ? lonNum : null,
+      locationName: hasLocation ? locationName : null,
+      locationAddress: hasLocation ? locationAddress : null,
       sentAt: nowIso,
       status: "Queued",
       errorMessage: null,
@@ -1650,7 +2252,15 @@ export function useChatInboxController() {
         conversationId: selectedConversation.id,
         contactId: selectedConversation.contactId,
         to: selectedConversation.contactPhone,
-        text: trimmed,
+        text: hasLocation ? null : trimmedCaption || null,
+        mediaId: hasMedia ? String(mediaId).trim() : null,
+        mediaType: hasLocation ? "location" : hasMedia ? mediaType : null,
+        fileName: hasMedia ? fileName : null,
+        mimeType: hasMedia ? mimeType : null,
+        locationLatitude: hasLocation ? latNum : null,
+        locationLongitude: hasLocation ? lonNum : null,
+        locationName: hasLocation ? locationName : null,
+        locationAddress: hasLocation ? locationAddress : null,
         numberId: selectedConversation.numberId,
         clientMessageId: tempId,
       };
@@ -1664,6 +2274,18 @@ export function useChatInboxController() {
         finalSentAt instanceof Date ? finalSentAt.toISOString() : finalSentAt;
 
       const serverStatus = normalizeStatus(saved.status) || "Queued";
+
+      const savedMediaId = saved.mediaId ?? saved.MediaId ?? null;
+      const savedMediaType = saved.mediaType ?? saved.MediaType ?? null;
+      const savedFileName = saved.fileName ?? saved.FileName ?? null;
+      const savedMimeType = saved.mimeType ?? saved.MimeType ?? null;
+      const savedLocationLatitude =
+        saved.locationLatitude ?? saved.LocationLatitude ?? null;
+      const savedLocationLongitude =
+        saved.locationLongitude ?? saved.LocationLongitude ?? null;
+      const savedLocationName = saved.locationName ?? saved.LocationName ?? null;
+      const savedLocationAddress =
+        saved.locationAddress ?? saved.LocationAddress ?? null;
 
       setMessages(prev =>
         prev.map(m =>
@@ -1681,17 +2303,42 @@ export function useChatInboxController() {
                 sentAt: finalSentAtIso,
                 status: serverStatus,
                 errorMessage: saved.errorMessage || null,
+                mediaId: savedMediaId ?? m.mediaId ?? null,
+                mediaType: savedMediaType ?? m.mediaType ?? null,
+                fileName: savedFileName ?? m.fileName ?? null,
+                mimeType: savedMimeType ?? m.mimeType ?? null,
+                locationLatitude:
+                  savedLocationLatitude ?? m.locationLatitude ?? null,
+                locationLongitude:
+                  savedLocationLongitude ?? m.locationLongitude ?? null,
+                locationName: savedLocationName ?? m.locationName ?? null,
+                locationAddress:
+                  savedLocationAddress ?? m.locationAddress ?? null,
               }
             : m
         )
       );
+
+      const preview =
+        trimmedCaption ||
+        (hasLocation
+          ? String(locationName || "").trim() || "Location"
+          : hasMedia
+          ? mediaType === "document"
+            ? `PDF sent${fileName ? `: ${fileName}` : ""}`
+            : mediaType === "video"
+            ? `Video sent${fileName ? `: ${fileName}` : ""}`
+            : mediaType === "audio"
+            ? `Audio sent${fileName ? `: ${fileName}` : ""}`
+            : `Image sent${fileName ? `: ${fileName}` : ""}`
+          : "");
 
       setAllConversations(prev =>
         prev.map(c =>
           c.id === selectedConversation.id
             ? {
                 ...c,
-                lastMessagePreview: trimmed,
+                lastMessagePreview: preview,
                 lastMessageAt: finalSentAtIso,
                 lastOutboundAt: finalSentAtIso,
               }
@@ -1716,6 +2363,228 @@ export function useChatInboxController() {
       scrollToBottom();
     }
   };
+
+  const handleUploadAndSendMedia = async file => {
+    if (!file) return;
+
+    if (!selectedConversation) {
+      toast.warn("Please select a conversation first.");
+      return;
+    }
+
+    if (isConversationClosed) {
+      toast.warn("This conversation is closed. Reopen it to reply.");
+      return;
+    }
+
+    if (!isWithin24h) {
+      toast.warn(
+        "This chat is outside the 24-hour WhatsApp window. Use a template or campaign to re-engage."
+      );
+      return;
+    }
+
+    if (isUploadingMedia || isSending) return;
+
+    const businessId = localStorage.getItem("businessId");
+    if (!businessId) {
+      toast.error("Missing business context. Please login again.");
+      return;
+    }
+
+    const sizeBytes = Number(file.size) || 0;
+    if (!sizeBytes) {
+      toast.error("Selected file is empty.");
+      return;
+    }
+
+    if (sizeBytes > CHAT_INBOX_MEDIA_MAX_BYTES) {
+      toast.error("File is too large. Max allowed is 10MB.");
+      return;
+    }
+
+    const inferredMime = (() => {
+      const raw = String(file.type || "").split(";")[0].trim();
+      if (raw) return raw;
+
+      const name = String(file.name || "").toLowerCase().trim();
+      if (name.endsWith(".pdf")) return "application/pdf";
+      if (name.endsWith(".mp4")) return "video/mp4";
+      if (name.endsWith(".3gp") || name.endsWith(".3gpp")) return "video/3gpp";
+      if (name.endsWith(".mp3")) return "audio/mpeg";
+      if (name.endsWith(".m4a")) return "audio/mp4";
+      if (name.endsWith(".aac")) return "audio/aac";
+      if (name.endsWith(".ogg")) return "audio/ogg";
+      return "";
+    })();
+
+    if (!CHAT_INBOX_ALLOWED_MIME_TYPES.has(inferredMime)) {
+      toast.error(
+        "Unsupported file type. Allowed: images (jpg/png/webp), PDF, MP4 video, and audio (mp3/m4a/aac/ogg)."
+      );
+      return;
+    }
+
+    setIsUploadingMedia(true);
+
+    let localPreviewUrl = null;
+    let keepLocalPreviewUrl = false;
+
+    try {
+      try {
+        if (
+          typeof URL !== "undefined" &&
+          typeof URL.createObjectURL === "function"
+        ) {
+          localPreviewUrl = URL.createObjectURL(file);
+        }
+      } catch {
+        localPreviewUrl = null;
+      }
+
+      const form = new FormData();
+      form.append("file", file);
+
+      const res = await axiosClient.post("/chat-inbox/media/upload", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const data = res?.data || {};
+      const uploadedMediaId = data.mediaId ?? data.MediaId ?? null;
+      const uploadedMediaType = data.mediaType ?? data.MediaType ?? null;
+
+      if (!uploadedMediaId) {
+        toast.error("Upload succeeded but mediaId was missing.");
+        return;
+      }
+
+      const mt =
+        String(uploadedMediaType || "").trim().toLowerCase() ||
+        inferChatInboxMediaType(inferredMime);
+
+      keepLocalPreviewUrl = true;
+      await handleSendMessage({
+        text: newMessage,
+        mediaId: uploadedMediaId,
+        mediaType: mt,
+        fileName: data.fileName ?? data.FileName ?? file.name ?? null,
+        mimeType: data.mimeType ?? data.MimeType ?? inferredMime,
+        localPreviewUrl,
+      });
+    } catch (error) {
+      console.error("❌ Failed to upload media:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to upload file. Please retry."
+      );
+    } finally {
+      if (localPreviewUrl && !keepLocalPreviewUrl) {
+        try {
+          URL.revokeObjectURL(localPreviewUrl);
+        } catch {}
+      }
+      setIsUploadingMedia(false);
+    }
+  };
+
+  const handleSendLocation = async () => {
+    if (!selectedConversation) {
+      toast.warn("Please select a conversation first.");
+      return;
+    }
+
+    if (isConversationClosed) {
+      toast.warn("This conversation is closed. Reopen it to reply.");
+      return;
+    }
+
+    if (!isWithin24h) {
+      toast.warn(
+        "This chat is outside the 24-hour WhatsApp window. Use a template or campaign to re-engage."
+      );
+      return;
+    }
+
+    if (isUploadingMedia || isSending) return;
+
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      toast.error("Geolocation is not available in this browser.");
+      return;
+    }
+
+    toast.info("Fetching your current location…");
+
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 0,
+        });
+      });
+
+      const lat = pos?.coords?.latitude;
+      const lon = pos?.coords?.longitude;
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        toast.error("Failed to read your coordinates.");
+        return;
+      }
+
+      await handleSendMessage({
+        locationLatitude: lat,
+        locationLongitude: lon,
+        locationName: null,
+        locationAddress: null,
+      });
+    } catch (error) {
+      const code = error?.code;
+      if (code === 1) {
+        toast.error("Location permission denied.");
+      } else if (code === 2) {
+        toast.error("Location unavailable.");
+      } else if (code === 3) {
+        toast.error("Location request timed out.");
+      } else {
+        toast.error("Failed to fetch location.");
+      }
+    }
+  };
+
+  // Prefetch last few outbound image previews so the sender sees what was sent.
+  useEffect(() => {
+    const slice = Array.isArray(messages) ? messages.slice(-8) : [];
+    for (const m of slice) {
+      const mediaId = String(m?.mediaId || "").trim();
+      if (!mediaId) continue;
+      const mt = String(m?.mediaType || "")
+        .trim()
+        .toLowerCase();
+      if (mt !== "image" && mt !== "video" && mt !== "audio") continue;
+      if (m?.localPreviewUrl) continue;
+      if (mediaObjectUrlByIdRef.current.has(mediaId)) continue;
+      fetchMediaObjectUrl(mediaId, { silent: true });
+    }
+  }, [messages, fetchMediaObjectUrl]);
+
+  useEffect(() => {
+    const slice = Array.isArray(messages) ? messages.slice(-4) : [];
+    for (const m of slice) {
+      const mediaId = String(m?.mediaId || "").trim();
+      if (!mediaId) continue;
+      const mt = String(m?.mediaType || "")
+        .trim()
+        .toLowerCase();
+      if (mt !== "document") continue;
+      const localPreviewUrl = m?.localPreviewUrl || null;
+      const isTemp =
+        typeof m?.id === "string" && String(m.id).startsWith("temp-");
+
+      ensurePdfPreview(mediaId, {
+        localPreviewUrl,
+        skipRemote: isTemp && !localPreviewUrl,
+      });
+    }
+  }, [messages, ensurePdfPreview]);
 
   const handleComposerKeyDown = event => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -2260,6 +3129,12 @@ export function useChatInboxController() {
     handleReceiveInboxMessage,
     handleRemoveTag,
     handleSendMessage,
+    handleUploadAndSendMedia,
+    handleSendLocation,
+    handleOpenMedia,
+    handleCloseMediaViewer,
+    ensureImagePreview,
+    ensurePdfPreview,
     handleUnassign,
     handleUnreadCountChanged,
     handleUpdateConversationStatus,
@@ -2277,6 +3152,7 @@ export function useChatInboxController() {
     isSavingNote,
     isSavingReminder,
     isSending,
+    isUploadingMedia,
     isSummaryLoading,
     isTagModalOpen,
     isUpdatingStatus,
@@ -2326,6 +3202,7 @@ export function useChatInboxController() {
     setIsSavingNote,
     setIsSavingReminder,
     setIsSending,
+    setIsUploadingMedia,
     setIsSummaryLoading,
     setIsTagModalOpen,
     setIsUpdatingNote,
@@ -2349,6 +3226,12 @@ export function useChatInboxController() {
     showMiniTimeline,
     showRightPanel,
     tagsList,
+    mediaObjectUrlById,
+    pdfPreviewById,
+    mediaViewer,
+    handleMediaViewerPrev,
+    handleMediaViewerNext,
+    handleMediaViewerSelectIndex,
   };
 }
 

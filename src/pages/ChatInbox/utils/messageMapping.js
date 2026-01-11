@@ -94,6 +94,58 @@ export function mapHubMessageToChat(msg) {
     msg.RenderedBody ??
     "";
 
+  let mediaId = msg.mediaId ?? msg.MediaId ?? null;
+  let mediaType = msg.mediaType ?? msg.MediaType ?? null;
+  const fileName = msg.fileName ?? msg.FileName ?? null;
+  const mimeType = msg.mimeType ?? msg.MimeType ?? null;
+  let locationLatitude =
+    msg.locationLatitude ?? msg.LocationLatitude ?? msg.latitude ?? null;
+  let locationLongitude =
+    msg.locationLongitude ?? msg.LocationLongitude ?? msg.longitude ?? null;
+  let locationName = msg.locationName ?? msg.LocationName ?? msg.name ?? null;
+  let locationAddress =
+    msg.locationAddress ?? msg.LocationAddress ?? msg.address ?? null;
+
+  const typeFallback =
+    msg.type ?? msg.Type ?? msg.messageType ?? msg.MessageType ?? null;
+
+  if (!mediaType && typeFallback) mediaType = typeFallback;
+  if (!mediaType) {
+    if (msg.image || msg.Image) mediaType = "image";
+    else if (msg.video || msg.Video) mediaType = "video";
+    else if (msg.audio || msg.Audio) mediaType = "audio";
+    else if (msg.document || msg.Document) mediaType = "document";
+    else if (msg.location || msg.Location) mediaType = "location";
+  }
+  if (typeof mediaType === "string") mediaType = mediaType.toLowerCase().trim();
+
+  const nested =
+    mediaType === "image"
+      ? msg.image ?? msg.Image ?? null
+      : mediaType === "video"
+        ? msg.video ?? msg.Video ?? null
+        : mediaType === "audio"
+          ? msg.audio ?? msg.Audio ?? null
+          : mediaType === "document"
+            ? msg.document ?? msg.Document ?? null
+            : mediaType === "location"
+              ? msg.location ?? msg.Location ?? null
+              : null;
+
+  if (!mediaId && nested && typeof nested === "object") {
+    mediaId = nested.id ?? nested.mediaId ?? null;
+  }
+
+  if (mediaType === "location" && nested && typeof nested === "object") {
+    locationLatitude =
+      locationLatitude ?? nested.latitude ?? nested.Latitude ?? null;
+    locationLongitude =
+      locationLongitude ?? nested.longitude ?? nested.Longitude ?? null;
+    locationName = locationName ?? nested.name ?? nested.Name ?? null;
+    locationAddress =
+      locationAddress ?? nested.address ?? nested.Address ?? null;
+  }
+
   const isInbound = inferIsInboundFromAny(msg);
 
   const directionRaw = msg.direction ?? msg.Direction ?? msg.dir ?? "";
@@ -116,6 +168,14 @@ export function mapHubMessageToChat(msg) {
     direction: directionRaw || (isInbound ? "in" : "out"),
     isInbound,
     text,
+    mediaId,
+    mediaType,
+    fileName,
+    mimeType,
+    locationLatitude,
+    locationLongitude,
+    locationName,
+    locationAddress,
     sentAt: createdAt,
     status,
     errorMessage: msg.errorMessage ?? null,

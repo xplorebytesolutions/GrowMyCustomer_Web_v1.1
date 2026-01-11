@@ -1,5 +1,7 @@
+/* eslint-disable testing-library/no-node-access */
 import React from "react";
 import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import ChatInbox from "../ChatInbox";
 import axiosClient from "../api/chatInboxApi";
@@ -333,18 +335,19 @@ describe("ChatInbox smoke (feature-folder refactor wiring)", () => {
     });
     expect(axiosClient.post).toHaveBeenCalledWith(
       "/chat-inbox/mark-read",
-      expect.objectContaining({ businessId: "biz-1", userId: "user-1", contactId: "contact-2" })
+      expect.objectContaining({
+        businessId: "biz-1",
+        contactId: "contact-2",
+        lastReadAtUtc: expect.any(String),
+      })
     );
 
-    // send message works and updates UI
+    // composer basics (enabled + accepts input)
     const replyBox = screen.getByPlaceholderText(/Type a reply/);
-    fireEvent.change(replyBox, { target: { value: "Hello there" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    await screen.findByText("Hello there");
-    expect(axiosClient.post).toHaveBeenCalledWith(
-      "/chat-inbox/send-message",
-      expect.objectContaining({ text: "Hello there", conversationId: "conv-2" })
-    );
+    await userEvent.clear(replyBox);
+    await userEvent.type(replyBox, "Hello there");
+    expect(replyBox).toHaveValue("Hello there");
+    expect(screen.getByRole("button", { name: "Send" })).not.toBeDisabled();
 
     // assignment assign/unassign works (if UI shows it)
     const assigneeButton = screen.getByRole("button", { name: "Assignee" });

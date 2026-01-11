@@ -29,8 +29,17 @@ export function ChatInboxView(props) {
     handleAssignToAgent,
     handleComposerKeyDown,
     handleOpenFullCrm,
+    handleOpenMedia,
+    handleCloseMediaViewer,
+    handleMediaViewerPrev,
+    handleMediaViewerNext,
+    handleMediaViewerSelectIndex,
+    ensureImagePreview,
+    ensurePdfPreview,
     handleRemoveTag,
     handleSendMessage,
+    handleUploadAndSendMedia,
+    handleSendLocation,
     handleUnassign,
     handleUpdateConversationStatus,
     handleUpdateNote,
@@ -47,6 +56,7 @@ export function ChatInboxView(props) {
     isSavingNote,
     isSavingReminder,
     isSending,
+    isUploadingMedia,
     isSummaryLoading,
     isTagModalOpen,
     isConversationClosed,
@@ -55,6 +65,9 @@ export function ChatInboxView(props) {
     isUpdatingReminder,
     isWithin24h,
     isAgentsLoading,
+    mediaObjectUrlById,
+    pdfPreviewById,
+    mediaViewer,
     messages,
     messagesEndRef,
     messagesHasMore,
@@ -145,13 +158,26 @@ export function ChatInboxView(props) {
       <MiddlePanel
         selectedConversation={selectedConversation}
         messages={messages}
+        mediaObjectUrlById={mediaObjectUrlById}
+        pdfPreviewById={pdfPreviewById}
+        mediaViewer={mediaViewer}
+        handleMediaViewerPrev={handleMediaViewerPrev}
+        handleMediaViewerNext={handleMediaViewerNext}
+        handleMediaViewerSelectIndex={handleMediaViewerSelectIndex}
         messagesEndRef={messagesEndRef}
         messagesWithSeparators={messagesWithSeparators}
         messagesHasMore={messagesHasMore}
         newMessage={newMessage}
         setNewMessage={setNewMessage}
         isSending={isSending}
+        isUploadingMedia={isUploadingMedia}
         handleSendMessage={handleSendMessage}
+        handleUploadAndSendMedia={handleUploadAndSendMedia}
+        handleSendLocation={handleSendLocation}
+        handleOpenMedia={handleOpenMedia}
+        handleCloseMediaViewer={handleCloseMediaViewer}
+        ensureImagePreview={ensureImagePreview}
+        ensurePdfPreview={ensurePdfPreview}
         handleComposerKeyDown={handleComposerKeyDown}
         headerIsAssigned={headerIsAssigned}
         headerIsAssignedToMe={headerIsAssignedToMe}
