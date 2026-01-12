@@ -26,7 +26,8 @@ const PERM_BY_BLOCK = {
   "whatsapp-settings": [FK.SETTINGS_WHATSAPP_SETTINGS_VIEW],
   "role-permission-mapping": [FK.SETTINGS_ROLE_PERMISSIONS_MAPPING],
   "team-management": [FK.SETTINGS_STAFF_MANAGEMENT],
-  "password-update": [FK.SETTINGS_PASSWORD_UPDATE],
+  // Password change should be available to all authenticated users.
+  "password-update": [],
   "meta-account": [FK.SETTINGS_META_ACCOUNT_MANAGEMENT],
   "billing-subscription": [FK.SETTINGS_BILLING_VIEW],
   "profile-update": [FK.SETTINGS_PROFILE_UPDATE],
@@ -162,15 +163,15 @@ export default function MyAccountWorkspace() {
     .filter(Boolean)
     .filter(b => (showArchived ? true : !archived.includes(b.id)))
     .map(block => {
-      const codes = PERM_BY_BLOCK[block.id] || [];
+      const codes = PERM_BY_BLOCK[block.id];
+      const required = Array.isArray(codes) ? codes.filter(Boolean) : [];
       const allowed =
-        hasAllAccess ||
-        (Array.isArray(codes) && codes.filter(Boolean).some(code => can(code)));
+        hasAllAccess || required.length === 0 || required.some(code => can(code));
 
       return {
         ...block,
         allowed,
-        primaryCode: (codes && codes[0]) || null,
+        primaryCode: (required && required[0]) || null,
       };
     });
 

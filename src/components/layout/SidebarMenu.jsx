@@ -470,7 +470,8 @@ export default function SidebarMenu() {
         path: "/app/settings/password",
         icon: <KeyRound size={18} />,
         show: showSettings,
-        featureKey: FK.SETTINGS_PASSWORD_UPDATE,
+        // Password change is a baseline account action; do not gate it on a permission code.
+        featureKey: null,
       },
       {
         label: "User & Staff Management",

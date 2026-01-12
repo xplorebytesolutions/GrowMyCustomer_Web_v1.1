@@ -134,6 +134,7 @@ import DeveloperNotesPage from "./pages/DeveloperNotes/DeveloperNotesPage";
 // import { Tag } from "lucide-react";
 import TeamStaffPage from "./pages/TeamStaff/TeamStaffPage";
 import AccessControlPage from "./pages/Settings/AccessControl/RolePermissionMapping";
+import ChangePasswordPage from "./pages/Settings/Password/ChangePasswordPage";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -662,8 +663,8 @@ function App() {
             <Route
               path="settings/password"
               element={
-                <FeatureGuard code={FK.SETTINGS_PASSWORD_UPDATE}>
-                  <div className="p-6">Password settings (stub)</div>
+                <FeatureGuard codes={WORKSPACE_PERMS.settings}>
+                  <ChangePasswordPage />
                 </FeatureGuard>
               }
             />

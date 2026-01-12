@@ -39,7 +39,7 @@ export default function UserMenuDropdown({ currentPlan }) {
 
   const handleUpgrade = () => {
     setOpen(false);
-    navigate("/app/upgrade");
+    navigate("/app/settings/billing");
   };
 
   const handleSecurity = () => {

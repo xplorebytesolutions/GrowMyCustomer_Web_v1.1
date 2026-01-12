@@ -163,6 +163,17 @@ export default function Topbar() {
                 />
               )}
 
+              {/* Dynamic Plan Badge - Shows actual assigned plan */}
+              {hasVisiblePlan && (
+                <div
+                  className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm capitalize"
+                  title={`Current Plan: ${plan}`}
+                  aria-label={`Plan: ${plan}`}
+                >
+                  Plan: {plan}
+                </div>
+              )}
+
               {/* Free setup mode badge -> Show as 'Plan: Basic' */}
               {planRelevant && !planLoading && isFreeSetup && (
                 <div
