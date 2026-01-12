@@ -106,11 +106,11 @@ export default function Topbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 shadow-sm border-b border-gray-100 transition-all duration-500 ${
-        isWelcomePage
-          ? "bg-white bg-[linear-gradient(90deg,rgba(0,0,0,0.05)_0%,transparent_20%)]"
-          : "bg-white"
-      }`}
+      className="sticky top-0 z-50 shadow-sm border-b border-gray-100 transition-all duration-500"
+      style={{
+        background:
+          "linear-gradient(217deg, rgba(13, 59, 44, 1) 9%, rgba(218, 230, 225, 1) 47%, rgba(247, 247, 247, 1) 100%)",
+      }}
     >
       <div className="pl-2 lg:pl-4 pr-4 lg:pr-8 py-1">
         <div className="flex items-center justify-between gap-6">
@@ -123,7 +123,7 @@ export default function Topbar() {
               title="XploreByte"
             >
               <img
-                src="/logo/Transparent_logo.png"
+                src="/logo/logo_cyclic.png"
                 alt="XploreByte"
                 className="h-14 w-auto transition-transform duration-300 group-hover:scale-105 object-contain"
               />
@@ -198,16 +198,7 @@ export default function Topbar() {
               </span>
             </button>
 
-            {/* Upgrade Button */}
-            {showUpgrade && (
-              <button
-                onClick={() => navigate("/app/settings/billing")}
-                className="hidden sm:inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white text-sm font-semibold px-4 py-1.5 rounded-lg shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300 ring-2 ring-emerald-200 ring-offset-1"
-                title="Upgrade your plan"
-              >
-                Upgrade Plan
-              </button>
-            )}
+
 
             {/* User Menu */}
             <UserMenuDropdown />

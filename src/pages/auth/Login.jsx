@@ -157,7 +157,7 @@ export default function Login() {
           <div className="relative z-10">
             <div className="mb-8">
               <div className="flex items-center gap-0.5 mb-6">
-                <img src="/logo/Transparent_logo.png" alt="Logo" className="h-16 w-auto object-contain" />
+                <img src="/logo/logo_cyclic.png" alt="Logo" className="h-16 w-auto object-contain" />
                 <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
                   XploreByte
                 </span>

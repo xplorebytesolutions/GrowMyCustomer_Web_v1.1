@@ -112,7 +112,7 @@ const SignupForTrial = () => {
           <div className="mb-6">
             <div className="flex items-center gap-0.5">
               <img 
-                src="/logo/Transparent_logo.png" 
+                src="/logo/logo_cyclic.png" 
                 alt="Logo"
                 className="h-16 w-auto object-contain"
               />
