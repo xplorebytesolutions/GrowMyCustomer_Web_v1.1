@@ -163,14 +163,14 @@ export default function Topbar() {
                 />
               )}
 
-              {/* Free setup mode badge */}
+              {/* Free setup mode badge -> Show as 'Plan: Basic' */}
               {planRelevant && !planLoading && isFreeSetup && (
                 <div
                   className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200 shadow-sm"
-                  title="You are in free setup mode. WhatsApp can be connected before choosing a paid plan."
-                  aria-label="Free setup mode"
+                  title="Your current plan is Basic"
+                  aria-label="Plan: Basic"
                 >
-                  Free setup mode
+                  Plan: Basic
                 </div>
               )}
 
@@ -201,7 +201,7 @@ export default function Topbar() {
 
 
             {/* User Menu */}
-            <UserMenuDropdown />
+            <UserMenuDropdown currentPlan={hasVisiblePlan ? plan : isFreeSetup ? "Basic" : ""} />
           </div>
         </div>
       </div>

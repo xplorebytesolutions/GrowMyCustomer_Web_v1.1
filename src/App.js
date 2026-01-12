@@ -68,6 +68,7 @@ import TemplateMessagingComingSoon from "./pages/Messaging/TemplateMessagingComi
 import MessagingReportsComingSoon from "./pages/Messaging/MessagingReportsComingSoon";
 
 // Inbox & Automation
+import InboxWrapper from "./pages/Inbox/InboxWrapper";
 import ChatInbox from "./pages/ChatInbox/ChatInbox";
 import AutoReplyBuilder from "./pages/AutoReplyBuilder/AutoReplyBuilder";
 import CTAFlowVisualBuilder from "./pages/CTAFlowVisualBuilder/CTAFlowVisualBuilder";
@@ -130,7 +131,7 @@ import WelcomePage from "./pages/WelcomePages/WelcomePage";
 import FlowExecutionExplorer from "./pages/Auditing/FlowExecutionsExplorer";
 import DeveloperNotesPage from "./pages/DeveloperNotes/DeveloperNotesPage";
 
-// import { Tag } from "lucide-react__";
+// import { Tag } from "lucide-react";
 import TeamStaffPage from "./pages/TeamStaff/TeamStaffPage";
 import AccessControlPage from "./pages/Settings/AccessControl/RolePermissionMapping";
 
@@ -459,7 +460,14 @@ function App() {
                 </FeatureGuard>
               }
             />
-
+            <Route
+              path="inbox/livechat"
+              element={
+                <FeatureGuard code={FK.INBOX_VIEW}>
+                  <InboxWrapper />
+                </FeatureGuard>
+              }
+            />
             <Route
               path="inbox/chatinbox"
               element={

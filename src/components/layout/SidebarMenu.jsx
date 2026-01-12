@@ -389,7 +389,13 @@ export default function SidebarMenu() {
       },
     ],
     inbox: [
-
+      {
+        label: "Live Chat Inbox",
+        path: "/app/inbox/livechat",
+        icon: <MessageSquare size={18} />,
+        show: showInbox,
+        featureKey: FK.INBOX_VIEW,
+      },
       {
         label: "Chat Inbox",
         path: "/app/inbox/chatinbox",

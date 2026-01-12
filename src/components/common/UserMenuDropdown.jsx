@@ -5,7 +5,7 @@ import { ChevronDown, LogOut, Rocket, ShieldCheck, Lock, Terminal, UserCog } fro
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
 
-export default function UserMenuDropdown() {
+export default function UserMenuDropdown({ currentPlan }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const navigate = useNavigate();
@@ -21,7 +21,10 @@ export default function UserMenuDropdown() {
     localStorage.getItem("userAvatar") ||
     "/user_avatar_premium.png";
 
-  const plan = localStorage.getItem("plan") || "basic";
+  // Use passed prop, or fallback to localStorage, or default "basic"
+  const rawPlan = currentPlan || localStorage.getItem("plan") || "basic";
+  // Capitalize for display (e.g. "basic" -> "Basic")
+  const plan = rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1);
 
   // ✅ Close dropdown when clicked outside
   useEffect(() => {

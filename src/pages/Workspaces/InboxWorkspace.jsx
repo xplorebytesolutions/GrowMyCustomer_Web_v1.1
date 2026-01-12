@@ -25,7 +25,15 @@ const PERM_BY_BLOCK = {
 
 // Workspace tiles
 const inboxBlocks = [
-
+  {
+    id: "inbox-view",
+    label: "Live Chat Inbox",
+    description:
+      "Switch to a real-time inbox to manage and respond to conversations instantly.",
+    path: "/app/inbox/livechat",
+    icon: <MessageSquareText size={22} />,
+    action: "Live Chat",
+  },
   {
     id: "chat-inbox-view",
     label: "Chat Inbox",

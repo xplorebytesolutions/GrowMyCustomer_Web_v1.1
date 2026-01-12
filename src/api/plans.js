@@ -140,3 +140,14 @@ export const updatePlanQuotas = (planId, quotas) =>
     ],
     quotas
   );
+
+// ---------- Plan Assignment (to Businesses) ----------
+
+export const getApprovedBusinessesForAssignment = () =>
+  getTry(["/businesses/approved", "/business/approved"]);
+
+export const assignPlanToBusiness = (businessId, planId) =>
+  putTry(
+    [`/businesses/${businessId}/plan`, `/business/${businessId}/plan`],
+    { planId }
+  );
