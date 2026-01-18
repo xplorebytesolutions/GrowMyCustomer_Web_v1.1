@@ -597,28 +597,31 @@ export default function SidebarMenu() {
   const isTemplateBuilderFlyout = effectiveKey === "templatebuilder";
   const isAdminFlyout = effectiveKey === "admin";
 
-  const closeFlyout = useCallback((opts = {}) => {
-    setFlyoutOpen(false);
-    setFlyoutKey(null);
+  const closeFlyout = useCallback(
+    (opts = {}) => {
+      setFlyoutOpen(false);
+      setFlyoutKey(null);
 
-    // If we opened a workspace in "flyout test" mode, restore normal workspace URL
-    // when the flyout closes (unless we're closing due to a submenu navigation).
-    const shouldRestoreFlyoutUrl = opts.restoreFlyoutUrl !== false;
-    if (!shouldRestoreFlyoutUrl) return;
+      // If we opened a workspace in "flyout test" mode, restore normal workspace URL
+      // when the flyout closes (unless we're closing due to a submenu navigation).
+      const shouldRestoreFlyoutUrl = opts.restoreFlyoutUrl !== false;
+      if (!shouldRestoreFlyoutUrl) return;
 
-    const sp = new URLSearchParams(location.search || "");
-    if (sp.get("flyout") !== "1") return;
+      const sp = new URLSearchParams(location.search || "");
+      if (sp.get("flyout") !== "1") return;
 
-    const key = moduleKeyFromPath(location.pathname);
-    const isWorkspaceRoot =
-      String(location.pathname || "")
-        .split("/")
-        .filter(Boolean).length === 2;
+      const key = moduleKeyFromPath(location.pathname);
+      const isWorkspaceRoot =
+        String(location.pathname || "")
+          .split("/")
+          .filter(Boolean).length === 2;
 
-    if (isWorkspaceRoot && ALWAYS_FLYOUT_KEY[key]) {
-      navigate(location.pathname, { replace: true });
-    }
-  }, [location.pathname, location.search, navigate]);
+      if (isWorkspaceRoot && ALWAYS_FLYOUT_KEY[key]) {
+        navigate(location.pathname, { replace: true });
+      }
+    },
+    [location.pathname, location.search, navigate]
+  );
 
   const openFlyoutForKey = key => {
     if (!key || !submenuByKey[key] || submenuByKey[key].length === 0) return;
@@ -766,7 +769,8 @@ export default function SidebarMenu() {
             .map(item => {
               const key = moduleKeyFromPath(item.path);
               const hasSubmenu =
-                Array.isArray(submenuByKey[key]) && submenuByKey[key].length > 0;
+                Array.isArray(submenuByKey[key]) &&
+                submenuByKey[key].length > 0;
 
               const openFlyoutInsteadOfNavigating = !!ALWAYS_FLYOUT_KEY[key];
 
@@ -788,7 +792,8 @@ export default function SidebarMenu() {
                       if (willToggleClose) return;
 
                       const workspacePath = item.path;
-                      const isWorkspaceHome = location.pathname === workspacePath;
+                      const isWorkspaceHome =
+                        location.pathname === workspacePath;
                       const isInsideModule = activeKey === key;
 
                       if (!isInsideModule || isWorkspaceHome) {
@@ -817,42 +822,42 @@ export default function SidebarMenu() {
                     const isSelected =
                       isActive || (flyoutOpen && flyoutKey === key);
                     return (
-                  <>
-                    {/* Active styles are isolated to the icon wrapper only */}
-                    <span
-                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200
+                      <>
+                        {/* Active styles are isolated to the icon wrapper only */}
+                        <span
+                          className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200
                         ${
                           isSelected
                             ? "bg-[rgba(255,255,255,0.10)] scale-105"
                             : "bg-transparent group-hover:bg-[rgba(255,255,255,0.06)] group-hover:scale-105"
                         }`}
-                    >
-                      <span
-                        className={`transition-colors ${
-                          isSelected
-                            ? "text-[#34D399]"
-                            : "text-[rgba(255,255,255,0.85)] group-hover:text-[#34D399]"
-                        }`}
-                      >
-                        {item.icon}
-                      </span>
-                    </span>
+                        >
+                          <span
+                            className={`transition-colors ${
+                              isSelected
+                                ? "text-[#34D399]"
+                                : "text-[rgba(255,255,255,0.85)] group-hover:text-[#34D399]"
+                            }`}
+                          >
+                            {item.icon}
+                          </span>
+                        </span>
 
-                    {/* Text stays static (no scaling / no background) */}
-                    <span
-                      className={`mt-1 max-w-[72px] truncate px-1 text-center text-[10.5px] font-inter font-medium tracking-wide leading-[12px]
+                        {/* Text stays static (no scaling / no background) */}
+                        <span
+                          className={`mt-1 max-w-[72px] truncate px-1 text-center text-[10.5px] font-inter font-medium tracking-wide leading-[12px]
                         ${isSelected ? "text-white" : "text-emerald-50/70"}`}
-                    >
-                      {item.short || item.label}
-                    </span>
+                        >
+                          {item.short || item.label}
+                        </span>
 
-                    <RailTooltip text={item.label} />
-                    {item.badgeCount > 0 && (
-                      <span className="absolute top-2 right-2">
-                        <Badge count={item.badgeCount} collapsedBadge />
-                      </span>
-                    )}
-                  </>
+                        <RailTooltip text={item.label} />
+                        {item.badgeCount > 0 && (
+                          <span className="absolute top-2 right-2">
+                            <Badge count={item.badgeCount} collapsedBadge />
+                          </span>
+                        )}
+                      </>
                     );
                   }}
                 </NavLink>

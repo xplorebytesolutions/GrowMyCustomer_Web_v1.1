@@ -157,7 +157,11 @@ export default function Login() {
           <div className="relative z-10">
             <div className="mb-8">
               <div className="flex items-center gap-0.5 mb-6">
-                <img src="/logo/logo_cyclic.png" alt="Logo" className="h-16 w-auto object-contain" />
+                <img
+                  src="/logo/favicon.svg"
+                  alt="Logo"
+                  className="h-14 w-14 p-2.5 object-contain"
+                />
                 <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
                   XploreByte
                 </span>
@@ -381,10 +385,10 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3 px-4 rounded-xl font-bold text-white shadow-lg shadow-emerald-200 transition-all duration-200 transform hover:-translate-y-0.5 ${
+                className={`w-full py-3 px-4 rounded-xl font-bold text-white transition-all duration-200 transform hover:-translate-y-0.5 ${
                   loading
-                    ? "bg-gray-300 shadow-none cursor-not-allowed"
-                    : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-emerald-300"
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700"
                 }`}
               >
                 {loading ? (

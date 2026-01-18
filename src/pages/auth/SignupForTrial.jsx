@@ -111,10 +111,10 @@ const SignupForTrial = () => {
           {/* Logo */}
           <div className="mb-6">
             <div className="flex items-center gap-0.5">
-              <img 
-                src="/logo/logo_cyclic.png" 
+              <img
+                src="/logo/favicon.svg"
                 alt="Logo"
-                className="h-16 w-auto object-contain"
+                className="h-14 w-14 p-2.5 object-contain"
               />
               <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
                 XploreByte

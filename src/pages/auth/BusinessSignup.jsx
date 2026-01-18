@@ -61,7 +61,11 @@ function BusinessSignup() {
         {/* Right Signup Form */}
         <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 md:px-16 lg:px-20 py-12">
           <div className="flex items-center justify-center gap-0.5 mb-4">
-            <img src="/logo/logo_cyclic.png" alt="Logo" className="h-10 w-auto" />
+            <img
+              src="/logo/favicon.svg"
+              alt="Logo"
+              className="h-14 w-14 p-2.5 object-contain"
+            />
             <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827]">
               XploreByte
             </span>

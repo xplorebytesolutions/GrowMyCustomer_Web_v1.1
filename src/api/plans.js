@@ -34,7 +34,9 @@ const deleteTry = (...paths) => tryPaths("delete", paths.flat());
 // ---------- Plans (support singular/plural + casing) ----------
 export const getPlans = () => getTry(["/plan", "/Plan", "/plans", "/Plans"]);
 
-export const createPlan = payload => postTry(["/plan", "/Plan"], payload);
+// Create is implemented as POST /api/Plan/Create on the backend (PlanController)
+export const createPlan = payload =>
+  postTry(["/Plan/Create", "/plan/Create", "/plan", "/Plan"], payload);
 
 export const updatePlan = (planId, payload) =>
   putTry(

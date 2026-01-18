@@ -123,11 +123,11 @@ export default function Topbar() {
               title="XploreByte"
             >
               <img
-                src="/logo/logo_cyclic.png"
+                src="/logo/favicon.svg"
                 alt="XploreByte"
-                className="h-14 w-auto transition-transform duration-300 group-hover:scale-105 object-contain"
+                className="h-14 w-14 p-2.5 transition-transform duration-300 group-hover:scale-105 object-contain"
               />
-              <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
+              <span className="text-[18px] font-medium font-brand leading-[24px] text-[#111827] tracking-tight">
                 XploreByte
               </span>
             </button>
