@@ -34,8 +34,43 @@ const nodeTypes = {
   cta_flow: AutoReplyNodeBlock, // 🆕 CTA Flow nodes use the same block renderer
 };
 
-let id = 1;
-const getId = () => `node_${id++}`;
+const createGuid = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  const bytes = new Uint8Array(16);
+
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.getRandomValues === "function"
+  ) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+
+  // RFC 4122 v4
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex
+    .slice(6, 8)
+    .join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
+};
+
+const createStartNode = () => {
+  const nodeId = createGuid();
+  return {
+    id: nodeId,
+    type: "start",
+    position: { x: 100, y: 100 },
+    data: { id: nodeId, label: "start" },
+  };
+};
 
 const AutoReplyCanvas = forwardRef((props, ref) => {
   const reactFlowWrapper = useRef(null);
@@ -45,14 +80,7 @@ const AutoReplyCanvas = forwardRef((props, ref) => {
   const [flowName, setFlowName] = useState("");
   const [triggerKeywords, setTriggerKeywords] = useState("");
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([
-    {
-      id: "start-1",
-      type: "start",
-      position: { x: 100, y: 100 },
-      data: { label: "start" },
-    },
-  ]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([createStartNode()]);
 
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -204,7 +232,7 @@ const AutoReplyCanvas = forwardRef((props, ref) => {
         y: event.clientY - bounds.top,
       });
 
-      const newId = getId();
+      const newId = createGuid();
       const newNode = {
         id: newId,
         type,
@@ -312,66 +340,80 @@ const AutoReplyCanvas = forwardRef((props, ref) => {
   // --------------------------------------------------
   useImperativeHandle(ref, () => ({
     loadFlow: flowData => {
-      setCurrentFlowId(flowData?.id ?? null);
-      setFlowName(flowData?.name || "");
-      setTriggerKeywords(flowData?.triggerKeyword || flowData?.keyword || "");
+      try {
+        setSelectedNode(null);
+        setPendingDeleteId(null);
 
-      const loadedNodes =
-        flowData?.nodes?.map(node => {
-          const config =
-            typeof node.configJson === "string"
-              ? JSON.parse(node.configJson || "{}")
-              : node.configJson || {};
-          return {
-            id: node.id,
-            type: node.nodeType,
-            position: { x: node.positionX ?? 0, y: node.positionY ?? 0 },
-            data: {
+        setCurrentFlowId(flowData?.id ?? null);
+        setFlowName(flowData?.name || "");
+        setTriggerKeywords(flowData?.triggerKeyword || flowData?.keyword || "");
+
+        const loadedNodes =
+          flowData?.nodes?.map(node => {
+            let config = {};
+            if (typeof node.configJson === "string") {
+              try {
+                config = JSON.parse(node.configJson || "{}") || {};
+              } catch {
+                config = {};
+              }
+            } else if (node.configJson && typeof node.configJson === "object") {
+              config = node.configJson;
+            }
+
+            return {
               id: node.id,
-              label: node.label || node.nodeName || node.nodeType,
-              config,
-            },
-          };
-        }) || [];
+              type: node.nodeType,
+              position: { x: node.positionX ?? 0, y: node.positionY ?? 0 },
+              data: {
+                id: node.id,
+                label: node.label || node.nodeName || node.nodeType,
+                config,
+              },
+            };
+          }) || [];
 
-      const loadedEdges = [];
-      loadedNodes.forEach(node => {
-        const outgoing = node.data?.config?.outgoing || [];
-        outgoing.forEach((edgeCfg, idx) => {
-          loadedEdges.push({
-            id: `${node.id}->${edgeCfg.targetId}-${idx}`,
-            source: node.id,
-            target: edgeCfg.targetId,
-            sourceHandle: edgeCfg.handle || null,
+        const nodeIds = new Set(loadedNodes.map(n => n.id));
+        const loadedEdges = [];
+        loadedNodes.forEach(node => {
+          const outgoing = node.data?.config?.outgoing || [];
+          outgoing.forEach((edgeCfg, idx) => {
+            if (!edgeCfg?.targetId || !nodeIds.has(edgeCfg.targetId)) return;
+
+            loadedEdges.push({
+              id: `${node.id}->${edgeCfg.targetId}-${idx}`,
+              source: node.id,
+              target: edgeCfg.targetId,
+              sourceHandle: edgeCfg.handle || null,
+            });
           });
         });
-      });
 
-      const nextNodes =
-        loadedNodes.length > 0
-          ? loadedNodes
-          : [
-              {
-                id: "start-1",
-                type: "start",
-                position: { x: 100, y: 100 },
-                data: { label: "start" },
-              },
-            ];
+        const nextNodes = loadedNodes.length > 0 ? loadedNodes : [createStartNode()];
 
-      setNodes(nextNodes);
-      setEdges(loadedEdges);
+        setNodes(nextNodes);
+        setEdges(loadedEdges);
 
-      // establish clean baseline for dirty tracking
-      const baselineSnapshot = computeSnapshot(
-        nextNodes,
-        loadedEdges,
-        flowData?.name || "",
-        flowData?.triggerKeyword || flowData?.keyword || "",
-        flowData?.id ?? null
-      );
-      setLastSavedSnapshot(baselineSnapshot);
-      setIsDirty(false);
+        // establish clean baseline for dirty tracking
+        const baselineSnapshot = computeSnapshot(
+          nextNodes,
+          loadedEdges,
+          flowData?.name || "",
+          flowData?.triggerKeyword || flowData?.keyword || "",
+          flowData?.id ?? null
+        );
+        setLastSavedSnapshot(baselineSnapshot);
+        setIsDirty(false);
+      } catch (err) {
+        console.error("Failed to load flow into canvas", err);
+        toast.error("âŒ Failed to load flow on canvas");
+
+        const fallbackNodes = [createStartNode()];
+        setNodes(fallbackNodes);
+        setEdges([]);
+        setLastSavedSnapshot(computeSnapshot(fallbackNodes, [], "", "", null));
+        setIsDirty(false);
+      }
     },
     handleSaveFlow,
     saveFlow: handleSaveFlow,
@@ -379,15 +421,10 @@ const AutoReplyCanvas = forwardRef((props, ref) => {
       setCurrentFlowId(null);
       setFlowName("");
       setTriggerKeywords("");
+      setSelectedNode(null);
+      setPendingDeleteId(null);
 
-      const defaultNodes = [
-        {
-          id: "start-1",
-          type: "start",
-          position: { x: 100, y: 100 },
-          data: { label: "start" },
-        },
-      ];
+      const defaultNodes = [createStartNode()];
 
       setNodes(defaultNodes);
       setEdges([]);
@@ -524,8 +561,18 @@ const AutoReplyCanvas = forwardRef((props, ref) => {
             </div>
           </div>
 
-          {/* Actions – Flows + Save */}
+          {/* Actions – Save + Flows */}
           <div className="flex items-center gap-2 md:ml-4">
+            {/* Save flow button – emerald */}
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSaveFlow}
+              className="h-8 px-3 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+            >
+              💾 Save Flow
+            </Button>
+
             {/* Flow list button – emerald */}
             <Button
               type="button"
@@ -535,16 +582,6 @@ const AutoReplyCanvas = forwardRef((props, ref) => {
             >
               <span className="mr-1 text-[11px]">☰</span>
               Flows
-            </Button>
-
-            {/* Save flow button – emerald */}
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleSaveFlow}
-              className="h-8 px-3 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
-            >
-              💾 Save Flow
             </Button>
           </div>
         </div>

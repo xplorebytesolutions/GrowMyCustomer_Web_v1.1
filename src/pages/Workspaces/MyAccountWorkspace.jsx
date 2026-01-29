@@ -69,7 +69,7 @@ const accountBlocks = [
   },
   {
     id: "meta-account",
-    label: "Meta Account Management",
+    label: "WhatsApp Api Integration",
     description: "Disconnect WhatsApp or handle Meta data deletion.",
     path: "/app/settings/meta-account",
     icon: <Globe size={22} />,
@@ -110,10 +110,10 @@ export default function MyAccountWorkspace() {
   const { isLoading, entLoading, can, hasAllAccess } = useAuth();
 
   const [pinned, setPinned] = useState(
-    JSON.parse(localStorage.getItem("myaccount-pinned") || "[]")
+    JSON.parse(localStorage.getItem("myaccount-pinned") || "[]"),
   );
   const [archived, setArchived] = useState(
-    JSON.parse(localStorage.getItem("myaccount-archived") || "[]")
+    JSON.parse(localStorage.getItem("myaccount-archived") || "[]"),
   );
 
   // Reconcile saved order with current block ids
@@ -166,7 +166,9 @@ export default function MyAccountWorkspace() {
       const codes = PERM_BY_BLOCK[block.id];
       const required = Array.isArray(codes) ? codes.filter(Boolean) : [];
       const allowed =
-        hasAllAccess || required.length === 0 || required.some(code => can(code));
+        hasAllAccess ||
+        required.length === 0 ||
+        required.some(code => can(code));
 
       return {
         ...block,
@@ -187,7 +189,10 @@ export default function MyAccountWorkspace() {
   }
 
   return (
-    <div className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]" data-test-id="myaccount-root">
+    <div
+      className="p-6 bg-[#f5f6f7] min-h-[calc(100vh-80px)]"
+      data-test-id="myaccount-root"
+    >
       {/* Emerald sequential border animation (top→right→bottom→left) */}
       <style>{`
         @keyframes drawRight { from { transform: scaleX(0) } to { transform: scaleX(1) } }

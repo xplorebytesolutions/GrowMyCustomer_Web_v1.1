@@ -32,6 +32,7 @@ const PERM_BY_BLOCK = {
   "user-permissions": [FK.SUPER_ADMIN_USER_MANAGEMENT_VIEW],
   "flow-execution-explorer": [FK.SUPER_ADMIN_FLOW_EXECUTION_EXPLORER_VIEW],
   "developer-notes": [FK.SUPER_ADMIN_WORKSPACE_VIEW],
+  "server-troubleshooting": [FK.SUPER_ADMIN_WORKSPACE_VIEW],
 };
 
 const allAdminBlocks = [
@@ -129,6 +130,16 @@ const allAdminBlocks = [
     path: "/app/admin/developer-notes",
     icon: <FileCode2 size={22} />,
     action: "Open Notes",
+    roles: ["superadmin"],
+  },
+  {
+    id: "server-troubleshooting",
+    label: "Server Troubleshooting",
+    description:
+      "Guide to diagnose and resolve server issues, high CPU/RAM usage, and more.",
+    path: "/app/admin/server-troubleshooting",
+    icon: <FileCode2 size={22} />,
+    action: "Open Guide",
     roles: ["superadmin"],
   },
 ];

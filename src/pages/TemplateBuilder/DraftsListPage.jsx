@@ -48,6 +48,7 @@ export default function DraftsListPage() {
   
   // Filter States
   const q = sp.get("q") || "";
+  const v = sp.get("v") || "";
   const categoryFilter = sp.get("category") || "ALL";
   const [previewDraftId, setPreviewDraftId] = React.useState(null);
 
@@ -74,7 +75,7 @@ export default function DraftsListPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [v]);
 
   React.useEffect(() => {
     if (sp.get("create") === "1") {
@@ -195,7 +196,7 @@ export default function DraftsListPage() {
              ))}
            </div>
         ) : filteredItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
+          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-lg border border-dashed border-slate-300">
             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
               <FileText className="h-8 w-8 text-slate-400" />
             </div>
@@ -254,7 +255,7 @@ export default function DraftsListPage() {
               return (
                 <div 
                   key={d.id}
-                  className="group relative bg-white rounded-xl border border-slate-200 p-5 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 flex flex-col items-start text-left h-full"
+                  className="group relative bg-white rounded-lg border border-slate-200 p-5 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 flex flex-col items-start text-left h-full"
                 >
                   {/* Delete Button (Hover) */}
                   <button

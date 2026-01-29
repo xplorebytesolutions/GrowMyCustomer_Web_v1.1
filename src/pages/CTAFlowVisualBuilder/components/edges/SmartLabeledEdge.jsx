@@ -24,7 +24,7 @@ export default function SmartLabeledEdge(props) {
     sourcePosition,
     targetPosition,
     style,
-    markerEnd = { type: MarkerType.ArrowClosed, color: "#9333ea" },
+    markerEnd = { type: MarkerType.ArrowClosed, color: "#059669" },
     label,
     selected,
     data,
@@ -50,7 +50,7 @@ export default function SmartLabeledEdge(props) {
         id={id}
         path={edgePath}
         markerEnd={markerEnd}
-        style={{ stroke: "#9333ea", strokeWidth: selected ? 2 : 1.5, ...style }}
+        style={{ stroke: "#059669", strokeWidth: selected ? 2 : 1.5, ...style }}
       />
 
       {label && (

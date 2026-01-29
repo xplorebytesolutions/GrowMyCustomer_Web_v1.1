@@ -109,7 +109,7 @@ export default function Topbar() {
       className="sticky top-0 z-50 shadow-sm border-b border-gray-100 transition-all duration-500"
       style={{
         background:
-          "linear-gradient(217deg, rgba(13, 59, 44, 1) 9%, rgba(218, 230, 225, 1) 47%, rgba(247, 247, 247, 1) 100%)",
+          "linear-gradient(217deg, rgba(13, 59, 44, 1) 0%, rgba(218, 230, 225, 1) 25%, rgba(247, 247, 247, 1) 100%)",
       }}
     >
       <div className="pl-2 lg:pl-4 pr-4 lg:pr-8 py-1">
@@ -170,7 +170,7 @@ export default function Topbar() {
                   title={`Current Plan: ${plan}`}
                   aria-label={`Plan: ${plan}`}
                 >
-                  Plan: {plan}
+                  {plan}
                 </div>
               )}
 
@@ -181,7 +181,7 @@ export default function Topbar() {
                   title="Your current plan is Basic"
                   aria-label="Plan: Basic"
                 >
-                  Plan: Basic
+                  Basic
                 </div>
               )}
 

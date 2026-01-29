@@ -37,6 +37,7 @@ export default function AutoReplyNodeBlock({ data }) {
 
   const body = config.body || config.text || "";
   const buttons = Array.isArray(config.multiButtons) ? config.multiButtons : [];
+  const templateName = (config.templateName || "").toString();
 
   // 🆕 CTA flow name, saved from the node editor
   const ctaFlowName = config.ctaFlowName || "";
@@ -81,6 +82,12 @@ export default function AutoReplyNodeBlock({ data }) {
       <div className="text-[7px] text-emerald-600 font-medium mb-0.5">
         {formatStepLabel(data.id)}
       </div>
+
+      {type === "template" && (
+        <div className="text-[7px] text-zinc-700 font-semibold mb-0.5 truncate">
+          {templateName || "No template selected"}
+        </div>
+      )}
 
       {/* 🆕 CTA Flow info */}
       {type === "cta_flow" && (

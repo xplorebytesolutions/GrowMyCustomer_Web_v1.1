@@ -20,7 +20,8 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Eye, Minus } from "lucide-react";
+import "./ctaFlowReactFlowOverrides.css";
+import { Eye, Minus, Workflow } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import TemplatePickerModal from "./components/TemplatePickerModal";
 import FlowNodeBubble from "./components/FlowNodeBubble";
@@ -38,12 +39,26 @@ import dagre from "dagre";
 import SmartLabeledEdge from "./components/edges/SmartLabeledEdge";
 
 const GRID = 16;
+const HANDLE_PREFIX = "btn-";
+
+const normalizeButtonText = v => String(v || "").trim().toLowerCase();
+
+const handleIdForButton = (_btn, fallbackIndex) =>
+  `${HANDLE_PREFIX}${fallbackIndex}`;
+
+const buttonTextForHandle = (buttons, handleId) => {
+  const list = Array.isArray(buttons) ? buttons : [];
+  const hid = String(handleId || "");
+  const found = list.find((b, i) => handleIdForButton(b, i) === hid);
+  return (found?.text || "").toString().trim();
+};
 const NODE_DEFAULT = { width: 260, height: 140 };
 
 function CTAFlowVisualBuilderInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const nodesRef = useRef([]);
+  const edgesRef = useRef([]);
   const [showPicker, setShowPicker] = useState(false);
   const [flowName, setFlowName] = useState("");
   const flowNameRef = useRef(null);
@@ -52,6 +67,7 @@ function CTAFlowVisualBuilderInner() {
 
   // policy state
   const [isPublished, setIsPublished] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [republishNeeded, setRepublishNeeded] = useState(false);
   const [lockInfo, setLockInfo] = useState({ locked: false, campaigns: [] });
   const [forkModalOpen, setForkModalOpen] = useState(false);
@@ -70,6 +86,25 @@ function CTAFlowVisualBuilderInner() {
   const flowId = searchParams.get("id");
   const visualDebug = true;
 
+  // Persist unsaved builder state so users don't lose work on tab discard / route refresh.
+  // We scope to business + flowId (or 'new') and keep it in sessionStorage (per-session).
+  const businessId = useMemo(() => {
+    return (
+      localStorage.getItem("businessId") ||
+      localStorage.getItem("sa_selectedBusinessId") ||
+      ""
+    );
+  }, []);
+
+  const draftCacheKey = useMemo(() => {
+    const bizPart = businessId ? `biz.${businessId}` : "biz.unknown";
+    const flowPart = flowId ? `flow.${flowId}` : "new";
+    return `ctaFlow.visualBuilder.draft.${bizPart}.${flowPart}`;
+  }, [businessId, flowId]);
+
+  const draftRestoreAttemptedRef = useRef(false);
+  const draftSaveDebounceRef = useRef(null);
+
   // figure out source tab for Back button
   const fromTab = (searchParams.get("from") || "draft").toLowerCase();
   const backTab = fromTab === "published" ? "published" : "draft";
@@ -85,6 +120,96 @@ function CTAFlowVisualBuilderInner() {
   useEffect(() => {
     nodesRef.current = [...nodes];
   }, [nodes]);
+
+  useEffect(() => {
+    edgesRef.current = [...edges];
+  }, [edges]);
+
+  // Restore cached draft for new flows (or when state is empty after reload).
+  useEffect(() => {
+    if (draftRestoreAttemptedRef.current) return;
+    draftRestoreAttemptedRef.current = true;
+
+    // For edit flows, we prefer the server source of truth. Only restore for new flows.
+    if (flowId) return;
+
+    // Only restore into a "fresh" canvas.
+    if (nodes.length || edges.length || (flowName || "").trim().length) return;
+
+    try {
+      const raw = sessionStorage.getItem(draftCacheKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.v !== 1) return;
+
+      const nextNodes = Array.isArray(parsed.nodes) ? parsed.nodes : [];
+      const nextEdges = Array.isArray(parsed.edges) ? parsed.edges : [];
+      const nextName = typeof parsed.flowName === "string" ? parsed.flowName : "";
+
+      if (!nextNodes.length && !nextEdges.length && !nextName.trim().length) return;
+
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      setFlowName(nextName);
+      setDirty(true);
+    } catch {
+      // no-op
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftCacheKey]);
+
+  const persistDraft = useCallback(
+    ({ immediate = false } = {}) => {
+      try {
+        const payload = {
+          v: 1,
+          flowId: flowId || null,
+          mode: mode || null,
+          flowName: flowName || "",
+          nodes: nodesRef.current || [],
+          edges: edgesRef.current || [],
+          savedAt: new Date().toISOString(),
+        };
+
+        if (!immediate) {
+          if (draftSaveDebounceRef.current) {
+            clearTimeout(draftSaveDebounceRef.current);
+          }
+          draftSaveDebounceRef.current = setTimeout(() => {
+            try {
+              sessionStorage.setItem(draftCacheKey, JSON.stringify(payload));
+            } catch {
+              // no-op
+            }
+          }, 250);
+          return;
+        }
+
+        sessionStorage.setItem(draftCacheKey, JSON.stringify(payload));
+      } catch {
+        // no-op
+      }
+    },
+    [draftCacheKey, flowId, mode, flowName]
+  );
+
+  useEffect(() => {
+    // Save in background whenever user changes something.
+    // (Even if not dirty yet, saving is harmless and keeps UX resilient.)
+    persistDraft();
+    return () => {
+      if (draftSaveDebounceRef.current) clearTimeout(draftSaveDebounceRef.current);
+    };
+  }, [persistDraft, nodes, edges]);
+
+  useEffect(() => {
+    // Flush cache when tab is being hidden; helps with Chrome tab discard.
+    const onVis = () => {
+      if (document.visibilityState === "hidden") persistDraft({ immediate: true });
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [persistDraft]);
 
   // warn on unload if dirty
   useEffect(() => {
@@ -157,7 +282,12 @@ function CTAFlowVisualBuilderInner() {
             data: {
               templateName: node.templateName,
               templateType: node.templateType,
+              headerMediaUrl: node.headerMediaUrl || "",
               messageBody: node.messageBody,
+              bodyParams: Array.isArray(node.bodyParams) ? node.bodyParams : [],
+              urlButtonParams: Array.isArray(node.urlButtonParams)
+                ? node.urlButtonParams
+                : [],
               triggerButtonText: node.triggerButtonText || "",
               triggerButtonType: node.triggerButtonType || "cta",
               requiredTag: node.requiredTag || "",
@@ -179,19 +309,29 @@ function CTAFlowVisualBuilderInner() {
             },
           }));
 
-          const builtEdges = (data.edges || []).map(edge => ({
-            id: `e-${edge.fromNodeId}-${edge.toNodeId}-${
-              edge.sourceHandle || "h"
-            }`,
-            source: edge.fromNodeId,
-            target: edge.toNodeId,
-            sourceHandle: edge.sourceHandle || null,
-            type: "smart",
-            animated: true,
-            style: { stroke: "#9333ea" },
-            markerEnd: { type: MarkerType.ArrowClosed, color: "#9333ea" },
-            label: edge.sourceHandle || "",
-          }));
+          const builtNodesById = new Map(builtNodes.map(n => [n.id, n]));
+          const builtEdges = (data.edges || []).map(edge => {
+            const rawLabel = String(edge.sourceHandle || "");
+            const fromNode = builtNodesById.get(edge.fromNodeId);
+            const btns = fromNode?.data?.buttons || [];
+            const matchIdx = btns.findIndex(
+              b => normalizeButtonText(b?.text) === normalizeButtonText(rawLabel)
+            );
+            const sourceHandle =
+              matchIdx >= 0 ? handleIdForButton(btns[matchIdx], matchIdx) : null;
+
+            return {
+              id: `e-${edge.fromNodeId}-${edge.toNodeId}-${rawLabel || "h"}`,
+              source: edge.fromNodeId,
+              target: edge.toNodeId,
+              sourceHandle,
+              type: "smart",
+              animated: true,
+              style: { stroke: "#059669" },
+              markerEnd: { type: MarkerType.ArrowClosed, color: "#059669" },
+              label: rawLabel,
+            };
+          });
 
           const nodesWithIncoming = new Set(builtEdges.map(e => e.target));
           const nodesWithWarnings = builtNodes.map(node => ({
@@ -276,7 +416,10 @@ function CTAFlowVisualBuilderInner() {
       data: {
         templateName: name || "Untitled",
         templateType: type || "text_template",
+        headerMediaUrl: "",
         messageBody: body || "Message body preview...",
+        bodyParams: [],
+        urlButtonParams: ["", "", ""],
         triggerButtonText: buttons[0]?.text || "",
         triggerButtonType: "cta",
         useProfileName: false,
@@ -287,7 +430,7 @@ function CTAFlowVisualBuilderInner() {
           subType: btn.subType || "",
           value: btn.parameterValue || "",
           targetNodeId: null,
-          index: idx,
+          index: typeof btn.index === "number" ? btn.index : idx,
         })),
       },
     };
@@ -298,6 +441,66 @@ function CTAFlowVisualBuilderInner() {
       `✅ Step added with ${type?.replace("_", " ") || "template"}`
     );
     setTimeout(() => fitView({ padding: 0.25 }), 50);
+  };
+
+  // --- Add multiple templates (multi-select in picker)
+  const handleTemplatesSelectMany = payloads => {
+    if (readonly) return;
+    const items = Array.isArray(payloads) ? payloads.filter(Boolean) : [];
+    if (items.length === 0) return;
+
+    const snap = v => Math.round(v / GRID) * GRID;
+    const existing = Array.isArray(nodesRef.current) ? nodesRef.current : [];
+    const xs = existing.map(n => n?.position?.x ?? 0);
+    const ys = existing.map(n => n?.position?.y ?? 0);
+
+    const maxX = xs.length ? Math.max(...xs) : 0;
+    const minY = ys.length ? Math.min(...ys) : 0;
+    const startX = snap((existing.length ? maxX : 120) + NODE_DEFAULT.width + 80);
+    const startY = snap(existing.length ? minY : 120);
+
+    const cols = Math.min(2, items.length);
+    const gapX = snap(NODE_DEFAULT.width + 80);
+    const gapY = snap(NODE_DEFAULT.height + 80);
+
+    const newNodes = items.map((p, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const id = uuidv4();
+
+      const buttons = Array.isArray(p.buttons) ? p.buttons : [];
+      return {
+        id,
+        position: { x: startX + col * gapX, y: startY + row * gapY },
+        type: "customBubble",
+        data: {
+          templateName: p.name || "Untitled",
+          templateType: p.type || "text_template",
+          headerMediaUrl: "",
+          messageBody: p.body || "Message body preview...",
+          bodyParams: [],
+          urlButtonParams: ["", "", ""],
+          triggerButtonText: buttons[0]?.text || "",
+          triggerButtonType: "cta",
+          useProfileName: false,
+          profileNameSlot: 1,
+          buttons: buttons.map((btn, i) => ({
+            text: btn.text || "",
+            type: btn.type || "QUICK_REPLY",
+            subType: btn.subType || "",
+            value: btn.parameterValue || "",
+            targetNodeId: null,
+            index: typeof btn.index === "number" ? btn.index : i,
+          })),
+        },
+      };
+    });
+
+    setDirty(true);
+    setNodes(nds => [...nds, ...newNodes]);
+    setShowPicker(false);
+    toast.success(`Added ${newNodes.length} step(s)`);
+    setTimeout(() => fitView({ padding: 0.25 }), 80);
   };
 
   // --- Connection rules
@@ -317,7 +520,10 @@ function CTAFlowVisualBuilderInner() {
     params => {
       if (readonly) return;
       setDirty(true);
-      const label = params.sourceHandle || "";
+      const sourceNode = nodesRef.current.find(n => n.id === params.source);
+      const label =
+        buttonTextForHandle(sourceNode?.data?.buttons, params.sourceHandle) ||
+        "";
 
       setEdges(eds =>
         addEdge(
@@ -326,8 +532,8 @@ function CTAFlowVisualBuilderInner() {
             id: uuidv4(),
             type: "smart",
             animated: true,
-            style: { stroke: "#9333ea" },
-            markerEnd: { type: MarkerType.ArrowClosed, color: "#9333ea" },
+            style: { stroke: "#059669" },
+            markerEnd: { type: MarkerType.ArrowClosed, color: "#059669" },
             label,
           },
           eds
@@ -337,28 +543,14 @@ function CTAFlowVisualBuilderInner() {
       setNodes(nds =>
         nds.map(node => {
           if (node.id !== params.source) return node;
-          const sourceHandle = params.sourceHandle || "";
           const updatedButtons = [...(node.data.buttons || [])];
 
           const idx = updatedButtons.findIndex(
-            b =>
-              (b.text || "").toLowerCase().trim() ===
-              sourceHandle.toLowerCase().trim()
+            (b, i) => handleIdForButton(b, i) === String(params.sourceHandle || "")
           );
 
-          if (idx >= 0) {
-            updatedButtons[idx] = {
-              ...updatedButtons[idx],
-              targetNodeId: params.target,
-            };
-          } else {
-            const free = updatedButtons.findIndex(b => !b.targetNodeId);
-            if (free >= 0)
-              updatedButtons[free] = {
-                ...updatedButtons[free],
-                targetNodeId: params.target,
-              };
-          }
+          if (idx >= 0)
+            updatedButtons[idx] = { ...updatedButtons[idx], targetNodeId: params.target };
 
           return { ...node, data: { ...node.data, buttons: updatedButtons } };
         })
@@ -429,6 +621,9 @@ function CTAFlowVisualBuilderInner() {
         Id: node.id,
         TemplateName: node.data.templateName || "Untitled",
         TemplateType: node.data.templateType || "text_template",
+        HeaderMediaUrl: (node.data.headerMediaUrl || "").trim(),
+        BodyParams: Array.isArray(node.data.bodyParams) ? node.data.bodyParams : [],
+        UrlButtonParams: Array.isArray(node.data.urlButtonParams) ? node.data.urlButtonParams : [],
         MessageBody: node.data.messageBody || "",
         PositionX: node.position?.x || 0,
         PositionY: node.position?.y || 0,
@@ -454,11 +649,20 @@ function CTAFlowVisualBuilderInner() {
           })),
       }));
 
-    const transformedEdges = edges.map(edge => ({
-      FromNodeId: edge.source,
-      ToNodeId: edge.target,
-      SourceHandle: edge.sourceHandle || "",
-    }));
+    const nodesById = new Map(nodes.map(n => [n.id, n]));
+    const transformedEdges = edges.map(edge => {
+      const fromNode = nodesById.get(edge.source);
+      const fallbackLabel = buttonTextForHandle(
+        fromNode?.data?.buttons,
+        edge.sourceHandle
+      );
+      return {
+        FromNodeId: edge.source,
+        ToNodeId: edge.target,
+        // Backend wiring expects SourceHandle == button text.
+        SourceHandle: String(edge.label || fallbackLabel || ""),
+      };
+    });
 
     return {
       FlowName: flowName || "Untitled",
@@ -468,10 +672,156 @@ function CTAFlowVisualBuilderInner() {
     };
   };
 
+  const requiresHeaderMediaUrl = templateType => {
+    const t = String(templateType || "").trim().toLowerCase();
+    return t === "image_template" || t === "video_template" || t === "document_template";
+  };
+
+  const isValidHttpsUrl = value => {
+    const raw = String(value || "").trim();
+    if (!raw) return false;
+    try {
+      const u = new URL(raw);
+      return u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
+  const getMediaHeaderIssues = currentNodes => {
+    const list = Array.isArray(currentNodes) ? currentNodes : [];
+    return list
+      .filter(n => !!n?.data?.templateName)
+      .filter(n => requiresHeaderMediaUrl(n?.data?.templateType))
+      .map(n => {
+        const url = (n?.data?.headerMediaUrl || "").trim();
+        if (!url) {
+          return {
+            nodeId: n.id,
+            templateName: n.data.templateName,
+            reason: "Missing header media URL",
+          };
+        }
+        if (!isValidHttpsUrl(url)) {
+          return {
+            nodeId: n.id,
+            templateName: n.data.templateName,
+            reason: "Header media URL must be a valid https:// URL",
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  };
+
+  const countBodyPlaceholdersFlexible = body => {
+    if (!body) return 0;
+    const s = String(body);
+    const positional = s.match(/\{\{\s*\d+\s*\}\}/g) || [];
+    const named = s.match(/\{\{\s*\}\}/g) || [];
+    return positional.length + named.length;
+  };
+
+  const getBodyParamIssues = currentNodes => {
+    const list = Array.isArray(currentNodes) ? currentNodes : [];
+    const issues = [];
+
+    for (const n of list) {
+      if (!n?.data?.templateName) continue;
+      const placeholderCount = countBodyPlaceholdersFlexible(n?.data?.messageBody);
+      if (placeholderCount <= 0) continue;
+
+      const params = Array.isArray(n?.data?.bodyParams) ? n.data.bodyParams : [];
+      const useProfile = !!n?.data?.useProfileName;
+      const slot = typeof n?.data?.profileNameSlot === "number" ? n.data.profileNameSlot : 1;
+
+      for (let i = 1; i <= placeholderCount; i++) {
+        if (useProfile && slot === i) continue;
+        const v = (params[i - 1] || "").toString().trim();
+        if (!v.length) {
+          issues.push({
+            nodeId: n.id,
+            templateName: n.data.templateName,
+            index: i,
+            reason: `Missing body value for {{${i}}}`,
+          });
+          break; // first issue per node is enough for UX
+        }
+      }
+    }
+
+    return issues;
+  };
+
+  const isDynamicUrlButton = btn => {
+    const type = String(btn?.type || "").trim().toUpperCase();
+    const subType = String(btn?.subType || "").trim().toLowerCase();
+    const mask = String(btn?.value || "").trim();
+    const isUrl = type === "URL" || subType === "url";
+    const isDynamic = mask.includes("{{");
+    return isUrl && isDynamic;
+  };
+
+  const getUrlButtonParamIssues = currentNodes => {
+    const list = Array.isArray(currentNodes) ? currentNodes : [];
+    const issues = [];
+
+    for (const n of list) {
+      if (!n?.data?.templateName) continue;
+
+      const params = Array.isArray(n?.data?.urlButtonParams)
+        ? n.data.urlButtonParams
+        : [];
+
+      const btns = Array.isArray(n?.data?.buttons) ? n.data.buttons : [];
+      const dyn = btns.filter(isDynamicUrlButton);
+      if (!dyn.length) continue;
+
+      for (const b of dyn) {
+        const idx = typeof b.index === "number" ? b.index : 0;
+        const v = (params[idx] || "").toString().trim();
+        if (!v.length) {
+          issues.push({
+            nodeId: n.id,
+            templateName: n.data.templateName,
+            buttonIndex: idx + 1,
+            buttonText: b.text || "",
+            reason: `Missing dynamic URL param for button ${idx + 1}`,
+          });
+          break; // first issue per node is enough for UX
+        }
+      }
+    }
+
+    return issues;
+  };
+
   // --- Save Draft
   const handleSaveDraft = async () => {
     try {
       setSaving(true);
+
+      const issues = getMediaHeaderIssues(nodesRef.current);
+      if (issues.length) {
+        toast.warn(
+          `Some steps need a valid https Header Media URL before publish. First: ${issues[0].templateName} (${issues[0].reason})`
+        );
+      }
+
+      const bodyIssues = getBodyParamIssues(nodesRef.current);
+      if (bodyIssues.length) {
+        toast.warn(
+          `Some steps need body variable values before publish. First: ${bodyIssues[0].templateName} (${bodyIssues[0].reason})`
+        );
+      }
+
+      const urlIssues = getUrlButtonParamIssues(nodesRef.current);
+      if (urlIssues.length) {
+        toast.warn(
+          `Some steps need dynamic URL button values before publish. First: ${urlIssues[0].templateName} (${urlIssues[0].reason})`
+        );
+      }
+
       const payload = buildPayload();
 
       if (mode === "edit" && flowId) {
@@ -481,12 +831,22 @@ function CTAFlowVisualBuilderInner() {
       } else {
         const res = await saveVisualFlow(payload); // create new draft
         if (res?.flowId) {
+          try {
+            sessionStorage.removeItem(draftCacheKey);
+          } catch {
+            // no-op
+          }
           navigate(`/app/cta-flow/flow-manager?tab=draft`);
           return;
         }
         toast.success("✅ Flow saved (draft)");
       }
       setDirty(false);
+      try {
+        sessionStorage.removeItem(draftCacheKey);
+      } catch {
+        // no-op
+      }
       navigate(`/app/cta-flow/flow-manager?tab=draft`);
     } catch (error) {
       console.error("❌ Save draft failed: ", error);
@@ -506,6 +866,30 @@ function CTAFlowVisualBuilderInner() {
   // --- Publish / Republish
   const handlePublish = async () => {
     try {
+      const issues = getMediaHeaderIssues(nodesRef.current);
+      if (issues.length) {
+        toast.error(
+          `Cannot publish: ${issues[0].templateName} (${issues[0].reason}). Set the Header Media URL on that step.`
+        );
+        return;
+      }
+
+      const bodyIssues = getBodyParamIssues(nodesRef.current);
+      if (bodyIssues.length) {
+        toast.error(
+          `Cannot publish: ${bodyIssues[0].templateName} (${bodyIssues[0].reason}). Fill body variables on that step.`
+        );
+        return;
+      }
+
+      const urlIssues = getUrlButtonParamIssues(nodesRef.current);
+      if (urlIssues.length) {
+        toast.error(
+          `Cannot publish: ${urlIssues[0].templateName} (${urlIssues[0].reason}). Fill the dynamic URL button value on that step.`
+        );
+        return;
+      }
+
       setSaving(true);
 
       if (mode === "edit" && flowId) {
@@ -515,6 +899,11 @@ function CTAFlowVisualBuilderInner() {
         setRepublishNeeded(false);
         setIsPublished(true);
         setDirty(false);
+        try {
+          sessionStorage.removeItem(draftCacheKey);
+        } catch {
+          // no-op
+        }
         toast.success("✅ Flow published");
         navigate("/app/cta-flow/flow-manager?tab=published");
         return;
@@ -527,6 +916,11 @@ function CTAFlowVisualBuilderInner() {
 
       if (newId) {
         await publishFlow(newId);
+        try {
+          sessionStorage.removeItem(draftCacheKey);
+        } catch {
+          // no-op
+        }
         toast.success("✅ Flow created & published");
         navigate("/app/cta-flow/flow-manager?tab=published");
         return;
@@ -542,7 +936,11 @@ function CTAFlowVisualBuilderInner() {
         setForkModalOpen(true);
         setReadonly(true);
       } else {
-        toast.error("❌ Failed to publish");
+        const msg =
+          error?.response?.data?.message ||
+          error?.message ||
+          "❌ Failed to publish";
+        toast.error(msg);
       }
     } finally {
       setSaving(false);
@@ -553,8 +951,8 @@ function CTAFlowVisualBuilderInner() {
     () => ({
       type: "smart",
       animated: true,
-      style: { stroke: "#9333ea" },
-      markerEnd: { type: MarkerType.ArrowClosed, color: "#9333ea" },
+      style: { stroke: "#059669" },
+      markerEnd: { type: MarkerType.ArrowClosed, color: "#059669" },
     }),
     []
   );
@@ -595,8 +993,9 @@ function CTAFlowVisualBuilderInner() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         {/* Left: Title + Name */}
         <div className="flex items-center gap-3 min-w-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-            🧠 CTA Flow Visual Builder
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            <Workflow className="text-emerald-600" size={24} />
+            CTA Flow Visual Builder
           </h2>
 
           {/* Flow name input / badge inline with title */}
@@ -751,11 +1150,14 @@ function CTAFlowVisualBuilderInner() {
         </div>
 
         <ReactFlow
+          className={`cta-flow-reactflow${isConnecting ? " cta-connecting" : ""}`}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectStart={() => setIsConnecting(true)}
+          onConnectEnd={() => setIsConnecting(false)}
           onEdgeClick={(e, edge) => {
             if (!readonly) {
               setDirty(true);
@@ -771,10 +1173,12 @@ function CTAFlowVisualBuilderInner() {
           isValidConnection={isValidConnection}
           snapToGrid
           snapGrid={[GRID, GRID]}
-          panOnScroll
+          connectOnClick={false}
+          connectionRadius={12}
+          nodeDragThreshold={4}
+          zoomOnScroll
           zoomOnPinch
-          panOnDrag={[1, 2]}
-          selectionOnDrag
+          panOnDrag={[0, 1]}
           nodesDraggable={!readonly}
           nodesConnectable={!readonly}
           elementsSelectable={!readonly}
@@ -907,6 +1311,7 @@ function CTAFlowVisualBuilderInner() {
         open={showPicker}
         onClose={() => setShowPicker(false)}
         onSelect={handleTemplateSelect}
+        onSelectMany={handleTemplatesSelectMany}
       />
     </div>
   );
@@ -942,7 +1347,7 @@ export default function CTAFlowVisualBuilder() {
 //   useReactFlow,
 // } from "@xyflow/react";
 // import "@xyflow/react/dist/style.css";
-// import { Eye, Minus } from "lucide-react";
+// import { Eye, Minus, Workflow } from "lucide-react";
 // import { useSearchParams, useNavigate } from "react-router-dom";
 // import TemplatePickerModal from "./components/TemplatePickerModal";
 // import FlowNodeBubble from "./components/FlowNodeBubble";

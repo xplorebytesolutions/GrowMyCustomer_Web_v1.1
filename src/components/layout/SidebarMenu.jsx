@@ -238,8 +238,8 @@ export default function SidebarMenu() {
     const blockedReason = !featureAllowed
       ? "feature"
       : !planAllowed
-      ? "plan"
-      : null;
+        ? "plan"
+        : null;
 
     return { allowed, blockedReason };
   };
@@ -389,13 +389,13 @@ export default function SidebarMenu() {
       },
     ],
     inbox: [
-      {
-        label: "Live Chat Inbox",
-        path: "/app/inbox/livechat",
-        icon: <MessageSquare size={18} />,
-        show: showInbox,
-        featureKey: FK.INBOX_VIEW,
-      },
+      // {
+      //   label: "Live Chat Inbox",
+      //   path: "/app/inbox/livechat",
+      //   icon: <MessageSquare size={18} />,
+      //   show: showInbox,
+      //   featureKey: FK.INBOX_VIEW,
+      // },
       {
         label: "Chat Inbox",
         path: "/app/inbox/chatinbox",
@@ -436,11 +436,11 @@ export default function SidebarMenu() {
     ],
     templatebuilder: [
       {
-        label: "My Drafts",
-        path: "/app/template-builder/drafts",
+        label: "Approved Templates",
+        path: "/app/template-builder/approved",
         icon: <FileText size={18} />,
         show: showTemplateBuilder,
-        featureKey: FK.TEMPLATE_BUILDER_CREATE_DRAFT,
+        featureKey: FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW,
       },
       {
         label: "Template Library",
@@ -450,11 +450,11 @@ export default function SidebarMenu() {
         featureKey: FK.TEMPLATE_BUILDER_LIBRARY_BROWSE,
       },
       {
-        label: "Approved Templates",
-        path: "/app/template-builder/approved",
+        label: "My Drafts",
+        path: "/app/template-builder/drafts",
         icon: <FileText size={18} />,
         show: showTemplateBuilder,
-        featureKey: FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW,
+        featureKey: FK.TEMPLATE_BUILDER_CREATE_DRAFT,
       },
     ],
     settings: [
@@ -488,7 +488,7 @@ export default function SidebarMenu() {
         featureKey: FK.SETTINGS_ROLE_PERMISSIONS_MAPPING,
       },
       {
-        label: "Meta Account Management",
+        label: "WhatsApp Api Integration",
         path: "/app/settings/meta-account",
         icon: <Globe size={18} />,
         show: showSettings,
@@ -576,6 +576,10 @@ export default function SidebarMenu() {
       {
         label: "Developer Notes",
         path: "/app/admin/developer-notes",
+      },
+      {
+        label: "Server Troubleshooting",
+        path: "/app/admin/server-troubleshooting",
         icon: <FileCode2 size={18} />,
         show: superAccess,
         featureKey: FK.SUPER_ADMIN_WORKSPACE_VIEW,
@@ -585,7 +589,7 @@ export default function SidebarMenu() {
 
   const effectiveKey = flyoutOpen && flyoutKey ? flyoutKey : activeKey;
   const effectiveSubmenu = (submenuByKey[effectiveKey] || []).filter(
-    i => i.show !== false
+    i => i.show !== false,
   );
   const isCrmFlyout = effectiveKey === "crm";
   const isCampaignsFlyout = effectiveKey === "campaigns";
@@ -620,7 +624,7 @@ export default function SidebarMenu() {
         navigate(location.pathname, { replace: true });
       }
     },
-    [location.pathname, location.search, navigate]
+    [location.pathname, location.search, navigate],
   );
 
   const openFlyoutForKey = key => {
@@ -893,22 +897,22 @@ export default function SidebarMenu() {
               isCrmFlyout
                 ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
                 : isCampaignsFlyout
-                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                : isCatalogFlyout
-                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                : isMessagingFlyout
-                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                : isTemplateBuilderFlyout
-                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                : isAutomationFlyout
-                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                : isInboxFlyout
-                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                : isSettingsFlyout
-                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                : isAdminFlyout
-                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
-                : "w-80 bg-white shadow-xl shadow-black/10"
+                  ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                  : isCatalogFlyout
+                    ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                    : isMessagingFlyout
+                      ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                      : isTemplateBuilderFlyout
+                        ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                        : isAutomationFlyout
+                          ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                          : isInboxFlyout
+                            ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                            : isSettingsFlyout
+                              ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                              : isAdminFlyout
+                                ? "w-80 bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5 overflow-hidden"
+                                : "w-80 bg-white shadow-xl shadow-black/10"
             } border-r border-slate-200 z-40`}
             onMouseEnter={() => setIsHoveringFlyout(true)}
             onMouseLeave={() => setIsHoveringFlyout(false)}
@@ -991,10 +995,10 @@ export default function SidebarMenu() {
                                          ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                          : "bg-transparent text-slate-900"
                                      } ${
-                                      allowed
-                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                    }`
+                                       allowed
+                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                     }`
                                   }
                                   aria-disabled={!allowed}
                                 >
@@ -1247,10 +1251,10 @@ export default function SidebarMenu() {
                                          ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                          : "bg-transparent text-slate-900"
                                      } ${
-                                      allowed
-                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                    }`
+                                       allowed
+                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                     }`
                                   }
                                   aria-disabled={!allowed}
                                 >
@@ -1375,10 +1379,10 @@ export default function SidebarMenu() {
                                           ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                           : "bg-transparent text-slate-900"
                                       } ${
-                                      allowed
-                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                    }`
+                                        allowed
+                                          ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                          : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                      }`
                                   }
                                   aria-disabled={!allowed}
                                 >
@@ -1503,10 +1507,10 @@ export default function SidebarMenu() {
                                           ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                           : "bg-transparent text-slate-900"
                                       } ${
-                                      allowed
-                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                    }`
+                                        allowed
+                                          ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                          : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                      }`
                                   }
                                   aria-disabled={!allowed}
                                 >
@@ -1631,10 +1635,10 @@ export default function SidebarMenu() {
                                          ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                          : "bg-transparent text-slate-900"
                                      } ${
-                                      allowed
-                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                    }`
+                                       allowed
+                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                     }`
                                   }
                                   aria-disabled={!allowed}
                                 >
@@ -1759,10 +1763,10 @@ export default function SidebarMenu() {
                                          ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                          : "bg-transparent text-slate-900"
                                      } ${
-                                      allowed
-                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                    }`
+                                       allowed
+                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                     }`
                                   }
                                   aria-disabled={!allowed}
                                 >
@@ -1887,10 +1891,10 @@ export default function SidebarMenu() {
                                          ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                          : "bg-transparent text-slate-900"
                                      } ${
-                                      allowed
-                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                    }`
+                                       allowed
+                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                     }`
                                   }
                                   aria-disabled={!allowed}
                                 >
@@ -2016,10 +2020,10 @@ export default function SidebarMenu() {
                                          ? "relative bg-[#0a322b]/[0.10] text-slate-900 shadow-sm ring-1 ring-[#0a322b]/[0.18] before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-[#0a322b] before:rounded-full"
                                          : "bg-transparent text-slate-900"
                                      } ${
-                                      allowed
-                                        ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
-                                        : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
-                                    }`
+                                       allowed
+                                         ? "hover:bg-[#0a322b]/[0.10] hover:shadow-sm hover:ring-1 hover:ring-[#0a322b]/[0.18]"
+                                         : "hover:bg-amber-50/50 hover:shadow-sm hover:ring-1 hover:ring-amber-200/60"
+                                     }`
                                   }
                                   aria-disabled={!allowed}
                                 >

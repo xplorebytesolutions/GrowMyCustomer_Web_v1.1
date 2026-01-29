@@ -1,4 +1,3 @@
-// 📄 src/pages/DeveloperNotes/DeveloperNotesPage.jsx
 import React, { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import NoteCard from "./components/NoteCard";
 import { NOTES } from "./notesData";
 import { useAuth } from "../../app/providers/AuthProvider";
+import ServerTroubleshootingContent from "./components/ServerTroubleshootingContent"; // Import the new component
 
 function cx(...xs) {
   return xs.filter(Boolean).join(" ");
@@ -39,6 +39,7 @@ export default function DeveloperNotesPage() {
 
   const [q, setQ] = useState("");
   const [activeTags, setActiveTags] = useState([]);
+  const [activeTab, setActiveTab] = useState("developerNotes"); // New state for active tab
 
   const allTags = useMemo(() => {
     const set = new Set();
@@ -116,81 +117,120 @@ export default function DeveloperNotesPage() {
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-                  <Search className="h-4 w-4 text-slate-400" />
-                  <input
-                    value={q}
-                    onChange={e => setQ(e.target.value)}
-                    placeholder="Search title, description, tags, or query text..."
-                    className="w-full outline-none text-sm text-slate-900"
-                  />
-                  {q ? (
+          {/* Tab Navigation */}
+          <div className="mt-5">
+            <nav className="flex space-x-4 border-b border-gray-200 mb-6">
+              <button
+                onClick={() => setActiveTab("developerNotes")}
+                className={cx(
+                  "py-2 px-4 text-sm font-medium rounded-t-lg border-b-2",
+                  activeTab === "developerNotes"
+                    ? "border-emerald-500 text-emerald-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                )}
+              >
+                Developer Notes
+              </button>
+              <button
+                onClick={() => setActiveTab("serverTroubleshooting")}
+                className={cx(
+                  "py-2 px-4 text-sm font-medium rounded-t-lg border-b-2",
+                  activeTab === "serverTroubleshooting"
+                    ? "border-emerald-500 text-emerald-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                )}
+              >
+                Server Troubleshooting
+              </button>
+            </nav>
+          </div>
+
+          {/* Content based on active tab */}
+          {activeTab === "developerNotes" && (
+            <>
+              <div className="mt-5 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                      <Search className="h-4 w-4 text-slate-400" />
+                      <input
+                        value={q}
+                        onChange={e => setQ(e.target.value)}
+                        placeholder="Search title, description, tags, or query text..."
+                        className="w-full outline-none text-sm text-slate-900"
+                      />
+                      {q ? (
+                        <button
+                          type="button"
+                          onClick={() => setQ("")}
+                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
+                          title="Clear search"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {activeTags.length ? (
                     <button
                       type="button"
-                      onClick={() => setQ("")}
-                      className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
-                      title="Clear search"
+                      onClick={() => setActiveTags([])}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
                     >
                       <X className="h-4 w-4" />
+                      Clear filters
                     </button>
                   ) : null}
                 </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map(tag => {
+                    const active = activeTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleTag(tag)}
+                        className={cx(
+                          "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors",
+                          active
+                            ? "bg-purple-600 text-white border-purple-600"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                        )}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {activeTags.length ? (
-                <button
-                  type="button"
-                  onClick={() => setActiveTags([])}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                >
-                  <X className="h-4 w-4" />
-                  Clear filters
-                </button>
-              ) : null}
-            </div>
+              {filtered.length === 0 ? (
+                <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-10 text-center">
+                  <div className="text-lg font-bold text-slate-900">
+                    No notes found
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Try a different search term or clear filters.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-5">
+                  {filtered.map(note => (
+                    <NoteCard key={note.id} note={note} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
-            <div className="flex flex-wrap gap-2">
-              {allTags.map(tag => {
-                const active = activeTags.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => toggleTag(tag)}
-                    className={cx(
-                      "inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors",
-                      active
-                        ? "bg-purple-600 text-white border-purple-600"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                    )}
-                  >
-                    {tag}
-                  </button>
-                );
-              })}
+          {activeTab === "serverTroubleshooting" && (
+            <div className="mt-5">
+              <ServerTroubleshootingContent />
             </div>
-          </div>
+          )}
         </div>
-
-        {filtered.length === 0 ? (
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-10 text-center">
-            <div className="text-lg font-bold text-slate-900">
-              No notes found
-            </div>
-            <p className="mt-2 text-sm text-slate-600">
-              Try a different search term or clear filters.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-5">
-            {filtered.map(note => (
-              <NoteCard key={note.id} note={note} />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

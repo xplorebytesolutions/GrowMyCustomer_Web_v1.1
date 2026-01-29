@@ -131,7 +131,6 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
   const hasValidBusiness = isGuid(businessId);
 
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [deletingInfo, setDeletingInfo] = useState(null); // { name, language }
   const [templates, setTemplates] = useState([]);
   const [page, setPage] = useState(1);
@@ -143,13 +142,13 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
   const [status, setStatus] = useState(forcedStatus || "");
   const [sp] = useSearchParams();
   const q = sp.get("q") || "";
+  const v = sp.get("v") || "";
   const categoryFilter = sp.get("category") || "ALL";
   const qDebounced = useDebouncedValue(q, 250);
 
   const [sortKey, setSortKey] = useState("updatedAt");
   const [sortDir, setSortDir] = useState("desc"); // asc | desc
 
-  const [selected, setSelected] = useState(() => new Set());
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewMeta, setPreviewMeta] = useState(null); 
@@ -165,7 +164,7 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
 
   useEffect(() => {
     setPage(1);
-  }, [qDebounced, categoryFilter]);
+  }, [qDebounced, categoryFilter, v]);
 
   const loadTemplates = useCallback(async () => {
     if (!hasValidBusiness) return;
@@ -198,29 +197,12 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
     } finally {
       setLoading(false);
     }
-  }, [businessId, hasValidBusiness, qDebounced, status, categoryFilter, page, pageSize, sortKey, sortDir]);
+  }, [businessId, hasValidBusiness, qDebounced, status, categoryFilter, page, pageSize, sortKey, sortDir, v]);
 
   useEffect(() => {
     loadTemplates();
   }, [loadTemplates]);
 
-  const handleSync = async () => {
-    if (!hasValidBusiness || syncing) return;
-    setSyncing(true);
-    try {
-      const { data } = await axiosClient.post(SYNC_ENDPOINT(businessId));
-      if (data.success) {
-        toast.success(data.message || "Sync started...");
-        loadTemplates();
-      } else {
-        toast.error(data.message || "Sync failed");
-      }
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Sync error");
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const handleDeleteClick = (name, language) => {
     setDeletingInfo({ name, language });
@@ -259,39 +241,9 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
   const summary = useMemo(() => {
     return {
       count: totalCount,
-      selected: selected.size,
     };
-  }, [selected.size, totalCount]);
+  }, [totalCount]);
 
-  const allSelected = useMemo(() => {
-    if (sortedTemplates.length === 0) return false;
-    return sortedTemplates.every(t => selected.has(`${t.name ?? t.Name}::${t.languageCode ?? t.LanguageCode}`));
-  }, [selected, sortedTemplates]);
-
-  const toggleAll = () => {
-         setSelected(prev => {
-      const next = new Set(prev);
-      if (allSelected) {
-        next.clear();
-        return next;
-      }
-      for (const t of sortedTemplates) {
-        const key = `${t.name ?? t.Name}::${t.languageCode ?? t.LanguageCode}`;
-        next.add(key);
-      }
-      return next;
-    });
-  };
-
-  const toggleOne = (name, languageCode) => {
-     const key = `${name}::${languageCode}`;
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
 
   const loadPreview = useCallback(
     async (name, languageCode) => {
@@ -376,28 +328,6 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
 
   return (
     <div className="space-y-4 font-sans max-h-[calc(100vh-140px)] flex flex-col">
-       {/* Sync & Refresh Toolbar */}
-       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
-         <div>
-          <h2 className="text-lg font-bold text-slate-900">{pageTitle}</h2>
-          <p className="text-xs text-slate-500">
-            Total: {summary.count} • Selected: {summary.selected}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-           <button
-            type="button"
-            onClick={handleSync}
-            disabled={!hasValidBusiness || syncing}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-            title="Sync templates from Meta"
-          >
-            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-            {syncing ? "Syncing..." : "Sync from Meta"}
-          </button>
-        </div>
-      </div>
 
 
        {/* Content Table */}
@@ -407,18 +337,11 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
         </Card>
       ) : (
         <div className="flex gap-6 items-start">
-          <Card className="flex-1 overflow-hidden border border-slate-200">
+          <Card className="flex-1 overflow-hidden border border-slate-200 rounded-lg">
             <div className="overflow-auto">
               <table className="w-full text-sm table-fixed">
-                <thead className="bg-white border-b border-slate-200">
+                <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-left text-slate-700">
-                    <th className="w-12 px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={toggleAll}
-                      />
-                    </th>
                     <th
                       className="w-[360px] px-4 py-3 font-semibold cursor-pointer select-none"
                       onClick={() => setSort("name")}
@@ -469,7 +392,6 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
                     const category = t?.category ?? t?.Category ?? "—";
                     const statusVal = t?.status ?? t?.Status ?? "—";
                     const key = `${name}::${languageCode}`;
-                    const checked = selected.has(key);
                     const bodyPreview = String(
                       t?.bodyPreview ??
                         t?.BodyPreview ??
@@ -489,13 +411,6 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
                         key={key}
                         className="border-b border-slate-100 hover:bg-slate-50"
                       >
-                        <td className="px-4 py-4">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleOne(name, languageCode)}
-                          />
-                        </td>
                         <td className="px-4 py-4 w-[360px]">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 max-w-[280px]">

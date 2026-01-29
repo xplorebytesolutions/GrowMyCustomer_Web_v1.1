@@ -1,0 +1,21 @@
+.cta-flow-reactflow {
+  --xy-connectionline-stroke: #059669;
+  --xy-connectionline-stroke-width: 2;
+}
+
+.cta-flow-reactflow .react-flow__handle,
+.cta-flow-reactflow .react-flow__handle.connectingfrom,
+.cta-flow-reactflow .react-flow__handle.connectionindicator {
+  cursor: default;
+}
+
+.cta-flow-reactflow .react-flow__connection,
+.cta-flow-reactflow svg.react-flow__connectionline {
+  cursor: default;
+}
+
+.cta-flow-reactflow.cta-connecting .react-flow__pane,
+.cta-flow-reactflow.cta-connecting .react-flow__node,
+.cta-flow-reactflow.cta-connecting .react-flow__nodesselection-rect {
+  cursor: default !important;
+}

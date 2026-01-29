@@ -21,7 +21,7 @@ function getBusinessIdFromJwt() {
     if (!payloadB64) return null;
 
     const payload = JSON.parse(
-      atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"))
+      atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/")),
     );
 
     const bid = payload?.businessId || payload?.BusinessId || null;
@@ -160,7 +160,7 @@ export default function MetaAccountManagement() {
 
     if (deletedThisSession) {
       toast.info(
-        "WhatsApp onboarding data was deleted in this session. Please refresh the page before starting a new connection."
+        "WhatsApp onboarding data was deleted in this session. Please refresh the page before starting a new connection.",
       );
       return;
     }
@@ -180,7 +180,7 @@ export default function MetaAccountManagement() {
 
       if (!authUrl) {
         toast.error(
-          res?.data?.message || "Could not get Meta Embedded Signup URL."
+          res?.data?.message || "Could not get Meta Embedded Signup URL.",
         );
         return;
       }
@@ -203,7 +203,7 @@ export default function MetaAccountManagement() {
 
     if (!canSoftDisconnect) {
       toast.info(
-        "No active WhatsApp Business API connection is configured for this account."
+        "No active WhatsApp Business API connection is configured for this account.",
       );
       return;
     }
@@ -226,7 +226,7 @@ export default function MetaAccountManagement() {
 
     if (!hasAnyIntegrationState || deletedThisSession) {
       toast.info(
-        "No active WhatsApp Business API connection is configured for this account."
+        "No active WhatsApp Business API connection is configured for this account.",
       );
       setShowDisconnectModal(false);
       return;
@@ -245,7 +245,7 @@ export default function MetaAccountManagement() {
       } else {
         toast.error(
           res?.data?.message ||
-            "Failed to disconnect. Please check logs or contact support."
+            "Failed to disconnect. Please check logs or contact support.",
         );
       }
 
@@ -296,7 +296,7 @@ export default function MetaAccountManagement() {
 
     if (deletedThisSession) {
       toast.info(
-        "WhatsApp onboarding data for this account has already been deleted in this session."
+        "WhatsApp onboarding data for this account has already been deleted in this session.",
       );
       return;
     }
@@ -325,12 +325,12 @@ export default function MetaAccountManagement() {
 
       // Use your configured hard-delete endpoint
       const res = await axiosClient.delete(
-        "esu/facebook/hard-delete-full-account"
+        "esu/facebook/hard-delete-full-account",
       );
 
       if (res?.data?.ok) {
         toast.success(
-          "Meta WhatsApp onboarding configuration and related data have been deleted for this account."
+          "Meta WhatsApp onboarding configuration and related data have been deleted for this account.",
         );
         setShowDeleteModal(false);
 
@@ -342,7 +342,7 @@ export default function MetaAccountManagement() {
       } else {
         toast.error(
           res?.data?.message ||
-            "Failed to delete WhatsApp data. Please contact support."
+            "Failed to delete WhatsApp data. Please contact support.",
         );
       }
     } catch (err) {
@@ -359,7 +359,7 @@ export default function MetaAccountManagement() {
   // ------- Status Panel (Horizontal Banner Style) -------
   const renderStatusPanel = () => {
     const isConfigured = isConfiguredViaEsu && !deletedThisSession;
-    
+
     // Non-configured state
     if (!isConfigured) {
       return (
@@ -371,7 +371,9 @@ export default function MetaAccountManagement() {
             <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-rose-900">Disconnected</span>
+                  <span className="text-sm font-bold text-rose-900">
+                    Disconnected
+                  </span>
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                 </div>
                 <span className="text-xs text-rose-700/70 font-medium">
@@ -381,7 +383,9 @@ export default function MetaAccountManagement() {
               <button
                 type="button"
                 onClick={startFacebookEsu}
-                disabled={connectingEsu || !hasBusinessContext || deletedThisSession}
+                disabled={
+                  connectingEsu || !hasBusinessContext || deletedThisSession
+                }
                 className="shrink-0 inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-500/10 transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
               >
                 {connectingEsu ? (
@@ -408,7 +412,9 @@ export default function MetaAccountManagement() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-emerald-900">Connected</span>
+                  <span className="text-sm font-bold text-emerald-900">
+                    Connected
+                  </span>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 </div>
                 {isFullyHealthy && (
@@ -422,7 +428,9 @@ export default function MetaAccountManagement() {
                 <button
                   type="button"
                   onClick={startFacebookEsu}
-                  disabled={connectingEsu || !hasBusinessContext || deletedThisSession}
+                  disabled={
+                    connectingEsu || !hasBusinessContext || deletedThisSession
+                  }
                   className="shrink-0 inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-md shadow-emerald-600/10 transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap"
                 >
                   {connectingEsu ? (
@@ -433,7 +441,7 @@ export default function MetaAccountManagement() {
                     "Manage Connection"
                   )}
                 </button>
-                
+
                 {formattedExpiry && (
                   <span className="text-[9px] text-slate-400 font-mono uppercase tracking-wider whitespace-nowrap">
                     Expires: {formattedExpiry}
@@ -445,18 +453,24 @@ export default function MetaAccountManagement() {
             {isTokenExpiredOrInvalid && (
               <div className="mt-2 text-[10px] text-rose-700 bg-white/60 border border-rose-100 px-3 py-1.5 rounded-lg flex items-center gap-2">
                 <ShieldAlert size={12} className="shrink-0" />
-                <p><b>Token Expired:</b> Generate a new long-lived token using <b>Refresh Token</b> below.</p>
+                <p>
+                  <b>Token Expired:</b> Generate a new long-lived token using{" "}
+                  <b>Refresh Token</b> below.
+                </p>
               </div>
             )}
 
             {isTokenExpiringSoon && (
               <div className="mt-2 text-[10px] text-amber-700 bg-white/60 border border-amber-100 px-3 py-1.5 rounded-lg flex items-center gap-2">
                 <ShieldAlert size={12} className="shrink-0" />
-                <p>Your Meta access token will expire soon. Please refresh it to avoid service gaps.</p>
+                <p>
+                  Your Meta access token will expire soon. Please refresh it to
+                  avoid service gaps.
+                </p>
               </div>
             )}
-            
-            {(isDev || hasAllAccess) && (debugMessage) && (
+
+            {(isDev || hasAllAccess) && debugMessage && (
               <div className="mt-2 text-[10px] text-slate-500 font-mono">
                 Debug: {debugMessage}
               </div>
@@ -471,258 +485,284 @@ export default function MetaAccountManagement() {
   return (
     <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <div className="max-w-5xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-600 shadow-sm shadow-emerald-100/50">
-              <ShieldAlert size={24} />
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 bg-emerald-100 rounded-xl text-emerald-600 shadow-sm shadow-emerald-100/50">
+                <ShieldAlert size={24} />
+              </div>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                  WhatsApp Api Integration
+                </h1>
+                <p className="text-xs text-slate-500 font-medium">
+                  Control your Meta WhatsApp Business Platform connection and
+                  data settings
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-                Meta Account Management
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Control your Meta WhatsApp Business Platform connection and data settings
-              </p>
-            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => nav("/app/settings")}
+              className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-all active:scale-95"
+            >
+              Back to Settings
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-           <button
-            onClick={() => nav("/app/settings")}
-            className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-all active:scale-95"
-          >
-            Back to Settings
-          </button>
-        </div>
-      </div>
+        {statusLoading ? (
+          <div className="animate-pulse space-y-4">
+            <div className="h-16 bg-slate-100 rounded-xl w-full" />
+            <div className="h-64 bg-slate-50 rounded-xl w-full border border-slate-100" />
+          </div>
+        ) : (
+          <>
+            {renderStatusPanel()}
 
-      {statusLoading ? (
-        <div className="animate-pulse space-y-4">
-          <div className="h-16 bg-slate-100 rounded-xl w-full" />
-          <div className="h-64 bg-slate-50 rounded-xl w-full border border-slate-100" />
-        </div>
-      ) : (
-        <>
-          {renderStatusPanel()}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Soft disconnect card */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all">
-              <div className="p-5 border-b border-slate-50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
-                    <ShieldAlert size={16} />
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Soft Disconnect</h3>
-                </div>
-              </div>
-              
-              <div className="p-5 space-y-4">
-                <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                  Temporarily disconnects this account from Meta Cloud. You can reconnect later without repeating the full onboarding flow.
-                </p>
-                
-                <button
-                  type="button"
-                  onClick={openDisconnectModal}
-                  disabled={loading || !canSoftDisconnect}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
-                >
-                  Disconnect Account
-                </button>
-                
-                {!canSoftDisconnect && (
-                  <p className="text-[10px] text-slate-400 italic">
-                    No active integration found to disconnect.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Hard delete card */}
-            <div className="bg-white rounded-xl border border-rose-100 shadow-sm overflow-hidden hover:shadow-md transition-all">
-              <div className="p-5 border-b border-rose-50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-rose-50 rounded-lg text-rose-600">
-                    <Trash2 size={16} />
-                  </div>
-                  <h3 className="text-sm font-bold text-rose-900 uppercase tracking-wider">Account Deletion</h3>
-                </div>
-              </div>
-              
-              <div className="p-5 space-y-4">
-                <p className="text-xs text-rose-700/70 leading-relaxed font-medium">
-                  Permanently deletes your Meta WhatsApp onboarding configuration and all related data. This action is terminal and cannot be undone.
-                </p>
-                
-                <button
-                  type="button"
-                  onClick={openDeleteModal}
-                  disabled={!canHardDelete}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/10 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  Delete All Data
-                </button>
-
-                {!canHardDelete && (
-                  <p className="text-[10px] text-rose-400 italic">
-                    Data has already been deleted or context is missing.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Debug Tools (Admins Only) */}
-            {(isDev || hasAllAccess) && (
-              <div className="md:col-span-2 bg-slate-900 rounded-xl border border-slate-800 shadow-inner overflow-hidden">
-                <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Soft disconnect card */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all">
+                <div className="p-5 border-b border-slate-50 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-slate-800 rounded-lg text-slate-400">
-                      <RefreshCw size={14} />
+                    <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
+                      <ShieldAlert size={16} />
                     </div>
-                    <h3 className="text-[11px] font-bold text-slate-100 uppercase tracking-widest">Internal Admin Tools</h3>
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                      Disconnect WhatsApp (Temporary)
+                    </h3>
                   </div>
                 </div>
-                
-                <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="max-w-md">
-                    <p className="text-[11px] text-slate-400 font-medium">
-                      Trigger local deauthorization to clear ESU flags and stored tokens without hitting Meta APIs.
-                    </p>
-                  </div>
-                  
+
+                <div className="p-5 space-y-4">
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                    Disables WhatsApp messaging in XploreByte. You can reconnect
+                    later without repeating the full onboarding flow.
+                  </p>
+
                   <button
                     type="button"
-                    onClick={handleDeauthorize}
-                    disabled={loading || !hasBusinessContext || deletedThisSession}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
+                    onClick={openDisconnectModal}
+                    disabled={loading || !canSoftDisconnect}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
                   >
-                    Run Local Deauth
+                    Disconnect Account
                   </button>
+
+                  {!canSoftDisconnect && (
+                    <p className="text-[10px] text-slate-400 italic">
+                      No active integration found to disconnect.
+                    </p>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
-        </>
-      )}
 
-      {/* Disconnect confirmation modal */}
-      {showDisconnectModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={closeDisconnectModal} />
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <h2 className="text-lg font-bold text-slate-900 mb-2">
-              Disconnect WhatsApp API?
-            </h2>
-            <p className="text-xs text-slate-600 mb-4 font-medium leading-relaxed">
-              New campaigns will pause and automations will stop until you reconnect. Your configuration stays stored for quick reconnection.
-            </p>
-            
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={closeDisconnectModal}
-                disabled={disconnectLoading}
-                className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDisconnect}
-                disabled={disconnectLoading}
-                className="px-5 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 shadow-md shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50"
-              >
-                {disconnectLoading ? "Disconnecting…" : "Disconnect Now"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Hard delete card */}
+              <div className="bg-white rounded-xl border border-rose-100 shadow-sm overflow-hidden hover:shadow-md transition-all">
+                <div className="p-5 border-b border-rose-50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-rose-50 rounded-lg text-rose-600">
+                      <Trash2 size={16} />
+                    </div>
+                    <h3 className="text-sm font-bold text-rose-900 uppercase tracking-wider">
+                      Delete WhatsApp Data (Permanent)
+                    </h3>
+                  </div>
+                </div>
 
-      {/* Delete confirmation modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeDeleteModal} />
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200 border border-rose-100">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-rose-100 rounded-lg text-rose-600">
-                <Trash2 size={20} />
+                <div className="p-5 space-y-4">
+                  <p className="text-xs text-rose-700/70 leading-relaxed font-medium">
+                    Permanently deletes WhatsApp onboarding configuration and
+                    tokens stored in XploreByte. This cannot be undone.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={openDeleteModal}
+                    disabled={!canHardDelete}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/10 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    Delete All Data
+                  </button>
+
+                  {!canHardDelete && (
+                    <p className="text-[10px] text-rose-400 italic">
+                      Data has already been deleted or context is missing.
+                    </p>
+                  )}
+                </div>
               </div>
-              <h2 className="text-lg font-bold text-rose-900">
-                Terminal Account Purge
-              </h2>
+
+              {/* Debug Tools (Admins Only) */}
+              {(isDev || hasAllAccess) && (
+                <div className="md:col-span-2 bg-slate-900 rounded-xl border border-slate-800 shadow-inner overflow-hidden">
+                  <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-slate-800 rounded-lg text-slate-400">
+                        <RefreshCw size={14} />
+                      </div>
+                      <h3 className="text-[11px] font-bold text-slate-100 uppercase tracking-widest">
+                        Internal Admin Tools
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="max-w-md">
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        Trigger local deauthorization to clear ESU flags and
+                        stored tokens without hitting Meta APIs.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleDeauthorize}
+                      disabled={
+                        loading || !hasBusinessContext || deletedThisSession
+                      }
+                      className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      Run Local Deauth
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            <p className="text-xs text-slate-600 mb-4 font-medium leading-relaxed">
-              This will revoke all Meta tokens and permanently delete WABA settings, numbers, and keys. <span className="text-rose-600 font-bold">This cannot be undone.</span>
-            </p>
+          </>
+        )}
 
-            <label className="flex items-start gap-3 p-3 bg-rose-50/50 rounded-lg mb-6 border border-rose-100/50 cursor-pointer transition-all hover:bg-rose-50">
-              <input
-                type="checkbox"
-                className="mt-0.5 rounded border-rose-300 text-rose-600 focus:ring-rose-500"
-                checked={deleteConfirmChecked}
-                onChange={e => setDeleteConfirmChecked(e.target.checked)}
-                disabled={deleteLoading}
-              />
-              <span className="text-[11px] text-rose-800 font-semibold leading-tight">
-                I understand that all Meta WhatsApp integration data for this account will be purged permanently.
-              </span>
-            </label>
-
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={closeDeleteModal}
-                disabled={deleteLoading}
-                className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handlePermanentDelete}
-                disabled={!deleteConfirmChecked || deleteLoading}
-                className="px-5 py-2 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 shadow-md shadow-rose-600/10 transition-all active:scale-95 disabled:opacity-50"
-              >
-                {deleteLoading ? "Purging Data..." : "Delete Permanently"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Post-delete success modal */}
-      {showDeleteSuccessModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4">
-                <Plus size={24} className="rotate-45" /> 
-              </div>
+        {/* Disconnect confirmation modal */}
+        {showDisconnectModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={closeDisconnectModal}
+            />
+            <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
               <h2 className="text-lg font-bold text-slate-900 mb-2">
-                Cleanup Successful
+                Disconnect WhatsApp API?
               </h2>
-              <p className="text-xs text-slate-600 mb-6 font-medium leading-relaxed">
-                All WhatsApp onboarding configuration and tokens have been purged from our system.
+              <p className="text-xs text-slate-600 mb-4 font-medium leading-relaxed">
+                New campaigns will pause and automations will stop until you
+                reconnect. Your configuration stays stored for quick
+                reconnection.
               </p>
-              <button
-                type="button"
-                onClick={() => setShowDeleteSuccessModal(false)}
-                className="w-full px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all active:scale-95"
-              >
-                Close
-              </button>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeDisconnectModal}
+                  disabled={disconnectLoading}
+                  className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDisconnect}
+                  disabled={disconnectLoading}
+                  className="px-5 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 shadow-md shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {disconnectLoading ? "Disconnecting…" : "Disconnect Now"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Delete confirmation modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              onClick={closeDeleteModal}
+            />
+            <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200 border border-rose-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-rose-100 rounded-lg text-rose-600">
+                  <Trash2 size={20} />
+                </div>
+                <h2 className="text-lg font-bold text-rose-900">
+                  Terminal Account Purge
+                </h2>
+              </div>
+
+              <p className="text-xs text-slate-600 mb-4 font-medium leading-relaxed">
+                This will revoke all Meta tokens and permanently delete WABA
+                settings, numbers, and keys.{" "}
+                <span className="text-rose-600 font-bold">
+                  This cannot be undone.
+                </span>
+              </p>
+
+              <label className="flex items-start gap-3 p-3 bg-rose-50/50 rounded-lg mb-6 border border-rose-100/50 cursor-pointer transition-all hover:bg-rose-50">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded border-rose-300 text-rose-600 focus:ring-rose-500"
+                  checked={deleteConfirmChecked}
+                  onChange={e => setDeleteConfirmChecked(e.target.checked)}
+                  disabled={deleteLoading}
+                />
+                <span className="text-[11px] text-rose-800 font-semibold leading-tight">
+                  I understand that all Meta WhatsApp integration data for this
+                  account will be purged permanently.
+                </span>
+              </label>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeDeleteModal}
+                  disabled={deleteLoading}
+                  className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePermanentDelete}
+                  disabled={!deleteConfirmChecked || deleteLoading}
+                  className="px-5 py-2 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 shadow-md shadow-rose-600/10 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {deleteLoading ? "Purging Data..." : "Delete Permanently"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Post-delete success modal */}
+        {showDeleteSuccessModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+            <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+              <div className="text-center">
+                <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4">
+                  <Plus size={24} className="rotate-45" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900 mb-2">
+                  Cleanup Successful
+                </h2>
+                <p className="text-xs text-slate-600 mb-6 font-medium leading-relaxed">
+                  All WhatsApp onboarding configuration and tokens have been
+                  purged from our system.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteSuccessModal(false)}
+                  className="w-full px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all active:scale-95"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

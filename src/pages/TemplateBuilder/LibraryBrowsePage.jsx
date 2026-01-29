@@ -64,6 +64,7 @@ export default function LibraryBrowsePage() {
 
   const industry = sp.get("industry") || "";
   const q = sp.get("q") || "";
+  const v = sp.get("v") || "";
   const sort = sp.get("sort") || "featured";
   const page = Number(sp.get("page")) || 1;
   const pageSize = 20;
@@ -113,7 +114,7 @@ export default function LibraryBrowsePage() {
     } finally {
       setLoading(false);
     }
-  }, [industry, page, pageSize, q, qDebounced, sort]);
+  }, [industry, page, pageSize, q, qDebounced, sort, v]);
 
   React.useEffect(() => {
     refresh();
@@ -198,7 +199,7 @@ export default function LibraryBrowsePage() {
         {/* Header removed (handled by layout) */}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-          <Card className="lg:col-span-3 p-4">
+          <Card className="lg:col-span-3 p-4 rounded-lg">
             <div className="font-semibold text-slate-800">Industries</div>
             <div className="mt-2 space-y-1">
               <button
@@ -278,7 +279,7 @@ export default function LibraryBrowsePage() {
             </div>
 
             {!loading && items.length === 0 ? (
-              <Card className="p-8 text-center">
+              <Card className="p-8 text-center rounded-lg">
                 <div className="text-lg font-semibold text-slate-800">
                   No templates in the library yet
                 </div>
@@ -299,7 +300,7 @@ export default function LibraryBrowsePage() {
             ) : (
               <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {items.map(it => (
-                  <Card key={it.id} className="flex flex-col justify-between p-4">
+                  <Card key={it.id} className="flex flex-col justify-between p-4 rounded-lg">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-semibold text-slate-900 truncate">

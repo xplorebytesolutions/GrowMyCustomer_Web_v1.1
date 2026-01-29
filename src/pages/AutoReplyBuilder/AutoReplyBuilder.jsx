@@ -6,6 +6,7 @@ import AutoReplySidebar from "./components/AutoReplySidebar";
 import AutoReplyFlowsModal from "./components/AutoReplyFlowsListModal";
 import { toast } from "react-toastify";
 import axiosClient from "../../api/axiosClient";
+import { Bot } from "lucide-react";
 
 export default function AutoReplyBuilder() {
   const canvasRef = useRef();
@@ -132,8 +133,9 @@ export default function AutoReplyBuilder() {
     <div className="flex overflow-hidden bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       {/* Sidebar (left) */}
       <div className="w-72 border-r border-gray-200 bg-white p-4">
-        <h2 className="text-lg font-semibold mb-4 text-zinc-800">
-          🧠 Auto-Reply Blocks
+        <h2 className="text-lg font-semibold mb-4 text-zinc-800 flex items-center gap-2">
+          <Bot className="text-emerald-600" size={22} />
+          Auto Reply Builder
         </h2>
         <AutoReplySidebar
           key={sidebarRefreshKey}

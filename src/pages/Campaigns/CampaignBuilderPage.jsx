@@ -1,10 +1,11 @@
 // 📄 src/pages/campaigns/CampaignBuilderPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
 import PhoneWhatsAppPreview from "../../components/PhoneWhatsAppPreview";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
+import Select from "react-select";
 import {
   LayoutTemplate,
   RefreshCw,
@@ -17,6 +18,8 @@ import {
 
 // === Your axios baseURL already ends with /api. Keep all calls RELATIVE (no leading slash).
 const SYNC_ENDPOINT = bid => `templates/sync/${bid}`; // POST
+const TEMPLATE_PAGE_SIZE = 20;
+const TEMPLATE_PREFETCH_PAGE_SIZE = 200;
 
 const isGuid = v =>
   !!v &&
@@ -47,6 +50,17 @@ export default function CampaignBuilderPage() {
   const [templates, setTemplates] = useState([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [templateQuery, setTemplateQuery] = useState("");
+  const [templateSort, setTemplateSort] = useState("created_desc"); // 'created_desc' | 'created_asc' | 'name_asc' | 'name_desc'
+  const [templateMedia, setTemplateMedia] = useState("all"); // all|text|image|video|document
+  const [templatePage, setTemplatePage] = useState(1);
+  const [templateTotalPages, setTemplateTotalPages] = useState(0);
+  const [templateTotalCount, setTemplateTotalCount] = useState(0);
+  const [loadingMoreTemplates, setLoadingMoreTemplates] = useState(false);
+  const [selectedTemplateOption, setSelectedTemplateOption] = useState(null);
+  const templateQueryDebounceRef = useRef(null);
+  const templatesFetchSeqRef = useRef(0);
+  const templateRestoreAttemptedRef = useRef(false);
 
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [templateParams, setTemplateParams] = useState([]);
@@ -83,6 +97,11 @@ export default function CampaignBuilderPage() {
     [ctxBusinessId]
   );
   const hasValidBusiness = isGuid(businessId);
+
+  const templateSelectionStorageKey = useMemo(() => {
+    if (!hasValidBusiness) return null;
+    return `campaignBuilder.selectedTemplate.${businessId}`;
+  }, [businessId, hasValidBusiness]);
 
   const createdBy = localStorage.getItem("userId");
   const navigate = useNavigate();
@@ -125,25 +144,139 @@ export default function CampaignBuilderPage() {
   const toArray = maybe => (Array.isArray(maybe) ? maybe : []);
 
   // ---------- Effects ----------
-  // Load approved templates
-  useEffect(() => {
-    const load = async () => {
-      if (!hasValidBusiness) return;
-      setLoadingTemplates(true);
-      try {
-        const res = await axiosClient.get(
-          `templates/${businessId}?status=APPROVED`
-        );
-        if (res.data?.success) setTemplates(res.data.templates || []);
-        else toast.error("❌ Failed to load templates.");
-      } catch {
-        toast.error("❌ Error loading templates.");
-      } finally {
-        setLoadingTemplates(false);
-      }
+  const sortParams = useMemo(() => {
+    switch (templateSort) {
+      case "name_asc":
+        return { sortKey: "name", sortDir: "asc" };
+      case "name_desc":
+        return { sortKey: "name", sortDir: "desc" };
+      case "created_asc":
+        return { sortKey: "createdAt", sortDir: "asc" };
+      case "created_desc":
+      default:
+        return { sortKey: "createdAt", sortDir: "desc" };
+    }
+  }, [templateSort]);
+
+  const normalizeMedia = v => {
+    const raw = String(v || "").trim().toLowerCase();
+    if (!raw || raw === "all") return "all";
+    if (raw === "pdf") return "document";
+    if (raw === "doc") return "document";
+    if (raw === "image" || raw === "video" || raw === "document" || raw === "text")
+      return raw;
+    return "all";
+  };
+
+  const mediaLabel = hk => {
+    const raw = String(hk || "").trim().toLowerCase();
+    if (raw === "image") return "Image";
+    if (raw === "video") return "Video";
+    if (raw === "document") return "Document";
+    if (raw === "location") return "Location";
+    return "Text";
+  };
+
+  const formatShortDate = dt => {
+    if (!dt) return null;
+    const d = new Date(dt);
+    if (Number.isNaN(d.getTime())) return null;
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      }).format(d);
+    } catch {
+      return d.toISOString().slice(0, 10);
+    }
+  };
+
+  const fetchApprovedTemplates = async ({ page = 1, append = false } = {}) => {
+    if (!hasValidBusiness) return;
+
+    const prefetchAllMode =
+      normalizeMedia(templateMedia) === "all" &&
+      (templateSort === "name_asc" || templateSort === "name_desc") &&
+      !(templateQuery || "").trim().length;
+
+    const q = (templateQuery || "").trim();
+    const m = normalizeMedia(templateMedia);
+    const effectivePageSize = prefetchAllMode
+      ? TEMPLATE_PREFETCH_PAGE_SIZE
+      : TEMPLATE_PAGE_SIZE;
+    const params = {
+      status: "APPROVED",
+      q: q.length ? q : undefined,
+      media: m !== "all" ? m : undefined,
+      page,
+      pageSize: effectivePageSize,
+      sortKey: sortParams.sortKey,
+      sortDir: sortParams.sortDir,
     };
-    load();
-  }, [businessId, hasValidBusiness]);
+
+    if (append) setLoadingMoreTemplates(true);
+    else setLoadingTemplates(true);
+
+    try {
+      const seq = ++templatesFetchSeqRef.current;
+      const res = await axiosClient.get(`templates/${businessId}`, { params });
+      if (res?.data?.success) {
+        const items = Array.isArray(res.data.templates) ? res.data.templates : [];
+        setTemplates(prev => (append ? [...prev, ...items] : items));
+        const nextPage = res.data.page || page;
+        const nextTotalPages = res.data.totalPages || 0;
+        const nextTotalCount = res.data.totalCount || 0;
+        setTemplatePage(nextPage);
+        setTemplateTotalPages(nextTotalPages);
+        setTemplateTotalCount(nextTotalCount);
+
+        // Industry-grade UX: when the user selects broad filters (All media + A–Z) and no search term,
+        // prefetch remaining pages in the background so the dropdown shows the full set without relying on scrolling.
+        if (!append && prefetchAllMode && nextTotalPages > 1) {
+          setLoadingMoreTemplates(true);
+          try {
+            for (let p = 2; p <= nextTotalPages; p++) {
+              if (templatesFetchSeqRef.current !== seq) break; // query/sort changed
+              const r = await axiosClient.get(`templates/${businessId}`, {
+                params: { ...params, page: p, pageSize: effectivePageSize },
+              });
+              if (templatesFetchSeqRef.current !== seq) break;
+              const more = Array.isArray(r?.data?.templates) ? r.data.templates : [];
+              if (more.length) setTemplates(prev => [...prev, ...more]);
+            }
+          } finally {
+            if (templatesFetchSeqRef.current === seq) setLoadingMoreTemplates(false);
+          }
+        }
+      } else {
+        if (!append) setTemplates([]);
+        toast.error(res?.data?.message || "❌ Failed to load templates.");
+      }
+    } catch {
+      if (!append) setTemplates([]);
+      toast.error("❌ Error loading templates.");
+    } finally {
+      if (append) setLoadingMoreTemplates(false);
+      else setLoadingTemplates(false);
+    }
+  };
+
+  // Load + refresh when business/sort/search changes (debounced).
+  useEffect(() => {
+    if (!hasValidBusiness) return;
+
+    // Debounce search to keep UI light and avoid hammering the API
+    if (templateQueryDebounceRef.current) clearTimeout(templateQueryDebounceRef.current);
+    templateQueryDebounceRef.current = setTimeout(() => {
+      fetchApprovedTemplates({ page: 1, append: false });
+    }, 250);
+
+    return () => {
+      if (templateQueryDebounceRef.current) clearTimeout(templateQueryDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessId, hasValidBusiness, templateQuery, templateMedia, templateSort, sortParams.sortKey, sortParams.sortDir]);
 
   // Load flows when needed
   useEffect(() => {
@@ -221,10 +354,7 @@ export default function CampaignBuilderPage() {
       const res = await axiosClient.post(SYNC_ENDPOINT(businessId));
       if (res?.data?.success || res?.status === 200) {
         toast.success("Templates synced!");
-        const r2 = await axiosClient.get(
-          `templates/${businessId}?status=APPROVED`
-        );
-        if (r2.data?.success) setTemplates(r2.data.templates || []);
+        await fetchApprovedTemplates({ page: 1, append: false });
       } else {
         toast.error("Sync failed.");
       }
@@ -235,17 +365,26 @@ export default function CampaignBuilderPage() {
     }
   };
 
-  const handleTemplateSelect = async name => {
+  const handleTemplateSelect = async selection => {
+    const name = typeof selection === "string" ? selection : selection?.name;
+    const languageCode =
+      typeof selection === "string" ? null : selection?.languageCode;
+
     if (!name) {
       setSelectedTemplate(null);
+      setSelectedTemplateOption(null);
       setTemplateParams([]);
       setButtonParams([]);
       setHeaderMediaUrl("");
       return;
     }
     try {
+      const langParam =
+        languageCode && String(languageCode).trim().length
+          ? `?language=${encodeURIComponent(String(languageCode).trim())}`
+          : "";
       const res = await axiosClient.get(
-        `templates/${businessId}/${encodeURIComponent(name)}`
+        `templates/${businessId}/${encodeURIComponent(name)}${langParam}`
       );
       const rawTemplate = res?.data?.template || res?.data || null;
       if (!rawTemplate?.name && !rawTemplate?.Name) {
@@ -281,7 +420,12 @@ export default function CampaignBuilderPage() {
 
       const normalized = {
         name: rawTemplate.name ?? rawTemplate.Name,
-        language: rawTemplate.language ?? rawTemplate.Language ?? "en_US",
+        language:
+          rawTemplate.language ??
+          rawTemplate.Language ??
+          rawTemplate.languageCode ??
+          rawTemplate.LanguageCode ??
+          "en_US",
         body: rawTemplate.body ?? rawTemplate.Body ?? "",
         headerKind: hk,
         requiresHeaderMediaUrl,
@@ -314,6 +458,54 @@ export default function CampaignBuilderPage() {
       toast.error("Error loading template details.");
     }
   };
+
+  // Persist/restore selected template so user progress isn't lost on route changes or tab/window switches.
+  // (Session storage keeps it scoped to the current browser session.)
+  useEffect(() => {
+    if (!templateSelectionStorageKey) return;
+    try {
+      if (!selectedTemplateOption) {
+        sessionStorage.removeItem(templateSelectionStorageKey);
+        return;
+      }
+      const payload = {
+        name: selectedTemplateOption.name,
+        languageCode: selectedTemplateOption.languageCode,
+      };
+      sessionStorage.setItem(templateSelectionStorageKey, JSON.stringify(payload));
+    } catch {
+      // no-op
+    }
+  }, [selectedTemplateOption, templateSelectionStorageKey]);
+
+  useEffect(() => {
+    if (!hasValidBusiness) return;
+    if (!templateSelectionStorageKey) return;
+    if (templateRestoreAttemptedRef.current) return;
+    templateRestoreAttemptedRef.current = true;
+
+    try {
+      const raw = sessionStorage.getItem(templateSelectionStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const name = parsed?.name;
+      const languageCode = parsed?.languageCode || "en_US";
+      if (!name) return;
+
+      // Seed the select with a minimal option; details will be fetched by handleTemplateSelect.
+      const opt = {
+        value: `${name}::${languageCode}`,
+        label: name,
+        name,
+        languageCode,
+      };
+      setSelectedTemplateOption(opt);
+      handleTemplateSelect({ name, languageCode });
+    } catch {
+      // no-op
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasValidBusiness, templateSelectionStorageKey]);
 
   const handleCreateCampaign = async () => {
     if (!hasValidBusiness) return;
@@ -431,19 +623,79 @@ export default function CampaignBuilderPage() {
     }
   };
 
-  const templateOptions = useMemo(
-    () =>
-      templates.map(tpl => {
-        const lang = tpl.language || tpl.Language || "en_US";
+  const templateOptions = useMemo(() => {
+    return templates
+      .map(tpl => {
+        const name = tpl.name ?? tpl.Name;
+        const languageCode = tpl.languageCode ?? tpl.LanguageCode ?? "en_US";
+        if (!name) return null;
+        const headerKind = tpl.headerKind ?? tpl.HeaderKind ?? "none";
+        const createdAt = tpl.createdAt ?? tpl.CreatedAt ?? null;
         return {
-          key: `${tpl.name}-${lang}`,
-          label: `${tpl.name} (${lang})`,
-          value: tpl.name,
-          params: tpl.placeholderCount ?? 0,
+          value: `${name}::${languageCode}`,
+          label: name,
+          name,
+          languageCode,
+          category: tpl.category ?? tpl.Category ?? "",
+          bodyVarCount: tpl.bodyVarCount ?? tpl.BodyVarCount ?? 0,
+          headerKind,
+          media: mediaLabel(headerKind),
+          createdAt,
+          updatedAt: tpl.updatedAt ?? tpl.UpdatedAt ?? null,
         };
-      }),
-    [templates]
-  );
+      })
+      .filter(Boolean);
+  }, [templates]);
+
+  // React-Select clears the visible selection if the current `value` isn't present in `options`.
+  // When filters/search change, the API might return a page that doesn't include the selected template.
+  // Keep the selected option pinned so it never disappears from the control.
+  const templateOptionsForSelect = useMemo(() => {
+    if (!selectedTemplateOption) return templateOptions;
+    const pinnedValue = selectedTemplateOption.value;
+    const deduped = templateOptions.filter(o => o?.value !== pinnedValue);
+    return [selectedTemplateOption, ...deduped];
+  }, [selectedTemplateOption, templateOptions]);
+
+  const prefetchAllMode =
+    normalizeMedia(templateMedia) === "all" &&
+    (templateSort === "name_asc" || templateSort === "name_desc") &&
+    !(templateQuery || "").trim().length;
+
+  const formatTemplateOptionLabel = (opt, { context }) => {
+    const createdLabel = formatShortDate(opt.createdAt);
+    const meta = [
+      opt.languageCode ? String(opt.languageCode).toUpperCase() : null,
+      opt.category ? String(opt.category).toUpperCase() : null,
+      opt.media ? String(opt.media).toUpperCase() : null,
+      typeof opt.bodyVarCount === "number" ? `${opt.bodyVarCount} vars` : null,
+      createdLabel ? `Created ${createdLabel}` : null,
+    ]
+      .filter(Boolean)
+      .join(" • ");
+
+    if (context === "value") {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="truncate">{opt.label}</span>
+          {opt.languageCode ? (
+            <span className="text-xs text-slate-500">
+              ({String(opt.languageCode).toUpperCase()})
+            </span>
+          ) : null}
+        </div>
+      );
+    }
+
+    return (
+      <div className="py-0.5">
+        <div className="text-sm font-medium">{opt.label}</div>
+        {meta ? (
+          <div className="text-[11px] leading-tight opacity-80">{meta}</div>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#f5f6f7] pb-20">
@@ -535,23 +787,120 @@ export default function CampaignBuilderPage() {
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Select Template <span className="text-red-500">*</span>
                       </label>
-                      <div className="flex gap-2">
+                        <div className="flex gap-2">
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            inputId="approvedTemplateSelect"
+                            className="react-select-container"
+                            classNamePrefix="react-select"
+                            isClearable
+                            isLoading={loadingTemplates || loadingMoreTemplates}
+                            options={templateOptionsForSelect}
+                            value={selectedTemplateOption}
+                            getOptionValue={o => o.value}
+                            getOptionLabel={o => o.label}
+                            placeholder="Search approved templates…"
+                            // Prevent clipping inside scroll/overflow containers
+                            menuPortalTarget={document.body}
+                            menuPosition="fixed"
+                            menuPlacement="auto"
+                            maxMenuHeight={320}
+                            noOptionsMessage={() =>
+                              loadingTemplates
+                                ? "Loading…"
+                                : "No templates found. Try a different search."
+                            }
+                            onChange={opt => {
+                              setSelectedTemplateOption(opt);
+                              handleTemplateSelect(
+                                opt
+                                  ? { name: opt.name, languageCode: opt.languageCode }
+                                  : null
+                              );
+                            }}
+                            onInputChange={(val, meta) => {
+                              if (meta.action === "input-change") setTemplateQuery(val);
+                            }}
+                            onMenuScrollToBottom={() => {
+                              if (prefetchAllMode) return;
+                              const hasMore = templatePage < templateTotalPages;
+                              if (!hasMore || loadingMoreTemplates || loadingTemplates) return;
+                              fetchApprovedTemplates({ page: templatePage + 1, append: true });
+                            }}
+                            formatOptionLabel={formatTemplateOptionLabel}
+                            styles={{
+                              control: (base, state) => ({
+                                ...base,
+                                minHeight: 38,
+                                borderRadius: 10,
+                                borderColor: state.isFocused ? "#10b981" : "#cbd5e1",
+                                boxShadow: state.isFocused ? "0 0 0 4px rgba(16,185,129,0.12)" : "none",
+                                "&:hover": { borderColor: state.isFocused ? "#10b981" : "#cbd5e1" },
+                              }),
+                              valueContainer: base => ({ ...base, padding: "0 10px" }),
+                              input: base => ({ ...base, margin: 0, padding: 0 }),
+                              indicatorsContainer: base => ({ ...base, height: 38 }),
+                              placeholder: base => ({ ...base, color: "#64748b" }), // slate-500
+                              singleValue: base => ({ ...base, color: "#0f172a" }), // slate-900
+                              clearIndicator: base => ({
+                                ...base,
+                                color: "#64748b",
+                                ":hover": { color: "#0f172a" },
+                              }),
+                              dropdownIndicator: base => ({
+                                ...base,
+                                color: "#64748b",
+                                ":hover": { color: "#0f172a" },
+                              }),
+                              option: (base, state) => ({
+                                ...base,
+                                backgroundColor: state.isSelected
+                                  ? "#0f766e" // teal-700 (close to sidebar tone, higher contrast)
+                                  : state.isFocused
+                                  ? "rgba(16,185,129,0.10)"
+                                  : "white",
+                                color: state.isSelected ? "white" : "#0f172a",
+                                ":active": {
+                                  ...base[":active"],
+                                  backgroundColor: state.isSelected
+                                    ? "#115e59" // teal-800
+                                    : "rgba(16,185,129,0.18)",
+                                },
+                              }),
+                              menu: base => ({ ...base, zIndex: 30 }),
+                              menuPortal: base => ({ ...base, zIndex: 9999 }),
+                            }}
+                          />
+                          <div className="mt-1 text-[11px] text-slate-500">
+                            {templateTotalCount
+                              ? `Showing ${Math.min(templates.length, templateTotalCount)} of ${templateTotalCount} approved templates.`
+                              : "Type to search. Scroll to load more."}
+                          </div>
+                        </div>
+
                         <select
-                          disabled={loadingTemplates}
-                          className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-offset-1 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:opacity-60"
-                          onChange={e => handleTemplateSelect(e.target.value)}
-                          value={selectedTemplate?.name || ""}
+                          value={templateSort}
+                          onChange={e => setTemplateSort(e.target.value)}
+                          className="h-[38px] w-[140px] rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none hover:bg-slate-50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                          title="Sort templates"
                         >
-                          <option value="" disabled>
-                            {loadingTemplates
-                              ? "Loading..."
-                              : "-- Select Approved Template --"}
-                          </option>
-                          {templateOptions.map(o => (
-                            <option key={o.key} value={o.value}>
-                              {o.label} — {o.params} params
-                            </option>
-                          ))}
+                          <option value="created_desc">Newest</option>
+                          <option value="created_asc">Oldest</option>
+                          <option value="name_asc">Name A–Z</option>
+                          <option value="name_desc">Name Z–A</option>
+                        </select>
+
+                        <select
+                          value={templateMedia}
+                          onChange={e => setTemplateMedia(e.target.value)}
+                          className="h-[38px] w-[140px] rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none hover:bg-slate-50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                          title="Filter by media type"
+                        >
+                          <option value="all">All Media</option>
+                          <option value="text">Text</option>
+                          <option value="image">Image</option>
+                          <option value="video">Video</option>
+                          <option value="document">Document (PDF)</option>
                         </select>
 
                         <button
