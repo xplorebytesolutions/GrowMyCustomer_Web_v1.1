@@ -106,7 +106,7 @@ export default function Topbar() {
 
   return (
     <header
-      className="sticky top-0 z-50 shadow-sm border-b border-gray-100 transition-all duration-500"
+      className="sticky top-0 z-50 shadow-md border-b border-gray-100 transition-all duration-500"
       style={{
         background:
           "linear-gradient(217deg, rgba(13, 59, 44, 1) 0%, rgba(218, 230, 225, 1) 25%, rgba(247, 247, 247, 1) 100%)",

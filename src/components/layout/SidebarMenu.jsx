@@ -717,7 +717,7 @@ export default function SidebarMenu() {
   if (isLoading) return null;
 
   return (
-    <aside className="relative h-full w-20 overflow-visible border-r border-[rgba(255,255,255,0.08)] shadow-lg">
+    <aside className="relative h-full w-20 overflow-visible border-r border-[rgba(255,255,255,0.08)]">
       {/* Left rail (Hostinger-like) */}
       <div
         ref={railRef}
