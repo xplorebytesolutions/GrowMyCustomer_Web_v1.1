@@ -602,7 +602,7 @@ export default function MetaAccountManagement() {
           </div>
         </div>
 
-        {statusLoading ? (
+        {statusLoading || isLoading ? (
           <div className="space-y-6">
             <div className="h-20 shimmer-bg rounded-xl w-full" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

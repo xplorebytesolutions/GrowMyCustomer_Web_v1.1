@@ -438,7 +438,7 @@ export default function WelcomePage() {
     await fetchWaStatus();
   };
 
-  if (isLoading) {
+  if (isLoading || waStatus.loading) {
     return (
       <div className="min-h-screen w-full bg-slate-50/50">
         <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
