@@ -372,7 +372,7 @@ export default function WelcomePage() {
 
     if (status === "success" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
       if (status === "success") {
-        toast.success("🎉 WhatsApp Business API connected successfully.");
+        toast.success("🎉 Connected to Meta. Please complete Two-Step Verification.");
         sessionStorage.setItem("xb_pending_esu_pin", "true");
       }
       setShowPinModal(true);

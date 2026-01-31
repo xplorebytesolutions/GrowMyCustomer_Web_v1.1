@@ -17,6 +17,7 @@ export default function MetaPinActivationModal({
   const [pin, setPin] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -37,7 +38,10 @@ export default function MetaPinActivationModal({
       await axiosClient.post(
         "esu/facebook/register-number",
         { pin: cleaned },
-        { headers: { "X-Business-Id": businessId } }
+        { 
+          headers: { "X-Business-Id": businessId },
+          __silentToast: true // Suppress the global toast
+        }
       );
 
       toast.success("✅ WhatsApp number activated successfully.");
@@ -53,11 +57,8 @@ export default function MetaPinActivationModal({
       }, 1500);
       
     } catch (err) {
-      toast.error(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to activate number. Please check your PIN."
-      );
+      // Show user-friendly error instead of technical jargon
+      setError("Invalid PIN. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -87,7 +88,7 @@ export default function MetaPinActivationModal({
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
                   <ShieldCheck size={18} />
                 </div>
-                <h3 className="font-bold text-slate-900">Activate WhatsApp Number</h3>
+                <h3 className="font-bold text-slate-900">Complete Two-Step Verification</h3>
               </div>
               {!submitting && (
                 <button
@@ -107,13 +108,13 @@ export default function MetaPinActivationModal({
                     <CheckCircle2 size={32} />
                   </div>
                   <h4 className="text-xl font-bold text-slate-900">Successfully Activated!</h4>
-                  <p className="mt-2 text-sm text-slate-500">Your number is now ready for use in XploreByte.</p>
+                  <p className="mt-2 text-sm text-slate-500">Your number is now registered with Meta and ready for use.</p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2 text-center sm:text-left">
                     <p className="text-sm font-medium text-slate-600 leading-relaxed">
-                      Enter the 6-digit PIN you set during Meta Embedded Signup to register your number.
+                      Enter the 6-digit PIN you created during the Meta Embedded Signup process to register and enable your number.
                     </p>
                   </div>
 
@@ -125,12 +126,25 @@ export default function MetaPinActivationModal({
                         inputMode="numeric"
                         maxLength={6}
                         value={pin}
-                        onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        onChange={(e) => {
+                          setPin(e.target.value.replace(/\D/g, "").slice(0, 6));
+                          if (error) setError(null);
+                        }}
                         placeholder="Enter 6-digit PIN"
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3.5 text-center text-2xl font-black tracking-[0.5em] focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:font-normal"
                         disabled={submitting}
                       />
                     </div>
+
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-lg bg-rose-50 px-4 py-2 text-center"
+                      >
+                        <p className="text-xs font-bold text-rose-600">{error}</p>
+                      </motion.div>
+                    )}
 
                     <p className="text-[11px] text-center text-slate-400 font-medium bg-slate-50 py-2 rounded-lg leading-relaxed px-4">
                       Note: PIN registration is required by Meta to start sending messages. 
@@ -150,7 +164,7 @@ export default function MetaPinActivationModal({
                           Activating Number...
                         </>
                       ) : (
-                        "Activate WhatsApp Number"
+                        "Register & Activate Number"
                       )}
                     </button>
                     {!submitting && (

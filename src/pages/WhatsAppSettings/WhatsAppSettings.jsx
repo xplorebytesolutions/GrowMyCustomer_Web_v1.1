@@ -564,7 +564,7 @@ export default function WhatsAppSettings() {
 
     if (esuSuccess || justConnected || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
       if (esuSuccess || justConnected) {
-        toast.success(justConnected ? "Meta connection completed. Numbers synced." : "✅ WhatsApp connected successfully. Please set your 6-digit PIN.");
+        toast.success(justConnected ? "Meta connection completed. Numbers synced." : "✅ Connected to Meta. Please complete Two-Step Verification.");
         sessionStorage.setItem("xb_pending_esu_pin", "true");
         
         // Sync numbers if just connected

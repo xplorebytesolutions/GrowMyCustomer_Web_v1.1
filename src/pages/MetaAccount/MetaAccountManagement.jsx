@@ -117,7 +117,7 @@ export default function MetaAccountManagement() {
 
     if (esuStatus === "success" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
       if (esuStatus === "success") {
-        toast.success("✅ WhatsApp connected. Please register your 6-digit PIN.");
+        toast.success("✅ Connected to Meta. Please complete Two-Step Verification.");
         sessionStorage.setItem("xb_pending_esu_pin", "true");
       }
       setShowPinModal(true);
