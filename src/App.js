@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 
 // Auth provider (server-authoritative session/claims)
@@ -138,6 +138,12 @@ import ChangePasswordPage from "./pages/Settings/Password/ChangePasswordPage";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// --- Helper Components ---
+function DashboardRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/app/welcomepage${search}`} replace />;
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -176,7 +182,7 @@ function App() {
             {/* Welcome + Dashboard */}
             <Route
               path="dashboard"
-              element={<Navigate to={`/app/welcomepage${window.location.search}`} replace />}
+              element={<DashboardRedirect />}
             />
             <Route path="welcome" element={<WelcomeCenter />} />
             <Route path="welcomepage" element={<WelcomePage />} />

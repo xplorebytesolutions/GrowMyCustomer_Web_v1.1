@@ -59,7 +59,14 @@ export default function MetaAccountManagement() {
   const [deletedThisSession, setDeletedThisSession] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [showPinModal, setShowPinModal] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(() => {
+    return sessionStorage.getItem("xb_pending_esu_pin") === "true";
+  });
+
+  const closePinModal = () => {
+    setShowPinModal(false);
+    sessionStorage.removeItem("xb_pending_esu_pin");
+  };
 
   const isDev = process.env.NODE_ENV === "development";
 
@@ -106,14 +113,20 @@ export default function MetaAccountManagement() {
     const rawStatus = searchParams.get("esuStatus");
     const esuStatus = rawStatus?.toLowerCase();
 
-    console.log("[MetaAccountManagement] esuStatus detected:", { rawStatus, esuStatus });
+    console.log("[MetaAccountManagement] esuStatus check:", { rawStatus, esuStatus });
 
-    if (esuStatus === "success") {
+    if (esuStatus === "success" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
+      if (esuStatus === "success") {
+        toast.success("✅ WhatsApp connected. Please register your 6-digit PIN.");
+        sessionStorage.setItem("xb_pending_esu_pin", "true");
+      }
       setShowPinModal(true);
-      // Clean up the param so it doesn't pop again on reload
+      
       const nextParams = new URLSearchParams(searchParams);
-      nextParams.delete("esuStatus");
-      setSearchParams(nextParams, { replace: true });
+      if (nextParams.has("esuStatus")) {
+        nextParams.delete("esuStatus");
+        setSearchParams(nextParams, { replace: true });
+      }
     }
   }, [searchParams, setSearchParams]);
 
@@ -590,9 +603,12 @@ export default function MetaAccountManagement() {
         </div>
 
         {statusLoading ? (
-          <div className="animate-pulse space-y-4">
-            <div className="h-16 bg-slate-100 rounded-xl w-full" />
-            <div className="h-64 bg-slate-50 rounded-xl w-full border border-slate-100" />
+          <div className="space-y-6">
+            <div className="h-20 shimmer-bg rounded-xl w-full" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="h-48 shimmer-bg rounded-xl w-full" />
+              <div className="h-48 shimmer-bg rounded-xl w-full" />
+            </div>
           </div>
         ) : (
           <>
@@ -847,10 +863,10 @@ export default function MetaAccountManagement() {
           </div>
         )}
 
-        {/* 2FA/PIN Activation Modal */}
+        {/* Activation Modal */}
         <MetaPinActivationModal
           isOpen={showPinModal}
-          onClose={() => setShowPinModal(false)}
+          onClose={closePinModal}
           businessId={effectiveBusinessId}
           onSuccess={handlePinSuccess}
         />

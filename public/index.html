@@ -30,144 +30,186 @@
     <!-- Initial boot loader: prevents a blank white screen before React mounts. -->
     <style>
       :root {
-        --xb-bg: #f7faf9;
-        --xb-card: #ffffff;
-        --xb-border: #e5e7eb;
-        --xb-text: #0f172a;
-        --xb-muted: rgba(15, 23, 42, 0.6);
-        --xb-brand: #0f766e; /* matches app teal theme */
+        --xb-skeleton: #e2e8f0;
+        --xb-skeleton-shimmer: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.4) 50%,
+          rgba(255, 255, 255, 0) 100%
+        );
+        --xb-bg: #f8fafc;
+        --xb-border: #e2e8f0;
       }
 
       body {
         margin: 0;
         background: var(--xb-bg);
-        color: var(--xb-text);
-        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial,
-          sans-serif;
-      }
-
-      .xb-boot {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 28px 16px;
-      }
-
-      .xb-boot-card {
-        width: min(860px, 100%);
-        background: var(--xb-card);
-        border: 1px solid var(--xb-border);
-        border-radius: 14px;
-        box-shadow: 0 10px 28px rgba(2, 6, 23, 0.08);
         overflow: hidden;
+        font-family: -apple-system, BlinkMacMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       }
 
-      .xb-boot-top {
+      .xb-skeleton-screen {
+        height: 100vh;
+        width: 100vw;
         display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 16px 18px;
+        flex-direction: column;
+      }
+
+      /* Topbar Ghost */
+      .xb-skel-topbar {
+        height: 64px;
+        background: #ffffff;
         border-bottom: 1px solid var(--xb-border);
-        background: linear-gradient(
-          90deg,
-          rgba(15, 118, 110, 0.06),
-          rgba(15, 118, 110, 0.02)
-        );
+        display: flex;
+        align-items: center;
+        padding: 0 24px;
+        gap: 16px;
       }
 
-      .xb-boot-logo {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: rgba(15, 118, 110, 0.08);
-        display: grid;
-        place-items: center;
+      .xb-skel-logo {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--xb-skeleton);
+        position: relative;
         overflow: hidden;
       }
 
-      .xb-boot-logo img {
-        width: 22px;
-        height: 22px;
+      .xb-skel-search {
+        width: 200px;
+        height: 32px;
+        border-radius: 6px;
+        background: #f1f5f9;
+        margin-left: auto;
       }
 
-      .xb-boot-title {
+      .xb-skel-profile {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--xb-skeleton);
+      }
+
+      /* Layout Ghost */
+      .xb-skel-layout {
+        flex: 1;
         display: flex;
-        flex-direction: column;
-        gap: 2px;
-        line-height: 1.1;
+        overflow: hidden;
       }
 
-      .xb-boot-title strong {
-        font-weight: 700;
-        font-size: 14px;
-        letter-spacing: 0.2px;
-      }
-
-      .xb-boot-title span {
-        font-size: 12px;
-        color: var(--xb-muted);
-      }
-
-      .xb-boot-body {
-        padding: 26px 18px 28px;
+      /* Sidebar Ghost */
+      .xb-skel-sidebar {
+        width: 80px;
+        background: #ffffff;
+        border-right: 1px solid var(--xb-border);
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 10px;
+        padding-top: 24px;
+        gap: 20px;
       }
 
-      .xb-spinner {
-        width: 34px;
-        height: 34px;
-        border-radius: 999px;
-        border: 3px solid rgba(15, 118, 110, 0.18);
-        border-top-color: var(--xb-brand);
-        animation: xb-spin 0.9s linear infinite;
+      .xb-skel-sidebar-item {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--xb-skeleton);
+        position: relative;
+        overflow: hidden;
       }
 
-      .xb-boot-hint {
-        font-size: 13px;
-        color: var(--xb-muted);
-        text-align: center;
+      /* Content Ghost */
+      .xb-skel-content {
+        flex: 1;
+        padding: 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
       }
 
-      @keyframes xb-spin {
-        0% {
-          transform: rotate(0deg);
-        }
+      .xb-skel-line {
+        height: 24px;
+        border-radius: 6px;
+        background: var(--xb-skeleton);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .xb-skel-card {
+        background: #ffffff;
+        border: 1px solid var(--xb-border);
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        height: 200px;
+      }
+
+      /* Shimmer Animation */
+      .xb-shimmer::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--xb-skeleton-shimmer);
+        animation: xb-shimmer-anim 1.5s infinite;
+        transform: translateX(-100%);
+      }
+
+      @keyframes xb-shimmer-anim {
         100% {
-          transform: rotate(360deg);
+          transform: translateX(100%);
         }
       }
 
-      @media (prefers-reduced-motion: reduce) {
-        .xb-spinner {
-          animation: none;
-        }
+      .xb-skel-title { width: 40%; height: 32px; }
+      .xb-skel-subtitle { width: 60%; }
+      .xb-skel-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
       }
+      .xb-skel-item { height: 16px; border-radius: 4px; }
     </style>
     <title>XploreByte</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root">
-      <div class="xb-boot" role="status" aria-live="polite" aria-label="Loading">
-        <div class="xb-boot-card">
-          <div class="xb-boot-top">
-            <div class="xb-boot-logo" aria-hidden="true">
-              <img src="%PUBLIC_URL%/logo/favicon.svg" alt="" />
-            </div>
-            <div class="xb-boot-title">
-              <strong>XploreByte</strong>
-              <span>Loading your workspace...</span>
-            </div>
+      <div class="xb-skeleton-screen" role="status" aria-label="Loading">
+        <div class="xb-skel-topbar">
+          <div class="xb-skel-logo xb-shimmer"></div>
+          <div class="xb-skel-line xb-skel-title xb-shimmer"></div>
+          <div class="xb-skel-search"></div>
+          <div class="xb-skel-profile xb-shimmer"></div>
+        </div>
+        <div class="xb-skel-layout">
+          <div class="xb-skel-sidebar">
+            <div class="xb-skel-sidebar-item xb-shimmer"></div>
+            <div class="xb-skel-sidebar-item xb-shimmer"></div>
+            <div class="xb-skel-sidebar-item xb-shimmer"></div>
+            <div class="xb-skel-sidebar-item xb-shimmer"></div>
+            <div class="xb-skel-sidebar-item xb-shimmer"></div>
           </div>
-
-          <div class="xb-boot-body">
-            <div class="xb-spinner" aria-hidden="true"></div>
-            <div class="xb-boot-hint">Please wait a moment.</div>
+          <div class="xb-skel-content">
+            <div class="xb-skel-line xb-skel-title xb-shimmer"></div>
+            <div class="xb-skel-line xb-skel-subtitle xb-shimmer"></div>
+            <div class="xb-skel-grid">
+              <div class="xb-skel-card xb-shimmer"></div>
+              <div class="xb-skel-card xb-shimmer"></div>
+              <div class="xb-skel-card xb-shimmer"></div>
+            </div>
+            <div style="margin-top: 20px;">
+              <div class="xb-skel-line xb-shimmer" style="width: 100%; margin-bottom: 12px;"></div>
+              <div class="xb-skel-line xb-shimmer" style="width: 90%; margin-bottom: 12px;"></div>
+              <div class="xb-skel-line xb-shimmer" style="width: 80%;"></div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 // 📄 src/pages/Settings/WhatsAppSettings.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
 import { useAuth } from "../../app/providers/AuthProvider";
@@ -118,6 +119,7 @@ const blank = {
 
 export default function WhatsAppSettings() {
   const auth = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const effectiveBusinessIdFromContext = auth?.effectiveBusinessId || null;
 
   const [formData, setFormData] = useState(blank);
@@ -148,7 +150,14 @@ export default function WhatsAppSettings() {
     debug: null,
   });
 
-  const [showPinModal, setShowPinModal] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(() => {
+    return sessionStorage.getItem("xb_pending_esu_pin") === "true";
+  });
+
+  const closePinModal = () => {
+    setShowPinModal(false);
+    sessionStorage.removeItem("xb_pending_esu_pin");
+  };
 
   const [connectingEsu, setConnectingEsu] = useState(false);
 
@@ -540,7 +549,7 @@ export default function WhatsAppSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.provider]);
 
-  // Auto-fetch numbers when redirected with ?connected=1 after ESU flow
+  // Handle ESU results from URL + sessionStorage persistence
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rawStatus = params.get("esuStatus");
@@ -548,31 +557,38 @@ export default function WhatsAppSettings() {
     const rawConnected = params.get("connected");
     const connected = rawConnected?.toLowerCase() || rawConnected;
 
-    console.log("[WhatsAppSettings] params detected:", { rawStatus, esuStatus, rawConnected, connected });
+    console.log("[WhatsAppSettings] params check:", { rawStatus, esuStatus, rawConnected, connected });
 
     const esuSuccess = esuStatus === "success";
     const justConnected = connected === "1" || connected === "true";
 
-    if (esuSuccess || justConnected) {
-      setShowPinModal(true);
-      (async () => {
-        try {
-          await handleFetchFromMeta();
-          if (justConnected) {
-            toast.success("Meta connection completed. Numbers synced.");
-          }
-        } finally {
-          const url = new URL(window.location.href);
-          url.searchParams.delete("connected");
-          url.searchParams.delete("esuStatus");
-          window.history.replaceState({}, "", url.toString());
+    if (esuSuccess || justConnected || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
+      if (esuSuccess || justConnected) {
+        toast.success(justConnected ? "Meta connection completed. Numbers synced." : "✅ WhatsApp connected successfully. Please set your 6-digit PIN.");
+        sessionStorage.setItem("xb_pending_esu_pin", "true");
+        
+        // Sync numbers if just connected
+        if (justConnected) {
+          handleFetchFromMeta();
         }
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      }
+      setShowPinModal(true);
 
-  // ===== Local sender mutations =====
+      // Clean up URL params
+      if (rawStatus || rawConnected) {
+        const next = new URLSearchParams(searchParams);
+        next.delete("esuStatus");
+        next.delete("connected");
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handlePinSuccess = () => {
+    sessionStorage.removeItem("xb_pending_esu_pin");
+    loadStatus();
+  };
+
   const addSender = () =>
     setSenders(s => [
       ...s,
@@ -1327,17 +1343,15 @@ export default function WhatsAppSettings() {
             </pre>
           </div>
         )}
+        {/* PIN Activation Modal */}
+        <MetaPinActivationModal
+          isOpen={showPinModal}
+          onClose={closePinModal}
+          businessId={businessId}
+          onSuccess={handlePinSuccess}
+        />
       </div>
-      <MetaPinActivationModal
-        isOpen={showPinModal}
-        onClose={() => setShowPinModal(false)}
-        businessId={businessId}
-        onSuccess={() => {
-          handleFetchFromMeta();
-          loadStatus();
-        }}
-      />
     </div>
-    </div>
-  );
+  </div>
+);
 }

@@ -309,8 +309,15 @@ export default function WelcomePage() {
   });
 
   // Post-ESU activation (PIN)
-  const [showPinModal, setShowPinModal] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(() => {
+    return sessionStorage.getItem("xb_pending_esu_pin") === "true";
+  });
   const [pinActivated, setPinActivated] = useState(false);
+
+  const closePinModal = () => {
+    setShowPinModal(false);
+    sessionStorage.removeItem("xb_pending_esu_pin");
+  };
 
   const fetchWaStatus = async () => {
     if (!isGuid(businessId)) {
@@ -357,26 +364,25 @@ export default function WelcomePage() {
 
   // Handle ESU redirect result: ?esuStatus=success|failed
   useEffect(() => {
-    const rawStatus = search.get("esuStatus");
+    const params = new URLSearchParams(search);
+    const rawStatus = params.get("esuStatus");
     const status = rawStatus?.toLowerCase();
 
-    console.log("[WelcomePage] esuStatus detected:", { rawStatus, status });
+    console.log("[WelcomePage] esuStatus check:", { rawStatus, status });
 
-    if (status === "success") {
-      toast.success("🎉 WhatsApp Business API connected successfully.");
+    if (status === "success" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
+      if (status === "success") {
+        toast.success("🎉 WhatsApp Business API connected successfully.");
+        sessionStorage.setItem("xb_pending_esu_pin", "true");
+      }
       setShowPinModal(true);
-      setPinActivated(false); // allow activation attempt post-ESU
-    } else if (status === "failed") {
-      toast.error(
-        "WhatsApp connection failed. Please retry the embedded signup.",
-      );
-      setShowPinModal(false);
+      setPinActivated(false); 
     }
 
-    if (status) {
-      const params = new URLSearchParams(search);
-      params.delete("esuStatus");
-      navigate({ search: params.toString() }, { replace: true });
+    if (search.get("esuStatus")) {
+      const nextParams = new URLSearchParams(search);
+      nextParams.delete("esuStatus");
+      navigate({ search: nextParams.toString() }, { replace: true });
     }
   }, [search, navigate]);
 
@@ -434,12 +440,62 @@ export default function WelcomePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 text-emerald-600 animate-spin mx-auto mb-4" />
-          <p className="text-emerald-700 font-semibold text-sm tracking-wide">
-            Loading your dashboard...
-          </p>
+      <div className="min-h-screen w-full bg-slate-50/50">
+        <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
+          {/* Skeleton Hero Section */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-4 flex-1">
+              <div className="h-10 shimmer-bg rounded-xl w-2/3"></div>
+              <div className="space-y-2">
+                <div className="h-4 shimmer-bg rounded-md w-3/4"></div>
+                <div className="h-4 shimmer-bg rounded-md w-1/2"></div>
+              </div>
+            </div>
+            <div className="h-24 w-64 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center px-4 gap-4">
+               <div className="h-14 w-14 rounded-full shimmer-bg shrink-0"></div>
+               <div className="flex-1 space-y-2">
+                 <div className="h-4 shimmer-bg rounded-md w-full"></div>
+                 <div className="h-3 shimmer-bg rounded-md w-2/3"></div>
+               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Skeleton Stepper */}
+            <div className="lg:col-span-3">
+              <div className="h-[400px] bg-white/50 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-sm p-6 space-y-8">
+                <div className="h-3 shimmer-bg rounded-full w-1/2 mb-8"></div>
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex gap-4">
+                     <div className="h-10 w-10 rounded-full shimmer-bg shrink-0"></div>
+                     <div className="flex-1 space-y-3 pt-2">
+                       <div className="h-4 shimmer-bg rounded-md w-full"></div>
+                       <div className="h-3 shimmer-bg rounded-md w-3/4"></div>
+                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Skeleton Content Cards */}
+            <div className="lg:col-span-9 space-y-8">
+               <div className="h-48 bg-white rounded-2xl border border-slate-100 shadow-sm p-8 space-y-4">
+                  <div className="h-6 shimmer-bg rounded-lg w-1/4"></div>
+                  <div className="h-20 shimmer-bg rounded-xl w-full"></div>
+               </div>
+               <div className="h-64 bg-white rounded-2xl border border-slate-100 shadow-sm p-8 space-y-6">
+                  <div className="flex justify-between items-center">
+                    <div className="h-6 shimmer-bg rounded-lg w-1/3"></div>
+                    <div className="h-10 shimmer-bg rounded-xl w-32"></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="h-32 shimmer-bg rounded-xl w-full"></div>
+                    <div className="h-32 shimmer-bg rounded-xl w-full"></div>
+                    <div className="h-32 shimmer-bg rounded-xl w-full"></div>
+                  </div>
+               </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -558,7 +614,7 @@ export default function WelcomePage() {
         {/* Post-ESU PIN Activation Modal */}
         <MetaPinActivationModal
           isOpen={showPinModal}
-          onClose={() => setShowPinModal(false)}
+          onClose={closePinModal}
           businessId={businessId}
           onSuccess={handlePinSuccess}
         />
