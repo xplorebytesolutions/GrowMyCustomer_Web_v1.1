@@ -150,7 +150,7 @@ export default function ConnectionSummaryCard({ businessId }) {
                      ) : (
                          <div className="h-2 w-2 rounded-full bg-rose-500" />
                      )}
-                     <span className="text-sm font-bold text-slate-900">{data.status || "Unknown"}</span>
+                     <span className="text-xs font-bold text-slate-900">{data.status || "Unknown"}</span>
                 </div>
             </div>
 
@@ -160,12 +160,12 @@ export default function ConnectionSummaryCard({ businessId }) {
                 <div className="flex flex-wrap items-center gap-1.5">
                     {data.whatsAppBusinessNumbers && data.whatsAppBusinessNumbers.length > 0 ? (
                         data.whatsAppBusinessNumbers.map((num, idx) => (
-                          <span key={idx} className="text-sm font-bold text-slate-900 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                          <span key={idx} className="text-xs font-bold text-slate-900 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
                             {num}
                           </span>
                         ))
                     ) : (
-                        <span className="text-sm font-bold text-slate-900">{data.whatsAppBusinessNumber || "None"}</span>
+                        <span className="text-xs font-bold text-slate-900">{data.whatsAppBusinessNumber || "None"}</span>
                     )}
                 </div>
             </div>
@@ -176,7 +176,7 @@ export default function ConnectionSummaryCard({ businessId }) {
                 <div className="flex items-center gap-1.5">
                     {data.verifiedName ? (
                         <>
-                            <span className="text-sm font-bold text-slate-900 truncate max-w-[120px]" title={data.verifiedName}>
+                            <span className="text-xs font-bold text-slate-900 truncate max-w-[120px]" title={data.verifiedName}>
                                 {data.verifiedName}
                             </span>
                             {data.nameStatus === 'APPROVED' && (
@@ -203,7 +203,7 @@ export default function ConnectionSummaryCard({ businessId }) {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Messaging Limit</p>
                 <div className="flex items-center gap-1.5 whitespace-nowrap">
                     <BarChart3 size={14} className="text-slate-400 shrink-0" />
-                    <span className="text-sm font-bold text-slate-900 truncate">{tierLabel}</span>
+                    <span className="text-xs font-bold text-slate-900 truncate">{tierLabel}</span>
                 </div>
             </div>
 

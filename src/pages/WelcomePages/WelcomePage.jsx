@@ -31,9 +31,7 @@ import MetaPinActivationModal from "../../components/modals/MetaPinActivationMod
 
 const isGuid = v =>
   !!v &&
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    v,
-  );
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
 function pickFirstNonEmpty(...vals) {
   for (const v of vals) {
@@ -321,6 +319,9 @@ export default function WelcomePage() {
 
   const fetchWaStatus = async () => {
     if (!isGuid(businessId)) {
+      // If auth is still loading, or if we expect a businessId but it's not here yet, stay in loading state
+      if (isLoading || !businessId) return;
+      
       setWaStatus({ loading: false, hasSettings: false, data: null });
       return;
     }
@@ -328,7 +329,9 @@ export default function WelcomePage() {
     setWaStatus(prev => ({ ...prev, loading: true }));
 
     try {
-      const res = await axiosClient.get("whatsappsettings/me");
+      const res = await axiosClient.get("whatsappsettings/me", {
+        headers: { "X-Business-Id": businessId }
+      });
       const has = !!res?.data?.hasSettings;
 
       setWaStatus({
@@ -514,10 +517,10 @@ export default function WelcomePage() {
           <div className="space-y-2">
             {/* Removed redundant status badges as requested */}
 
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               {progressPercent === 100 ? `You're all set, ${userName?.split(" ")[0]}! 🚀` : `Welcome to XploreByte, ${userName?.split(" ")[0]}! 👋`}
             </h1>
-            <p className="text-slate-500 max-w-xl text-base">
+            <p className="text-slate-500 max-w-xl text-sm">
               {progressPercent === 100 
                 ? "Your business is now ready for the world. You can now create templates, launch campaigns, and engage with your customers in real-time."
                 : "Let's get your business ready for the world. Complete these steps to unlock full potential."}

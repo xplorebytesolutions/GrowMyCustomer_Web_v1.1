@@ -562,25 +562,27 @@ export default function WhatsAppSettings() {
     const esuSuccess = esuStatus === "success";
     const justConnected = connected === "1" || connected === "true";
 
-    if (esuSuccess || justConnected || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
-      if (esuSuccess || justConnected) {
-        toast.success(justConnected ? "Meta connection completed. Numbers synced." : "✅ Connected to Meta. Please complete Two-Step Verification.");
-        sessionStorage.setItem("xb_pending_esu_pin", "true");
-        
-        // Sync numbers if just connected
-        if (justConnected) {
-          handleFetchFromMeta();
-        }
+    if (esuStatus === "success") {
+      // Backend already auto-registered with default PIN 111111
+      toast.success("✅ Connected to Meta! Your number is active.");
+      handleFetchFromMeta(); // Sync numbers
+      loadStatus();          // Refresh green dot
+    } 
+    else if (esuStatus === "needs_pin" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
+      // Backend failed to auto-register (likely existing PIN mismatch)
+      if (esuStatus === "needs_pin") {
+         toast.info("This number is already protected. Please enter your existing PIN.");
       }
       setShowPinModal(true);
+      sessionStorage.setItem("xb_pending_esu_pin", "true");
+    }
 
-      // Clean up URL params
-      if (rawStatus || rawConnected) {
-        const next = new URLSearchParams(searchParams);
-        next.delete("esuStatus");
-        next.delete("connected");
-        setSearchParams(next, { replace: true });
-      }
+    // Clean up URL params
+    if (rawStatus || rawConnected) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("esuStatus");
+      next.delete("connected");
+      setSearchParams(next, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
