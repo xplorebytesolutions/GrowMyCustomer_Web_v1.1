@@ -4,6 +4,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
+import MetaPinActivationModal from "../../components/modals/MetaPinActivationModal";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { ShieldAlert, Trash2, RefreshCw, Plus } from "lucide-react";
 
@@ -56,6 +58,9 @@ export default function MetaAccountManagement() {
   // After a successful hard-delete in THIS session, we freeze all actions
   const [deletedThisSession, setDeletedThisSession] = useState(false);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showPinModal, setShowPinModal] = useState(false);
+
   const isDev = process.env.NODE_ENV === "development";
 
   // Prefer AuthProvider if present, otherwise JWT claim
@@ -96,6 +101,21 @@ export default function MetaAccountManagement() {
   useEffect(() => {
     loadStatus();
   }, []);
+
+  useEffect(() => {
+    const esuStatus = searchParams.get("esuStatus");
+    if (esuStatus === "success") {
+      setShowPinModal(true);
+      // Clean query params so it doesn't pop up again on refresh
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("esuStatus");
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handlePinSuccess = () => {
+    loadStatus();
+  };
 
   // ------- Normalized status -------
   const hasEsuFlag = status?.hasEsuFlag ?? status?.HasEsuFlag ?? false;
@@ -793,7 +813,7 @@ export default function MetaAccountManagement() {
           </div>
         )}
 
-        {/* Post-delete success modal */}
+        {/* Data deletion success modal */}
         {showDeleteSuccessModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
@@ -822,6 +842,14 @@ export default function MetaAccountManagement() {
             </div>
           </div>
         )}
+
+        {/* 2FA/PIN Activation Modal */}
+        <MetaPinActivationModal
+          isOpen={showPinModal}
+          onClose={() => setShowPinModal(false)}
+          businessId={effectiveBusinessId}
+          onSuccess={handlePinSuccess}
+        />
       </div>
     </div>
   );

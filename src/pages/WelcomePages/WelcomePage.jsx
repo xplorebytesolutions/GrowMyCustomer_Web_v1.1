@@ -27,6 +27,7 @@ import { useAuth } from "../../app/providers/AuthProvider";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
 import ConnectionSummaryCard from "../../components/WhatsApp/ConnectionSummaryCard";
+import MetaPinActivationModal from "../../components/modals/MetaPinActivationModal";
 
 const isGuid = v =>
   !!v &&
@@ -308,9 +309,7 @@ export default function WelcomePage() {
   });
 
   // Post-ESU activation (PIN)
-  const [esuJustCompleted, setEsuJustCompleted] = useState(false);
-  const [pin, setPin] = useState("");
-  const [pinSubmitting, setPinSubmitting] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
   const [pinActivated, setPinActivated] = useState(false);
 
   const fetchWaStatus = async () => {
@@ -362,13 +361,13 @@ export default function WelcomePage() {
 
     if (status === "success") {
       toast.success("🎉 WhatsApp Business API connected successfully.");
-      setEsuJustCompleted(true);
+      setShowPinModal(true);
       setPinActivated(false); // allow activation attempt post-ESU
     } else if (status === "failed") {
       toast.error(
         "WhatsApp connection failed. Please retry the embedded signup.",
       );
-      setEsuJustCompleted(false);
+      setShowPinModal(false);
     }
 
     if (status) {
@@ -424,44 +423,10 @@ export default function WelcomePage() {
     }
   };
 
-  const submitPinActivation = async () => {
-    const cleaned = (pin || "").trim();
-
-    if (!/^\d{6}$/.test(cleaned)) {
-      toast.error("PIN must be exactly 6 digits.");
-      return;
-    }
-
-    if (!isGuid(businessId)) {
-      toast.error("Business context missing. Please re-login.");
-      return;
-    }
-
-    try {
-      setPinSubmitting(true);
-
-      await axiosClient.post(
-        "esu/facebook/register-number",
-        { pin: cleaned },
-        { headers: { "X-Business-Id": businessId } },
-      );
-
-      toast.success("✅ WhatsApp number activated successfully.");
-      setPinActivated(true);
-      setPin("");
-      setEsuJustCompleted(false);
-
-      // Refresh settings so connected number / status can update (best-effort)
-      await fetchWaStatus();
-    } catch (err) {
-      toast.error(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to activate number. Please re-check PIN and try again.",
-      );
-    } finally {
-      setPinSubmitting(false);
-    }
+  const handlePinSuccess = async () => {
+    setPinActivated(true);
+    // Refresh settings so connected number / status can update (best-effort)
+    await fetchWaStatus();
   };
 
   if (isLoading) {
@@ -587,75 +552,13 @@ export default function WelcomePage() {
           </div>
         </motion.div>
 
-        {/* Post-ESU PIN Activation Card */}
-        {esuJustCompleted && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-emerald-200 bg-white shadow-xl shadow-emerald-100/40 overflow-hidden"
-          >
-            <div className="p-6 md:p-7">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-extrabold text-slate-900">
-                    Activate your WhatsApp number
-                  </h3>
-                  <p className="text-sm text-slate-600 mt-1 max-w-2xl">
-                    Enter the 6-digit PIN you set during Meta Embedded Signup.
-                    This completes number registration so it stops showing as
-                    pending.
-                  </p>
-                </div>
-
-                {pinActivated ? (
-                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                    <CheckCircle2 size={14} /> Activated
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
-                    <AlertTriangle size={14} /> Action needed
-                  </span>
-                )}
-              </div>
-
-              {!pinActivated && (
-                <div className="mt-5 flex flex-col sm:flex-row gap-3 sm:items-center">
-                  <input
-                    value={pin}
-                    onChange={e =>
-                      setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
-                    }
-                    inputMode="numeric"
-                    placeholder="Enter 6-digit PIN"
-                    className="w-full sm:w-64 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 text-sm font-extrabold tracking-widest"
-                  />
-                  <button
-                    disabled={pinSubmitting || pin.length !== 6}
-                    onClick={submitPinActivation}
-                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-extrabold flex items-center justify-center gap-2"
-                  >
-                    {pinSubmitting && (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    )}
-                    Activate Number
-                  </button>
-
-                  <button
-                    onClick={() => setEsuJustCompleted(false)}
-                    className="px-5 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50"
-                  >
-                    Skip for now
-                  </button>
-                </div>
-              )}
-
-              <p className="text-[11px] text-slate-400 mt-3">
-                PIN is never stored. If you forgot it, rerun Embedded Signup and
-                set a new PIN.
-              </p>
-            </div>
-          </motion.div>
-        )}
+        {/* Post-ESU PIN Activation Modal */}
+        <MetaPinActivationModal
+          isOpen={showPinModal}
+          onClose={() => setShowPinModal(false)}
+          businessId={businessId}
+          onSuccess={handlePinSuccess}
+        />
 
       </div>
 

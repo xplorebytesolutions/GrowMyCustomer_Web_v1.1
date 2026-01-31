@@ -17,8 +17,9 @@ import {
   EyeOff,
   Globe,
   Lock,
-  Link
+  Link 
 } from "lucide-react";
+import MetaPinActivationModal from "../../components/modals/MetaPinActivationModal";
 
 
 // === Canonical providers (MUST match backend exactly) ===
@@ -146,6 +147,8 @@ export default function WhatsAppSettings() {
     hasWaba: false,
     debug: null,
   });
+
+  const [showPinModal, setShowPinModal] = useState(false);
 
   const [connectingEsu, setConnectingEsu] = useState(false);
 
@@ -540,14 +543,21 @@ export default function WhatsAppSettings() {
   // Auto-fetch numbers when redirected with ?connected=1 after ESU flow
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("connected") === "1") {
+    const connected = params.get("connected") === "1";
+    const esuSuccess = params.get("esuStatus") === "success";
+
+    if (connected || esuSuccess) {
+      setShowPinModal(true);
       (async () => {
         try {
           await handleFetchFromMeta();
-          toast.success("Meta connection completed. Numbers synced.");
+          if (connected) {
+            toast.success("Meta connection completed. Numbers synced.");
+          }
         } finally {
           const url = new URL(window.location.href);
           url.searchParams.delete("connected");
+          url.searchParams.delete("esuStatus");
           window.history.replaceState({}, "", url.toString());
         }
       })();
@@ -1311,6 +1321,15 @@ export default function WhatsAppSettings() {
           </div>
         )}
       </div>
+      <MetaPinActivationModal
+        isOpen={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        businessId={businessId}
+        onSuccess={() => {
+          handleFetchFromMeta();
+          loadEsuStatus();
+        }}
+      />
     </div>
     </div>
   );
