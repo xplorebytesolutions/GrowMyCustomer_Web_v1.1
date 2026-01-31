@@ -12,12 +12,12 @@ export default function AppHomeRoute() {
 
     // Not logged in → send back to login
     if (!isAuthenticated) {
-      navigate("/login", { replace: true });
+      navigate(`/login${window.location.search}`, { replace: true });
       return;
     }
 
     // Logged in (any business user, with or without plan) → go to dashboard
-    navigate("/app/dashboard", { replace: true });
+    navigate(`/app/dashboard${window.location.search}`, { replace: true });
   }, [isLoading, isAuthenticated, navigate]);
 
   // We render nothing; this component is just a redirector

@@ -357,7 +357,10 @@ export default function WelcomePage() {
 
   // Handle ESU redirect result: ?esuStatus=success|failed
   useEffect(() => {
-    const status = search.get("esuStatus");
+    const rawStatus = search.get("esuStatus");
+    const status = rawStatus?.toLowerCase();
+
+    console.log("[WelcomePage] esuStatus detected:", { rawStatus, status });
 
     if (status === "success") {
       toast.success("🎉 WhatsApp Business API connected successfully.");

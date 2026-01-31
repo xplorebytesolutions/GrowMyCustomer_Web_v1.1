@@ -176,7 +176,7 @@ function App() {
             {/* Welcome + Dashboard */}
             <Route
               path="dashboard"
-              element={<Navigate to="/app/welcomepage" replace />}
+              element={<Navigate to={`/app/welcomepage${window.location.search}`} replace />}
             />
             <Route path="welcome" element={<WelcomeCenter />} />
             <Route path="welcomepage" element={<WelcomePage />} />

@@ -99,7 +99,12 @@ export default function Login() {
       } else {
         toast.success("Login successful");
       }
-      navigate(next, { replace: true });
+
+      const finalNext = next.includes("?") 
+        ? next 
+        : `${next}${window.location.search}`;
+
+      navigate(finalNext, { replace: true });
     } catch (err) {
       const message =
         err?.response?.data?.message || err?.message || "Login failed.";

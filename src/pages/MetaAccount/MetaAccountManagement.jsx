@@ -103,10 +103,14 @@ export default function MetaAccountManagement() {
   }, []);
 
   useEffect(() => {
-    const esuStatus = searchParams.get("esuStatus");
+    const rawStatus = searchParams.get("esuStatus");
+    const esuStatus = rawStatus?.toLowerCase();
+
+    console.log("[MetaAccountManagement] esuStatus detected:", { rawStatus, esuStatus });
+
     if (esuStatus === "success") {
       setShowPinModal(true);
-      // Clean query params so it doesn't pop up again on refresh
+      // Clean up the param so it doesn't pop again on reload
       const nextParams = new URLSearchParams(searchParams);
       nextParams.delete("esuStatus");
       setSearchParams(nextParams, { replace: true });

@@ -543,15 +543,22 @@ export default function WhatsAppSettings() {
   // Auto-fetch numbers when redirected with ?connected=1 after ESU flow
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const connected = params.get("connected") === "1";
-    const esuSuccess = params.get("esuStatus") === "success";
+    const rawStatus = params.get("esuStatus");
+    const esuStatus = rawStatus?.toLowerCase();
+    const rawConnected = params.get("connected");
+    const connected = rawConnected?.toLowerCase() || rawConnected;
 
-    if (connected || esuSuccess) {
+    console.log("[WhatsAppSettings] params detected:", { rawStatus, esuStatus, rawConnected, connected });
+
+    const esuSuccess = esuStatus === "success";
+    const justConnected = connected === "1" || connected === "true";
+
+    if (esuSuccess || justConnected) {
       setShowPinModal(true);
       (async () => {
         try {
           await handleFetchFromMeta();
-          if (connected) {
+          if (justConnected) {
             toast.success("Meta connection completed. Numbers synced.");
           }
         } finally {

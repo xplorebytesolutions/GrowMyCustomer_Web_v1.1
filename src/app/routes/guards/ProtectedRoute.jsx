@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children, featureCode }) {
   const token =
     typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={`/login${window.location.search}`} replace />;
   }
 
   // 1) While auth or entitlements are still loading, render nothing (avoid premature redirects).
@@ -32,13 +32,13 @@ export default function ProtectedRoute({ children, featureCode }) {
   // 2) Handle onboarding / account status.
   const s = String(status || "").toLowerCase();
   if (s === "profilepending") {
-    return <Navigate to="/app/profile-completion" replace />;
+    return <Navigate to={`/app/profile-completion${window.location.search}`} replace />;
   }
   if (s === "pending" || s === "underreview") {
-    return <Navigate to="/pending-approval" replace />;
+    return <Navigate to={`/pending-approval${window.location.search}`} replace />;
   }
   if (s === "suspended" || s === "blocked") {
-    return <Navigate to="/no-access" replace />;
+    return <Navigate to={`/no-access${window.location.search}`} replace />;
   }
 
   // 3) Enforce "authenticated" presence minimally.
@@ -53,14 +53,14 @@ export default function ProtectedRoute({ children, featureCode }) {
 
   if (!user) {
     // No user after loading (token invalid/expired server-side)
-    return <Navigate to="/login" replace />;
+    return <Navigate to={`/login${window.location.search}`} replace />;
   }
 
   // For business/staff roles we still expect a business; for admin-ish we don't.
   if (!isAdminish && !hasBusinessId) {
     // Let’s fail soft to dashboard rather than hard-kicking to login
     // (prevents loop if context is momentarily incomplete).
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to={`/app/dashboard${window.location.search}`} replace />;
   }
 
   // 4) Optional feature-gating per route.
@@ -68,7 +68,7 @@ export default function ProtectedRoute({ children, featureCode }) {
     if (typeof hasFeature === "function" && !hasFeature(featureCode)) {
       requestUpgrade({ reason: "feature", code: featureCode });
       // Use your in-app billing route (matches axiosClient’s interceptors)
-      return <Navigate to="/app/settings/billing" replace />;
+      return <Navigate to={`/app/settings/billing${window.location.search}`} replace />;
     }
   }
 
