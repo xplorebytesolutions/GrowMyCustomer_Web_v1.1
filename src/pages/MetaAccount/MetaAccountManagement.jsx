@@ -35,7 +35,7 @@ function getBusinessIdFromJwt() {
 }
 
 export default function MetaAccountManagement() {
-  const { business, hasAllAccess } = useAuth();
+  const { business, hasAllAccess, isLoading } = useAuth();
   const nav = useNavigate();
 
   const [loading, setLoading] = useState(false);
