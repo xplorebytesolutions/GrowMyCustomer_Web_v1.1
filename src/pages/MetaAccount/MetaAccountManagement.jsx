@@ -55,7 +55,6 @@ export default function MetaAccountManagement() {
 
   // After a successful hard-delete in THIS session, we freeze all actions
   const [deletedThisSession, setDeletedThisSession] = useState(false);
-  const [disconnectedThisSession, setDisconnectedThisSession] = useState(false);
 
   const isDev = process.env.NODE_ENV === "development";
 
@@ -258,7 +257,6 @@ export default function MetaAccountManagement() {
 
       if (res?.data?.ok ?? true) {
         toast.success("WhatsApp was disconnected for this account.");
-        setDisconnectedThisSession(true);
         setShowDisconnectModal(false);
       } else {
         toast.error(
@@ -434,7 +432,7 @@ export default function MetaAccountManagement() {
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                 </div>
                 <span className="text-xs text-rose-700/70 font-medium">
-                  Meta Embedded Signup is not configured for this account.
+                  Account disconnected.
                 </span>
               </div>
               <button
@@ -701,12 +699,13 @@ export default function MetaAccountManagement() {
             />
             <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
               <h2 className="text-lg font-bold text-slate-900 mb-2">
-                Disconnect WhatsApp API?
+                Disconnect WhatsApp Account?
               </h2>
               <p className="text-xs text-slate-600 mb-4 font-medium leading-relaxed">
-                New campaigns will pause and automations will stop until you
-                reconnect. Your configuration stays stored for quick
-                reconnection.
+                You are about to temporarily disconnect your WhatsApp account
+                from XploreByte. This will pause all automated workflows,
+                message sending, and template management. Your configuration
+                stays stored for quick reconnection.
               </p>
 
               <div className="flex justify-end gap-3">
@@ -724,7 +723,7 @@ export default function MetaAccountManagement() {
                   disabled={disconnectLoading}
                   className="px-5 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 shadow-md shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50"
                 >
-                  {disconnectLoading ? "Disconnecting…" : "Disconnect Now"}
+                  {disconnectLoading ? "Disconnecting…" : "Confirm Disconnect"}
                 </button>
               </div>
             </div>
@@ -744,16 +743,18 @@ export default function MetaAccountManagement() {
                   <Trash2 size={20} />
                 </div>
                 <h2 className="text-lg font-bold text-rose-900">
-                  Terminal Account Purge
+                  Delete WhatsApp Data Permanently?
                 </h2>
               </div>
 
               <p className="text-xs text-slate-600 mb-4 font-medium leading-relaxed">
-                This will revoke all Meta tokens and permanently delete WABA
-                settings, numbers, and keys.{" "}
+                You are about to permanently remove your WhatsApp connection,
+                phone settings, and configuration from XploreByte.{" "}
                 <span className="text-rose-600 font-bold">
-                  This cannot be undone.
+                  This action cannot be undone
                 </span>
+                , and you will need to complete the full setup process again to
+                reconnect in the future.
               </p>
 
               <label className="flex items-start gap-3 p-3 bg-rose-50/50 rounded-lg mb-6 border border-rose-100/50 cursor-pointer transition-all hover:bg-rose-50">
@@ -765,8 +766,8 @@ export default function MetaAccountManagement() {
                   disabled={deleteLoading}
                 />
                 <span className="text-[11px] text-rose-800 font-semibold leading-tight">
-                  I understand that all Meta WhatsApp integration data for this
-                  account will be purged permanently.
+                  I confirm that I want to permanently delete all WhatsApp
+                  configuration data for this account.
                 </span>
               </label>
 
@@ -785,7 +786,7 @@ export default function MetaAccountManagement() {
                   disabled={!deleteConfirmChecked || deleteLoading}
                   className="px-5 py-2 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 shadow-md shadow-rose-600/10 transition-all active:scale-95 disabled:opacity-50"
                 >
-                  {deleteLoading ? "Purging Data..." : "Delete Permanently"}
+                  {deleteLoading ? "Deleting Data..." : "Delete Permanently"}
                 </button>
               </div>
             </div>
@@ -802,16 +803,18 @@ export default function MetaAccountManagement() {
                   <Plus size={24} className="rotate-45" />
                 </div>
                 <h2 className="text-lg font-bold text-slate-900 mb-2">
-                  Cleanup Successful
+                  Data Deleted Successfully
                 </h2>
                 <p className="text-xs text-slate-600 mb-6 font-medium leading-relaxed">
-                  All WhatsApp onboarding configuration and tokens have been
-                  purged from our system.
+                  Your WhatsApp account connection and all your account data
+                  have been deleted. These settings have been permanently
+                  removed from XploreByte. You can reconnect at any time if you
+                  wish to start over.
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowDeleteSuccessModal(false)}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all active:scale-95"
+                  className="w-full px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-all active:scale-95 shadow-md shadow-emerald-600/10"
                 >
                   Close
                 </button>

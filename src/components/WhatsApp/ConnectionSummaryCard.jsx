@@ -6,7 +6,7 @@ import {
   Wifi, 
   ShieldCheck, 
   BarChart3,
-  Globe,
+  Activity,
   Loader2
 } from "lucide-react";
 import dayjs from "dayjs";
@@ -25,11 +25,11 @@ const QUALITIES = {
 };
 
 const TIERS = {
-  TIER_NOT_VERIFIED: "Trial (50 / 24h)",
-  TIER_250: "250 Customers / 24h",
-  TIER_1K: "1,000 Customers / 24h",
-  TIER_10K: "10,000 Customers / 24h",
-  TIER_100K: "100,000 Customers / 24h",
+  TIER_NOT_VERIFIED: "Trial (50/day)",
+  TIER_250: "250/day",
+  TIER_1K: "1K/day",
+  TIER_10K: "10K/day",
+  TIER_100K: "100K/day",
   TIER_UNLIMITED: "Unlimited"
 };
 
@@ -67,8 +67,27 @@ export default function ConnectionSummaryCard({ businessId }) {
   };
 
   useEffect(() => {
-    fetchSummary();
+    const init = async () => {
+      await fetchSummary();
+    };
+    init();
   }, []);
+
+  const hasAutoRefreshed = React.useRef(false);
+
+  // Auto-refresh once if data has NEVER been synced (lastUpdated is null)
+  useEffect(() => {
+    if (
+      !loading && 
+      !refreshing && 
+      data && 
+      !data.lastUpdated && 
+      !hasAutoRefreshed.current
+    ) {
+      hasAutoRefreshed.current = true;
+      handleRefresh();
+    }
+  }, [loading, data]);
 
   if (loading) {
     return (
@@ -103,8 +122,8 @@ export default function ConnectionSummaryCard({ businessId }) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Globe size={16} className="text-indigo-500" />
-                Connection Health
+                <Activity size={16} className="text-indigo-500" />
+                Account Summary
             </h3>
             <div className="flex items-center gap-3">
                 <span className="text-[10px] text-slate-400 font-medium">Updated {lastUpdated}</span>
@@ -120,7 +139,7 @@ export default function ConnectionSummaryCard({ businessId }) {
         </div>
 
         {/* Metrics Grid */}
-        <div className="p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="p-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
             
             {/* Status */}
             <div className="space-y-1">
@@ -135,12 +154,19 @@ export default function ConnectionSummaryCard({ businessId }) {
                 </div>
             </div>
 
-            {/* Quality Rating */}
+            {/* Connected Numbers */}
             <div className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quality</p>
-                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold ${qualityConfig.color}`}>
-                    <div className={`h-1.5 w-1.5 rounded-full ${qualityConfig.dot}`} />
-                    {qualityLabel}
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Connected Numbers</p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                    {data.whatsAppBusinessNumbers && data.whatsAppBusinessNumbers.length > 0 ? (
+                        data.whatsAppBusinessNumbers.map((num, idx) => (
+                          <span key={idx} className="text-sm font-bold text-slate-900 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                            {num}
+                          </span>
+                        ))
+                    ) : (
+                        <span className="text-sm font-bold text-slate-900">{data.whatsAppBusinessNumber || "None"}</span>
+                    )}
                 </div>
             </div>
 
@@ -150,7 +176,7 @@ export default function ConnectionSummaryCard({ businessId }) {
                 <div className="flex items-center gap-1.5">
                     {data.verifiedName ? (
                         <>
-                            <span className="text-sm font-bold text-slate-900 truncate max-w-[150px]" title={data.verifiedName}>
+                            <span className="text-sm font-bold text-slate-900 truncate max-w-[120px]" title={data.verifiedName}>
                                 {data.verifiedName}
                             </span>
                             {data.nameStatus === 'APPROVED' && (
@@ -163,16 +189,25 @@ export default function ConnectionSummaryCard({ businessId }) {
                 </div>
             </div>
 
+            {/* Quality Rating */}
+            <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quality</p>
+                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold ${qualityConfig.color}`}>
+                    <div className={`h-1.5 w-1.5 rounded-full ${qualityConfig.dot}`} />
+                    {qualityLabel}
+                </div>
+            </div>
+
             {/* Messaging Tier */}
             <div className="space-y-1">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Messaging Limit</p>
-                <div className="flex items-center gap-1.5">
-                    <BarChart3 size={14} className="text-slate-400" />
-                    <span className="text-sm font-bold text-slate-900">{tierLabel}</span>
+                <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <BarChart3 size={14} className="text-slate-400 shrink-0" />
+                    <span className="text-sm font-bold text-slate-900 truncate">{tierLabel}</span>
                 </div>
             </div>
 
         </div>
     </div>
-  );
+);
 }
