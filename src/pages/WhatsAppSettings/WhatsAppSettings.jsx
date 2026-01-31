@@ -323,80 +323,80 @@ export default function WhatsAppSettings() {
     return () => clearTimeout(t);
   }, [businessId, canPersistDraft, draftKey, formData, hasSavedOnce, savedProvider]);
 
+  const loadStatus = useCallback(async () => {
+    try {
+      setEsuStatus(s => ({ ...s, loading: true }));
+
+      // Backend: GET /api/esu/facebook/status (uses JWT for businessId)
+      const res = await axiosClient.get("esu/facebook/status");
+      const payload = res?.data ?? {};
+      const dto = payload?.data || payload?.Data || payload || {};
+
+      const hasEsuFlag =
+        dto.hasEsuFlag ?? dto.HasEsuFlag ?? dto.facebookEsuCompleted ?? false;
+
+      const tokenExpiresAtUtc =
+        dto.tokenExpiresAtUtc ?? dto.TokenExpiresAtUtc ?? null;
+
+      const hasValidToken =
+        dto.hasValidToken ??
+        dto.HasValidToken ??
+        (tokenExpiresAtUtc ? true : false);
+
+      const willExpireSoon =
+        dto.willExpireSoon ??
+        dto.WillExpireSoon ??
+        dto.isExpiringSoon ??
+        dto.IsExpiringSoon ??
+        false;
+
+      const isConfiguredViaEsu = !!hasEsuFlag;
+      const isTokenExpiredOrInvalid = isConfiguredViaEsu && !hasValidToken;
+      const isTokenExpiringSoon = !!hasValidToken && willExpireSoon;
+      const isFullyHealthy =
+        isConfiguredViaEsu && hasValidToken && !willExpireSoon;
+
+      const phoneCount = dto.phoneCount || dto.numbersCount || 0;
+      const hasWaba = !!(dto.wabaId || dto.WabaId);
+      const debug = dto.debug ?? dto.Debug ?? null;
+
+      setEsuStatus({
+        loading: false,
+        hasEsuFlag,
+        hasValidToken,
+        willExpireSoon,
+        tokenExpiresAtUtc,
+        isConfiguredViaEsu,
+        isTokenExpiredOrInvalid,
+        isTokenExpiringSoon,
+        isFullyHealthy,
+        phoneCount,
+        hasWaba,
+        debug,
+      });
+    } catch (err) {
+      console.error("Unable to load Meta ESU status", err);
+      setEsuStatus({
+        loading: false,
+        hasEsuFlag: false,
+        hasValidToken: false,
+        willExpireSoon: false,
+        tokenExpiresAtUtc: null,
+        isConfiguredViaEsu: false,
+        isTokenExpiredOrInvalid: false,
+        isTokenExpiringSoon: false,
+        isFullyHealthy: false,
+        phoneCount: 0,
+        hasWaba: false,
+        debug: "status-error",
+      });
+    }
+  }, []);
+
   // ===== ESU: load connection status (JWT-based) =====
   useEffect(() => {
-    const loadStatus = async () => {
-      try {
-        setEsuStatus(s => ({ ...s, loading: true }));
-
-        // Backend: GET /api/esu/facebook/status (uses JWT for businessId)
-        const res = await axiosClient.get("esu/facebook/status");
-        const payload = res?.data ?? {};
-        const dto = payload?.data || payload?.Data || payload || {};
-
-        const hasEsuFlag =
-          dto.hasEsuFlag ?? dto.HasEsuFlag ?? dto.facebookEsuCompleted ?? false;
-
-        const tokenExpiresAtUtc =
-          dto.tokenExpiresAtUtc ?? dto.TokenExpiresAtUtc ?? null;
-
-        const hasValidToken =
-          dto.hasValidToken ??
-          dto.HasValidToken ??
-          (tokenExpiresAtUtc ? true : false);
-
-        const willExpireSoon =
-          dto.willExpireSoon ??
-          dto.WillExpireSoon ??
-          dto.isExpiringSoon ??
-          dto.IsExpiringSoon ??
-          false;
-
-        const isConfiguredViaEsu = !!hasEsuFlag;
-        const isTokenExpiredOrInvalid = isConfiguredViaEsu && !hasValidToken;
-        const isTokenExpiringSoon = !!hasValidToken && willExpireSoon;
-        const isFullyHealthy =
-          isConfiguredViaEsu && hasValidToken && !willExpireSoon;
-
-        const phoneCount = dto.phoneCount || dto.numbersCount || 0;
-        const hasWaba = !!(dto.wabaId || dto.WabaId);
-        const debug = dto.debug ?? dto.Debug ?? null;
-
-        setEsuStatus({
-          loading: false,
-          hasEsuFlag,
-          hasValidToken,
-          willExpireSoon,
-          tokenExpiresAtUtc,
-          isConfiguredViaEsu,
-          isTokenExpiredOrInvalid,
-          isTokenExpiringSoon,
-          isFullyHealthy,
-          phoneCount,
-          hasWaba,
-          debug,
-        });
-      } catch (err) {
-        console.error("Unable to load Meta ESU status", err);
-        setEsuStatus({
-          loading: false,
-          hasEsuFlag: false,
-          hasValidToken: false,
-          willExpireSoon: false,
-          tokenExpiresAtUtc: null,
-          isConfiguredViaEsu: false,
-          isTokenExpiredOrInvalid: false,
-          isTokenExpiringSoon: false,
-          isFullyHealthy: false,
-          phoneCount: 0,
-          hasWaba: false,
-          debug: "status-error",
-        });
-      }
-    };
-
     loadStatus();
-  }, []);
+  }, [loadStatus]);
   // ===== Initial load of saved settings + numbers =====
   useEffect(() => {
     let mounted = true;
@@ -1334,7 +1334,7 @@ export default function WhatsAppSettings() {
         businessId={businessId}
         onSuccess={() => {
           handleFetchFromMeta();
-          loadEsuStatus();
+          loadStatus();
         }}
       />
     </div>
