@@ -18,7 +18,9 @@ import {
   Eye,
   Pencil,
   Trash2,
-  Loader2
+  Loader2,
+  ArrowRight,
+  ChevronDown
 } from "lucide-react";
 
 import { listDrafts, createDraft, deleteDraft } from "./drafts";
@@ -47,15 +49,11 @@ export default function DraftsListPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   
   // Filter States
+  // Filter States
   const q = sp.get("q") || "";
   const v = sp.get("v") || "";
   const categoryFilter = sp.get("category") || "ALL";
   const [previewDraftId, setPreviewDraftId] = React.useState(null);
-
-  // Create Form States
-  const [draftKey, setDraftKey] = React.useState("");
-  const [category, setCategory] = React.useState("UTILITY");
-  const [defaultLanguage, setDefaultLanguage] = React.useState("en_US");
 
   React.useEffect(() => {
     let mounted = true;
@@ -77,22 +75,43 @@ export default function DraftsListPage() {
     };
   }, [v]);
 
+  // Auto-create logic
   React.useEffect(() => {
-    if (sp.get("create") === "1") {
-      setCreateOpen(true);
+    if (sp.get("create") === "1" && !creating) {
+      setCreating(true);
+      // Remove the query param immediately to prevent loop if user navigates back
       setSp(prev => {
         const next = new URLSearchParams(prev);
         next.delete("create");
         return next;
-      });
-    }
-  }, [setSp, sp]);
+      }, { replace: true });
 
-  const normalizeKey = v =>
-    String(v || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, "")
-      .slice(0, 64);
+      (async () => {
+        try {
+          // Unique key
+          const tempKey = `untitled_${Date.now()}`;
+          const res = await createDraft({
+            key: tempKey,
+            category: "UTILITY", // Default to UTILITY
+            defaultLanguage: "en_US",
+          });
+
+          const id = res?.draftId || res?.id;
+          if (!id) throw new Error("Draft created but no ID returned.");
+
+          toast.success("New template started");
+          // Navigate to editor with blankName param so editor clears the "untitled_..." name
+          navigate(`/app/template-builder/drafts/${id}?language=en_US&blankName=1`);
+        } catch (err) {
+          console.error("Auto-create failed", err);
+          toast.error("Failed to create new template.");
+          setCreating(false);
+        }
+      })();
+    }
+  }, [sp, setSp, creating, navigate]);
+
+
 
   const displayDraftKey = key => {
     const k = String(key || "");
@@ -100,42 +119,6 @@ export default function DraftsListPage() {
     if (k.startsWith("__lib__")) return "Untitled (Library)";
     return k;
   };
-
-  const onCreate = async e => {
-    e?.preventDefault?.();
-
-    const key = normalizeKey(draftKey).trim();
-    if (!key) return toast.warn("Template key is required.");
-    if (!/^[a-z0-9_]+$/.test(key)) {
-      return toast.warn("Key must be lowercase letters, numbers, underscores.");
-    }
-
-    setCreating(true);
-    try {
-      const res = await createDraft({
-        key,
-        category,
-        defaultLanguage,
-      });
-
-      const id = res?.draftId || res?.id;
-      if (!id) throw new Error("Draft created but no draftId returned.");
-
-      toast.success("Draft created.");
-      setCreateOpen(false);
-      setDraftKey("");
-      navigate(
-        `/app/template-builder/drafts/${id}?language=${encodeURIComponent(
-          defaultLanguage || "en_US"
-        )}`
-      );
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to create draft.");
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleDelete = (id) => {
     if (!id) return;
     setDeletingId(id);
@@ -206,7 +189,7 @@ export default function DraftsListPage() {
             </p>
             {!q && (
               <button
-                onClick={() => setCreateOpen(true)}
+                onClick={() => setSp({ create: "1" })}
                 className="mt-6 text-emerald-600 font-medium text-sm hover:underline"
               >
                 Create your first draft &rarr;
@@ -285,9 +268,21 @@ export default function DraftsListPage() {
                     </div>
                   </div>
 
-                  <p className="text-[14px] leading-relaxed text-slate-800 font-medium line-clamp-5 mb-5 w-full flex-1 break-words" title={bodyText}>
+                  <p className="text-[14px] leading-relaxed text-slate-800 font-medium line-clamp-5 mb-3 w-full flex-1 break-words" title={bodyText}>
                      {bodyText}
                   </p>
+
+                  {/* Last Updated */}
+                  {d.updatedAt && (
+                    <div className="text-[10px] text-slate-400 mb-2">
+                      Updated {new Date(d.updatedAt).toLocaleString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </div>
+                  )}
 
                   <div className="mt-auto pt-4 border-t border-slate-50 grid grid-cols-2 gap-3 w-full">
                      <button
@@ -318,71 +313,7 @@ export default function DraftsListPage() {
         )}
 
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Template</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={onCreate} className="space-y-5 py-2">
-            <div className="space-y-2">
-              <Label>Template Name (Key)</Label>
-              <Input
-                value={draftKey}
-                onChange={e => setDraftKey(normalizeKey(e.target.value))}
-                placeholder="e.g. order_confirmation"
-                autoFocus
-                className="font-mono text-sm"
-              />
-              <p className="text-[11px] text-slate-500">
-                Lowercase letters, numbers, and underscores only. Max 64 characters.
-              </p>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <select
-                  className="w-full flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={category}
-                  onChange={e => setCategory(e.target.value)}
-                >
-                  <option value="UTILITY">Utility</option>
-                  <option value="MARKETING">Marketing</option>
-                  <option value="AUTHENTICATION">Authentication</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Language</Label>
-                <select
-                  className="w-full flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={defaultLanguage}
-                  onChange={e => setDefaultLanguage(e.target.value)}
-                >
-                  <option value="en_US">English (US)</option>
-                </select>
-              </div>
-            </div>
-
-            <DialogFooter className="pt-2">
-               <button
-                type="button"
-                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                onClick={() => setCreateOpen(false)}
-                disabled={creating}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-all shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                disabled={creating}
-              >
-                {creating ? "Creating..." : "Create Template"}
-              </button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <TemplatePreviewModal 
         isOpen={!!previewDraftId} 

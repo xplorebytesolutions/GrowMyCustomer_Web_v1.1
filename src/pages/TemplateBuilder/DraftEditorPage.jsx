@@ -12,6 +12,7 @@ import {
   Code,
   Info,
   Type,
+  LayoutTemplate,
   File,
   Video,
   Image as ImageIconIcon,
@@ -27,6 +28,7 @@ import {
 } from "lucide-react";
 
 import axiosClient from "../../api/axiosClient";
+import { deleteDraft } from "./drafts";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { FK } from "../../capabilities/featureKeys";
 import { Card } from "../../components/ui/card";
@@ -107,6 +109,8 @@ export default function DraftEditorPage() {
   const [status, setStatus] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [showSubmissionSuccess, setShowSubmissionSuccess] = useState(false);
+  const [submissionError, setSubmissionError] = useState(null);
 
   const textareaRef = useRef(null);
 
@@ -301,10 +305,11 @@ export default function DraftEditorPage() {
         const draft = draftResp?.draft || draftResp?.data?.draft || null;
         const draftKey = String(draft?.key || "");
         const isLibraryStubKey = draftKey.startsWith("__lib__");
+        const isUntitled = draftKey.startsWith("untitled_");
         const forceBlankName =
           params.get("blankName") === "1" || params.get("blankName") === "true";
 
-        if (isLibraryStubKey || forceBlankName) {
+        if (isLibraryStubKey || isUntitled || forceBlankName) {
           setName("");
           if (forceBlankName) {
             setParams(p => {
@@ -411,6 +416,9 @@ export default function DraftEditorPage() {
   const validateDraftInputs = ({ requireHeaderMedia = true } = {}) => {
     if (!canEdit) return "Insufficient permissions.";
     if (!name?.trim()) return "Template name is required.";
+    if (name.trim().toLowerCase().startsWith("untitled_")) {
+      return "Please rename the template before saving.";
+    }
     if (!bodyText?.trim()) return "Body is required.";
     if (headerType === "TEXT" && !headerText?.trim()) {
       return "Header text is required when header type is TEXT.";
@@ -534,6 +542,26 @@ export default function DraftEditorPage() {
     }
   };
 
+  const handleBack = async () => {
+    // Check if empty: 
+    // 1. Name is "untitled_..." or empty (clean)
+    // 2. Body is empty
+    const isUntitled = !name || name.trim().toLowerCase().startsWith("untitled_");
+    const isBodyEmpty = !bodyText || !bodyText.trim();
+    
+    // If it looks like a junk draft, delete it
+    if (isUntitled && isBodyEmpty && !saving && !submitting) {
+       try {
+         await deleteDraft(draftId);
+         toast.info("Discarded empty draft.");
+       } catch (e) {
+         console.warn("Failed to cleanup draft", e);
+       }
+    }
+    
+    navigate("/app/template-builder/drafts");
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -593,8 +621,8 @@ export default function DraftEditorPage() {
       if (!ok) return;
 
       await axiosClient.post(`/template-builder/drafts/${draftId}/submit`);
-      toast.success("Submitted to Meta!");
       await loadStatus();
+      setShowSubmissionSuccess(true);
     } catch (err) {
       const data = err?.response?.data;
       const topMsg = data?.message || data?.Message;
@@ -618,6 +646,11 @@ export default function DraftEditorPage() {
         toast.error(
           "This template name already exists on Meta for this language. Please change the template name and try again."
         );
+      } else if (msg.toLowerCase().includes("variables can't be at the start or end") || msg.toLowerCase().includes("leading or trailing params")) {
+        // Validation error - show inline
+        setSubmissionError("Variables (e.g. {{1}}) cannot be placed at the very beginning or end of your text. Please add some text before or after the variable.");
+        // Scroll to body input
+        document.getElementById("body-input-container")?.scrollIntoView({ behavior: "smooth", block: "center" });
       } else {
         toast.error(msg);
       }
@@ -729,9 +762,13 @@ export default function DraftEditorPage() {
       {/* Top Bar (Compressed) */}
       <div className="bg-white border-b border-slate-200 px-6 py-2 flex items-center justify-between sticky top-0 z-20 shadow-sm">
         <div className="flex items-center gap-4">
-          <Link to="/app/template-builder/library" className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+          <button 
+             onClick={handleBack}
+             className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
+             title="Back to Drafts"
+          >
             <ChevronLeft size={20} />
-          </Link>
+          </button>
           <div>
             <div className="flex items-center gap-2">
                <h1 className="text-lg font-bold text-slate-800">{name || "Untitled Template"}</h1>
@@ -740,6 +777,8 @@ export default function DraftEditorPage() {
             </div>
             <div className="text-xs text-slate-400 font-medium uppercase tracking-wide flex items-center gap-1.5 mt-0.5">
                {category} <span className="text-slate-300">•</span> Default
+               <span className="text-slate-300">•</span>
+               <DraftStatusBadge status={status} language={language} condensed={true} />
             </div>
           </div>
         </div>
@@ -754,7 +793,6 @@ export default function DraftEditorPage() {
           >
              {deleting ? <Loader2 className="animate-spin" size={20} /> : <Trash2 size={20} />}
           </button>
-          <DraftStatusBadge status={status} language={language} />
           <div className="h-8 w-px bg-slate-200 mx-1"></div>
           <button
             type="button"
@@ -770,23 +808,23 @@ export default function DraftEditorPage() {
             disabled={submitting}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-50"
           >
-             {submitting ? "Submitting..." : "Submit"}
+             {submitting ? "Submitting..." : "Submit for Approval"}
           </button>
         </div>
       </div>
 
-      <div className="max-w-[1600px] mx-auto p-4 lg:p-8 grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+      <div className="max-w-[1800px] mx-auto px-12 py-8 grid grid-cols-1 xl:grid-cols-12 gap-0 items-start">
          {/* Left Column: Configuration */}
          <div className="xl:col-span-8 space-y-4">
             {/* Unified Template Configuration Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
                {/* Header */}
-               <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+               <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between rounded-t-2xl">
                   <div className="flex items-center gap-2">
                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                        <Code size={18} />
+                        <LayoutTemplate size={18} />
                      </div>
-                     <h3 className="text-sm font-bold text-slate-800">Template Configuration</h3>
+                     <h3 className="text-sm font-bold text-slate-800">Template Creation</h3>
                   </div>
                   <div className="flex items-center gap-2">
                      {name && category && bodyText ? (
@@ -936,6 +974,14 @@ export default function DraftEditorPage() {
                            <span>{bodyText.length}/1024</span>
                         </div>
                      </div>
+                     
+                     {/* Inline Submission Error */}
+                     {submissionError && (
+                       <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-50 text-red-600 text-xs font-medium border border-red-100 animate-in fade-in slide-in-from-top-1">
+                         <AlertCircle size={14} className="shrink-0" />
+                         <span>{submissionError}</span>
+                       </div>
+                     )}
 
                      {/* Example Values (Moved here for better visibility) */}
                      {bodyText.includes("{{") && (
@@ -1166,7 +1212,7 @@ export default function DraftEditorPage() {
             </div>
          </div>
 
-         <div className="xl:col-span-4 xl:sticky xl:top-[88px] h-fit space-y-4">
+         <div className="xl:col-span-4 xl:sticky xl:top-[88px] h-fit space-y-4 pl-12">
             <WhatsAppTemplatePreview draft={liveDraft} />
          </div>
       </div>
@@ -1183,6 +1229,44 @@ export default function DraftEditorPage() {
         }
         confirmText={!draftId ? "Discard" : "Delete"}
       />
+
+      {/* Submission Success Modal */}
+      {/* Submission Success Modal */}
+      {showSubmissionSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6 text-center transform animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-emerald-50/50">
+              <CheckCircle2 size={32} />
+            </div>
+            
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Submitted for Review</h3>
+            
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+              Your template has been sent to Meta. Reviews typically take <span className="font-medium text-slate-700">24 hours</span>, but can take up to 72 hours for complex templates.
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowSubmissionSuccess(false);
+                  // Force a hard navigation to ensure data refetch if needed, or just standard nav
+                  window.location.href = '/app/template-builder/pending'; 
+                }}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-sm active:scale-[0.98]"
+              >
+                View Pending Templates
+              </button>
+              
+              <button
+                onClick={() => setShowSubmissionSuccess(false)}
+                className="w-full bg-white hover:bg-slate-50 text-slate-600 text-sm font-medium py-2.5 px-4 rounded-lg border border-slate-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

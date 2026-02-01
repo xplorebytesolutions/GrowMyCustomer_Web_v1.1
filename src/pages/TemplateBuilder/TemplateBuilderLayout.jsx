@@ -8,7 +8,8 @@ import {
   Clock,
   Search,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Plus
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axiosClient from "../../api/axiosClient";
@@ -187,6 +188,15 @@ export default function TemplateBuilderLayout() {
               </div>
 
               <div className="flex items-center gap-2 mb-1">
+                <button
+                  type="button"
+                  onClick={() => navigate("/app/template-builder/drafts?create=1")}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-all shadow-sm"
+                  title="Create a new template from scratch"
+                >
+                  <Plus size={14} />
+                  New Template
+                </button>
                 <button
                   type="button"
                   onClick={handleSync}

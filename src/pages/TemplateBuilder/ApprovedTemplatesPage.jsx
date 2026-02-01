@@ -53,14 +53,19 @@ function normalizeLanguage(code) {
 
 function statusLabel(status) {
   const s = String(status || "").toUpperCase();
-  return s === "APPROVED" ? "Active" : "Rejected";
+  if (s === "APPROVED") return "Active";
+  if (s === "PENDING" || s === "PENDING_APPROVAL" || s === "IN_REVIEW" || s === "PENDING_REVIEW") return "Pending";
+  if (s === "REJECTED") return "Rejected";
+  if (s === "PAUSED") return "Paused";
+  return s || "Unknown";
 }
 
 function statusPillClass(status) {
   const s = String(status || "").toUpperCase();
-  return s === "APPROVED"
-    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-    : "bg-red-50 text-red-700 border-red-200";
+  if (s === "APPROVED") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (s === "PENDING" || s === "PENDING_APPROVAL" || s === "IN_REVIEW" || s === "PENDING_REVIEW") return "bg-amber-50 text-amber-700 border-amber-200";
+  if (s === "REJECTED") return "bg-red-50 text-red-700 border-red-200";
+  return "bg-slate-50 text-slate-600 border-slate-200";
 }
 
 function safeIsoDate(v) {
@@ -380,7 +385,7 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
                       onClick={() => setSort("updatedAt")}
                     >
                       <div className="inline-flex items-center gap-2">
-                        Last edited <SortIcon columnKey="updatedAt" />
+                        {status === "PENDING" ? "Submitted" : "Last edited"} <SortIcon columnKey="updatedAt" />
                       </div>
                     </th>
                   </tr>

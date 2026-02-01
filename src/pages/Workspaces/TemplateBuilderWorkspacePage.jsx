@@ -9,6 +9,7 @@ import {
   MoreVertical,
   FileBarChart,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
@@ -36,6 +37,7 @@ const PERM_BY_BLOCK = {
   ],
   "template.builder.library.browse": [FK.TEMPLATE_BUILDER_LIBRARY_BROWSE],
   "template.builder.create.draft": [FK.TEMPLATE_BUILDER_CREATE_DRAFT],
+  "template.builder.create.new": [FK.TEMPLATE_BUILDER_CREATE_DRAFT],
 };
 
 
@@ -67,6 +69,15 @@ const templateBlocks = [
     path: "/app/template-builder/approved",
     icon: <FileBarChart size={22} />,
     action: "Manage Approved",
+  },
+  {
+    id: "template.builder.create.new",
+    label: "Create from Scratch",
+    description:
+      "Start with a fresh template key and design your own WhatsApp message.",
+    path: "/app/template-builder/drafts?create=1",
+    icon: <Plus size={22} />,
+    action: "Design New",
   },
 ];
 
