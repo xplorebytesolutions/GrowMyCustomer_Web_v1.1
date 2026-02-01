@@ -111,22 +111,28 @@ export default function MetaAccountManagement() {
 
   useEffect(() => {
     const rawStatus = searchParams.get("esuStatus");
-    const esuStatus = rawStatus?.toLowerCase();
+    const status = rawStatus?.toLowerCase();
 
-    console.log("[MetaAccountManagement] esuStatus check:", { rawStatus, esuStatus });
+    console.log("[MetaAccountManagement] esuStatus check:", { rawStatus, status });
 
-    if (esuStatus === "success" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
-      if (esuStatus === "success") {
-        toast.success("✅ Connected to Meta. Please complete Two-Step Verification.");
+    if (status === "success") {
+      toast.success("✅ Connected to Meta! Your number is active.");
+      sessionStorage.removeItem("xb_pending_esu_pin");
+      setShowPinModal(false);
+      loadStatus(); // Refresh health status
+    } 
+    else if (status === "needs_pin" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
+      if (status === "needs_pin") {
+        toast.info("This number is already protected. Please enter your existing PIN.");
         sessionStorage.setItem("xb_pending_esu_pin", "true");
       }
       setShowPinModal(true);
-      
+    }
+
+    if (rawStatus) {
       const nextParams = new URLSearchParams(searchParams);
-      if (nextParams.has("esuStatus")) {
-        nextParams.delete("esuStatus");
-        setSearchParams(nextParams, { replace: true });
-      }
+      nextParams.delete("esuStatus");
+      setSearchParams(nextParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 

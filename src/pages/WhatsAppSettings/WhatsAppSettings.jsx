@@ -559,22 +559,21 @@ export default function WhatsAppSettings() {
 
     console.log("[WhatsAppSettings] params check:", { rawStatus, esuStatus, rawConnected, connected });
 
-    const esuSuccess = esuStatus === "success";
-    const justConnected = connected === "1" || connected === "true";
-
     if (esuStatus === "success") {
       // Backend already auto-registered with default PIN 111111
       toast.success("✅ Connected to Meta! Your number is active.");
+      sessionStorage.removeItem("xb_pending_esu_pin");
+      setShowPinModal(false);
       handleFetchFromMeta(); // Sync numbers
-      loadStatus();          // Refresh green dot
+      loadStatus();          // Refresh status green dot
     } 
     else if (esuStatus === "needs_pin" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
       // Backend failed to auto-register (likely existing PIN mismatch)
       if (esuStatus === "needs_pin") {
          toast.info("This number is already protected. Please enter your existing PIN.");
+         sessionStorage.setItem("xb_pending_esu_pin", "true");
       }
       setShowPinModal(true);
-      sessionStorage.setItem("xb_pending_esu_pin", "true");
     }
 
     // Clean up URL params
