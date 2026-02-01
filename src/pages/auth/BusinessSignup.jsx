@@ -66,7 +66,7 @@ function BusinessSignup() {
               alt="Logo"
               className="h-14 w-14 p-2.5 object-contain"
             />
-            <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827]">
+            <span className="text-[22px] font-semibold font-brand leading-[36px] text-[#111827]">
               XploreByte
             </span>
           </div>

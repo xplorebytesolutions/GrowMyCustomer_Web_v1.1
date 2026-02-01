@@ -167,18 +167,17 @@ export default function Login() {
                   alt="Logo"
                   className="h-14 w-14 p-2.5 object-contain"
                 />
-                <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
+                <span className="text-[22px] font-semibold font-brand leading-[36px] text-[#111827] tracking-tight">
                   XploreByte
                 </span>
               </div>
 
               <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
-                Scale your business on{" "}
-                <span className="text-emerald-600">WhatsApp</span>
+                Automate Growth via the{" "}
+                <span className="text-emerald-600">Official WhatsApp API</span>
               </h1>
               <p className="text-gray-600 text-lg leading-relaxed">
-                Join thousands of businesses automating their customer growth
-                journey.
+                The smartest way for growing businesses.
               </p>
             </div>
 
@@ -206,10 +205,10 @@ export default function Login() {
                 </div>
                 <div className="pt-2">
                   <h3 className="text-sm font-bold text-gray-900">
-                    Official API Access
+                    FREE WhatsApp Business API
                   </h3>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Verified green tick & high limits
+                    Instant verification & setup with Meta
                   </p>
                 </div>
               </div>
@@ -233,10 +232,10 @@ export default function Login() {
                 </div>
                 <div className="pt-2">
                   <h3 className="text-sm font-bold text-gray-900">
-                    24/7 Automation
+                    24/7 Smart Automation
                   </h3>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Replies even when you sleep
+                    Built on the verified Meta Platform
                   </p>
                 </div>
               </div>
@@ -259,11 +258,11 @@ export default function Login() {
                   </svg>
                 </div>
                 <div className="pt-2">
-                  <h3 className="text-sm font-bold text-gray-900">
-                    Real-time Analytics
+                   <h3 className="text-sm font-bold text-gray-900">
+                    Shared Team Inbox
                   </h3>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Track open rates & ROI
+                    Collaborate with your team in real-time
                   </p>
                 </div>
               </div>
@@ -442,362 +441,6 @@ export default function Login() {
     </div>
   );
 }
-// // 📄 src/pages/auth/Login.jsx
-// import React, { useState, useEffect } from "react";
-// import { useNavigate, Link, useSearchParams } from "react-router-dom";
-// import { toast } from "react-toastify";
-// import { login } from "./services/authService";
-// import { useAuth } from "../../app/providers/AuthProvider";
-
-// function routeForStatus(status = "") {
-//   const s = String(status || "").toLowerCase();
-//   if (s === "profilepending") return "/app/profile-completion";
-//   if (s === "pending" || s === "underreview") return "/pending-approval";
-//   if (s === "suspended" || s === "blocked") return "/no-access";
-//   return "/app/welcomepage";
-// }
-
-// // Persisted keys for nicer UX
-// const LAST_EMAIL_KEY = "auth_last_email";
-// const LAST_REASON_KEY = "auth_last_reason";
-
-// export default function Login() {
-//   const navigate = useNavigate();
-//   const [search] = useSearchParams();
-//   const { refreshAuthContext } = useAuth();
-
-//   // Pre-fill email from ?email= or localStorage
-//   const [email, setEmail] = useState(() => {
-//     const fromQuery = search.get("email");
-//     if (fromQuery) return fromQuery;
-//     try {
-//       return localStorage.getItem(LAST_EMAIL_KEY) || "";
-//     } catch {
-//       return "";
-//     }
-//   });
-
-//   const [password, setPassword] = useState("");
-//   const [error, setError] = useState("");
-//   const [sessionNotice, setSessionNotice] = useState("");
-//   const [loading, setLoading] = useState(false);
-//   const [showPassword, setShowPassword] = useState(false);
-
-//   // Detect session-expired reason (URL or sessionStorage) and show a banner
-//   useEffect(() => {
-//     let reasonFromUrl = search.get("reason");
-//     let reasonFromStorage = null;
-
-//     try {
-//       reasonFromStorage = sessionStorage.getItem(LAST_REASON_KEY);
-//     } catch {
-//       // ignore
-//     }
-
-//     const effectiveReason = reasonFromUrl || reasonFromStorage;
-
-//     if (effectiveReason === "session-expired") {
-//       setSessionNotice(
-//         "Your session has expired. Please sign in again to continue."
-//       );
-//     }
-
-//     // One-shot: clear after reading so it doesn't show forever
-//     try {
-//       sessionStorage.removeItem(LAST_REASON_KEY);
-//     } catch {
-//       // ignore
-//     }
-//   }, [search]);
-
-//   const handleSubmit = async e => {
-//     e.preventDefault();
-//     setError("");
-//     setLoading(true);
-
-//     try {
-//       // 1) Server login
-//       const res = await login(email, password);
-
-//       // 2) Quiet any transient 401 toast
-//       try {
-//         sessionStorage.setItem("xb_suppress_401_toast", "1");
-//         setTimeout(
-//           () => sessionStorage.removeItem("xb_suppress_401_toast"),
-//           4000
-//         );
-//       } catch {}
-
-//       // 3) Hydrate AuthProvider
-//       const ctx = await refreshAuthContext();
-//       const statusFromCtx = ctx?.status || res?.status;
-
-//       // 4) Clear caches
-//       try {
-//         localStorage.setItem("xb_session_stamp", String(Date.now()));
-//         localStorage.removeItem("messaging-pinned");
-//         localStorage.removeItem("messaging-archived");
-//         localStorage.removeItem("messaging-order");
-//         localStorage.setItem(LAST_EMAIL_KEY, email);
-//         sessionStorage.removeItem(LAST_REASON_KEY);
-//       } catch {}
-
-//       // 5) Redirect
-//       const candidate = search.get("redirectTo");
-//       const next =
-//         (candidate && candidate.startsWith("/") && !candidate.startsWith("//")
-//           ? candidate
-//           : null) || routeForStatus(statusFromCtx);
-
-//       if (next === "/app/profile-completion") {
-//         toast.info("🧩 Please complete your profile to continue.");
-//       } else if (next === "/pending-approval") {
-//         toast.warn("⏳ Your account is pending approval.");
-//       } else {
-//         toast.success("✅ Login successful");
-//       }
-
-//       navigate(next, { replace: true });
-//     } catch (err) {
-//       const message =
-//         err?.response?.data?.message || err?.message || "❌ Login failed.";
-//       const lower = String(message).toLowerCase();
-//       const isWarning =
-//         lower.includes("pending") || lower.includes("under review");
-
-//       (isWarning ? toast.warn : toast.error)(message);
-//       setError(message);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const isWarning =
-//     typeof error === "string" &&
-//     (error.toLowerCase().includes("pending") ||
-//       error.toLowerCase().includes("under review"));
-
-//   return (
-//     <div
-//       // CHANGED: Removed gradient. Used a soft gray-50 to reduce eye glare.
-//       className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-4"
-//       data-test-id="login-page"
-//     >
-//       <div className="flex flex-col lg:flex-row w-full max-w-5xl shadow-xl rounded-2xl overflow-hidden bg-white border border-gray-100">
-//         {/* Left Side - Marketing Panel
-//             CHANGED: Removed gradient. Used a solid, soft 'emerald-50' bg.
-//             This gives the Green vibe without the visual noise.
-//         */}
-//         <div className="lg:w-1/2 bg-emerald-50 p-6 lg:p-8 flex flex-col justify-center border-r border-emerald-100">
-//           <div className="mb-6">
-//             <div className="flex items-center space-x-3">
-//               <img
-//                 src="/logo/logo.svg"
-//                 alt="XploreByte Logo"
-//                 className="w-10 h-10 rounded-lg" // Removed shadow for cleaner look
-//               />
-//               {/* CHANGED: Text to emerald-900 for high contrast */}
-//               <span className="text-2xl font-bold text-emerald-950">
-//                 XploreByte
-//               </span>
-//             </div>
-//           </div>
-
-//           <div className="mb-6">
-//             <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
-//               Welcome Back!
-//             </h1>
-//             <p className="text-gray-600 text-lg">
-//               Sign in to continue your Business Growth journey
-//             </p>
-//           </div>
-
-//           <div className="space-y-4">
-//             {/* Feature 1 */}
-//             <div className="flex items-center space-x-3">
-//               {/* CHANGED: Icon bg to white for "pop" on the green background */}
-//               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-//                 <svg
-//                   className="w-5 h-5 text-emerald-600"
-//                   fill="none"
-//                   stroke="currentColor"
-//                   viewBox="0 0 24 24"
-//                 >
-//                   <path
-//                     strokeLinecap="round"
-//                     strokeLinejoin="round"
-//                     strokeWidth={2}
-//                     d="M5 13l4 4L19 7"
-//                   />
-//                 </svg>
-//               </div>
-//               <span className="text-sm font-medium text-emerald-900">
-//                 Access your WhatsApp Business API
-//               </span>
-//             </div>
-
-//             {/* Feature 2 */}
-//             <div className="flex items-center space-x-3">
-//               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-//                 {/* CHANGED: Switched from Cyan to Teal/Emerald for consistency */}
-//                 <svg
-//                   className="w-5 h-5 text-emerald-600"
-//                   fill="none"
-//                   stroke="currentColor"
-//                   viewBox="0 0 24 24"
-//                 >
-//                   <path
-//                     strokeLinecap="round"
-//                     strokeLinejoin="round"
-//                     strokeWidth={2}
-//                     d="M13 10V3L4 14h7v7l9-11h-7z"
-//                   />
-//                 </svg>
-//               </div>
-//               <span className="text-sm font-medium text-emerald-900">
-//                 Manage campaigns and automation
-//               </span>
-//             </div>
-
-//             {/* Feature 3 */}
-//             <div className="flex items-center space-x-3">
-//               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-//                 {/* CHANGED: Switched from Sapphire to Emerald */}
-//                 <svg
-//                   className="w-5 h-5 text-emerald-600"
-//                   fill="none"
-//                   stroke="currentColor"
-//                   viewBox="0 0 24 24"
-//                 >
-//                   <path
-//                     strokeLinecap="round"
-//                     strokeLinejoin="round"
-//                     strokeWidth={2}
-//                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-//                   />
-//                 </svg>
-//               </div>
-//               <span className="text-sm font-medium text-emerald-900">
-//                 View analytics and insights
-//               </span>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Right Side - Login Form */}
-//         <div className="lg:w-1/2 bg-white p-6 lg:p-8 flex flex-col justify-center">
-//           <div className="mb-6">
-//             <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In</h2>
-//             <p className="text-gray-600 text-sm">
-//               Enter your credentials to access your account
-//             </p>
-//           </div>
-
-//           {sessionNotice && (
-//             <div
-//               className="p-3 rounded-lg mb-4 text-sm font-medium bg-blue-50 text-blue-800 border border-blue-100"
-//               role="status"
-//             >
-//               {sessionNotice}
-//             </div>
-//           )}
-
-//           {error && (
-//             <div
-//               className={`p-3 rounded-lg mb-4 text-sm font-medium ${
-//                 isWarning
-//                   ? "bg-amber-50 text-amber-800 border border-amber-200"
-//                   : "bg-red-50 text-red-700 border border-red-200"
-//               }`}
-//               role="alert"
-//             >
-//               {error}
-//             </div>
-//           )}
-
-//           <form
-//             onSubmit={handleSubmit}
-//             className="space-y-5" // Increased spacing slightly for "breathing room"
-//             data-test-id="login-form"
-//           >
-//             <div>
-//               <label className="block text-sm font-semibold text-gray-700 mb-1">
-//                 Email Address
-//               </label>
-//               <input
-//                 type="email"
-//                 // CHANGED: Focus ring is now solid emerald-500, no generic blue
-//                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm bg-gray-50 focus:bg-white"
-//                 placeholder="name@company.com"
-//                 value={email}
-//                 onChange={e => setEmail(e.target.value)}
-//                 required
-//                 autoComplete="username email"
-//                 name="email"
-//               />
-//             </div>
-
-//             <div>
-//               <label className="block text-sm font-semibold text-gray-700 mb-1">
-//                 Password
-//               </label>
-//               <div className="relative">
-//                 <input
-//                   type={showPassword ? "text" : "password"}
-//                   className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm bg-gray-50 focus:bg-white"
-//                   placeholder="Enter your password"
-//                   value={password}
-//                   onChange={e => setPassword(e.target.value)}
-//                   required
-//                   autoComplete="current-password"
-//                   name="password"
-//                 />
-//                 <button
-//                   type="button"
-//                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-//                   onClick={() => setShowPassword(prev => !prev)}
-//                 >
-//                   {showPassword ? "🙈" : "👁️"}
-//                 </button>
-//               </div>
-//             </div>
-
-//             <button
-//               type="submit"
-//               disabled={loading}
-//               // CHANGED: Removed Gradient. Used Solid Emerald.
-//               // This is the key change for readability. Solid buttons are authoritative and calm.
-//               className={`w-full py-2.5 px-4 rounded-lg font-semibold transition shadow-md hover:shadow-lg ${
-//                 loading
-//                   ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-//                   : "bg-emerald-600 hover:bg-emerald-700 text-white"
-//               }`}
-//             >
-//               {loading ? "Signing in..." : "Sign In"}
-//             </button>
-//           </form>
-
-//           <div className="text-center mt-6 text-sm text-gray-600">
-//             Don&apos;t have an account?{" "}
-//             <Link
-//               to="/signup-for-trial"
-//               // CHANGED: Link color to match Emerald theme
-//               className="text-emerald-700 hover:text-emerald-800 font-semibold hover:underline"
-//               data-test-id="signup-link"
-//             >
-//               Start your FREE trial
-//             </Link>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-// // 📄 src/pages/auth/Login.jsx
-// import React, { useState, useEffect } from "react";
-// import { useNavigate, Link, useSearchParams } from "react-router-dom";
-// import { toast } from "react-toastify";
-// import { login } from "./services/authService";
 // import { useAuth } from "../../app/providers/AuthProvider";
 
 // function routeForStatus(status = "") {

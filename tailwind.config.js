@@ -9,7 +9,7 @@ module.exports = {
         roboto: ["Roboto", "sans-serif"],
         outfit: ["Outfit", "sans-serif"],
         montserrat: ["Montserrat", "sans-serif"],
-        brand: ["Poppins", "Montserrat", "sans-serif"],
+        brand: ["Montserrat", "sans-serif"],
         poppins: ["Poppins", "sans-serif"],
       },
       colors: {

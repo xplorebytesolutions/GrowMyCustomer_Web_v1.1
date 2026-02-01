@@ -11,6 +11,9 @@ import {
   Shield,
   ArrowRight,
   Star,
+  Zap,
+  Inbox,
+  Clock4
 } from "lucide-react";
 import TypewriterHeadline from "../../components/TypewriterHeadline";
 import axiosClient from "../../api/axiosClient";
@@ -116,7 +119,7 @@ const SignupForTrial = () => {
                 alt="Logo"
                 className="h-14 w-14 p-2.5 object-contain"
               />
-              <span className="text-[22px] font-medium font-brand leading-[36px] text-[#111827] tracking-tight">
+              <span className="text-[22px] font-semibold font-brand leading-[36px] text-[#111827] tracking-tight">
                 XploreByte
               </span>
             </div>
@@ -142,7 +145,7 @@ const SignupForTrial = () => {
           <div className="bg-gradient-to-r from-emerald-600 to-sapphire-600 rounded-xl p-4 mb-6 text-white">
             <div className="flex items-center space-x-2 mb-2">
               <Gift className="w-5 h-5" />
-              <span className="text-lg font-bold">1 Month FREE Trial</span>
+              <span className="text-lg font-bold">14 Days FREE Trial</span>
             </div>
             <p className="text-emerald-100 text-sm">
               Start your WhatsApp Business journey with our XploreByte platform
@@ -176,14 +179,14 @@ const SignupForTrial = () => {
               <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
                 <div className="flex items-start space-x-3">
                   <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Megaphone className="w-4 h-4 text-cyan-600" />
+                    <Zap className="w-4 h-4 text-cyan-600" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm">
-                      Advanced AI Campaign Manager
+                      24/7 Smart Automation
                     </h4>
                     <p className="text-xs text-gray-600">
-                      AI-powered campaign optimization & targeting
+                      Built on the verified Meta Platform
                     </p>
                   </div>
                 </div>
@@ -193,14 +196,14 @@ const SignupForTrial = () => {
               <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
                 <div className="flex items-start space-x-3">
                   <div className="w-8 h-8 bg-sapphire-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-4 h-4 text-sapphire-600" />
+                    <Inbox className="w-4 h-4 text-sapphire-600" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900 text-sm">
-                      FREE Verification Application
+                      Shared Team Inbox
                     </h4>
                     <p className="text-xs text-gray-600">
-                      Apply for verified WhatsApp Business Account
+                      Collaborate with your team in real-time
                     </p>
                   </div>
                 </div>
@@ -245,7 +248,7 @@ const SignupForTrial = () => {
               Create Your XploreByte Account
             </h2>
             <p className="text-gray-600 text-sm">
-              Start your 1-month free trial today
+              Start your 14-day free trial today
             </p>
           </div>
 
@@ -366,19 +369,23 @@ const SignupForTrial = () => {
               <div className="text-sm">
                 <label htmlFor="accept-terms" className="text-gray-700">
                   I agree to the{" "}
-                  <Link
-                    to="/terms"
+                  <a
+                    href="https://xplorebyte.com/terms-of-service"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-sapphire-600 hover:underline font-medium"
                   >
                     Terms of Service
-                  </Link>{" "}
+                  </a>{" "}
                   and{" "}
-                  <Link
-                    to="/privacy"
+                  <a
+                    href="https://xplorebyte.com/privacy-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-sapphire-600 hover:underline font-medium"
                   >
                     Privacy Policy
-                  </Link>
+                  </a>
                 </label>
               </div>
             </div>

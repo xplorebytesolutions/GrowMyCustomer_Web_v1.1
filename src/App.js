@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
+import React, { Suspense, lazy } from "react";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2"; // Lean import for initial load
 
 // Auth provider (server-authoritative session/claims)
 // import { AuthProvider } from "./app/providers/AuthProvider";
@@ -22,41 +24,12 @@ import AppLayout from "./components/layout/AppLayout";
 import WelcomeCenter from "./components/WelcomeCenter";
 import AppHomeRoute from "./app/routes/AppHomeRoute";
 
-// Workspaces
-import CrmWorkspacePage from "./pages/Workspaces/CrmWorkspacePage";
-import CatalogWorkspacePage from "./pages/Workspaces/CatalogWorkspacePage";
-import CampaignWorkspacePage from "./pages/Workspaces/CampaignWorkspacePage";
-import AdminWorkspacePage from "./pages/Workspaces/AdminWorkspacePage";
-import MessagingWorkspacePage from "./pages/Workspaces/MessagingWorkspacePage";
-import AutomationWorkspace from "./pages/Workspaces/AutomationWorkspace";
-import InboxWorkspace from "./pages/Workspaces/InboxWorkspace";
-import TemplateBuilderWorkspacePage from "./pages/Workspaces/TemplateBuilderWorkspacePage";
-
-// CRM
-import Contacts from "./pages/CRM/Contacts/Contacts";
-import AttributesPage from "./pages/CustomFields/AttributesPage";
-
-import Reminders from "./pages/CRM/Reminders/Reminders";
-import NotesWrapper from "./pages/CRM/Notes/NotesWrapper";
-import LeadTimeline from "./pages/CRM/Timeline/LeadTimeline";
-import Tags from "./pages/CRM/Tags/Tags";
-
-import Contact360 from "./pages/CRM/Contact360/Contact360";
-// Catalog
-import ProductCatalog from "./pages/Businesses/ProductCatalog";
-import ProductForm from "./pages/Businesses/ProductForm";
-
-import BusinessApprovals from "./pages/Businesses/BusinessApprovals";
-
 // Campaigns
-import CampaignSendLogs from "./pages/Campaigns/CampaignSendLogs";
 import CTAManagement from "./pages/CTAManagement/CTAManagement";
 import ImageCampaignDetailPage from "./pages/Campaigns/ImageCampaignDetailPage";
 import ImageCampaignEditPage from "./pages/Campaigns/ImageCampaignEditPage";
 import AssignContactsPage from "./pages/Campaigns/AssignContactsPage";
 import RecipientsListPage from "./pages/Campaigns/components/RecipientsListPage";
-import CampaignBuilderPage from "./pages/Campaigns/CampaignBuilderPage";
-import TemplateCampaignList from "./pages/Campaigns/TemplateCampaignList";
 import CampaignProgressPage from "./pages/Monitoring/CampaignProgressPage";
 import FlowAnalyticsDashboard from "./pages/FlowAnalytics/FlowAnalyticsDashboard";
 import CampaignLogReportPage from "./pages/CampaignReports/CampaignLogReportPage";
@@ -68,21 +41,17 @@ import TemplateMessagingComingSoon from "./pages/Messaging/TemplateMessagingComi
 import MessagingReportsComingSoon from "./pages/Messaging/MessagingReportsComingSoon";
 
 // Inbox & Automation
-import InboxWrapper from "./pages/Inbox/InboxWrapper";
-import ChatInbox from "./pages/ChatInbox/ChatInbox";
 import AutoReplyBuilder from "./pages/AutoReplyBuilder/AutoReplyBuilder";
 import CTAFlowVisualBuilder from "./pages/CTAFlowVisualBuilder/CTAFlowVisualBuilder";
 import CTAFlowManager from "./pages/CTAFlowVisualBuilder/CTAFlowManager";
 
 // Admin Tools / Access Control
-import PlanManagementPage from "./pages/admin/FeatureAccess/PlanManagement";
 import UserPermissionOverrides from "./pages/admin/FeatureAccess/UserPermissionOverrides";
 import PermissionsPage from "./pages/admin/AccessControl/PermissionsPage";
 import PermissionCatalog from "./pages/admin/PermissionCatalog/PermissionCatalog";
 
 // Tracking / Webhooks
 import FailedWebhookLogs from "./pages/Tracking/FailedWebhookLogs";
-import WebhookSettings from "./pages/Tracking/WebhookSettings";
 
 // Template Builder
 import LibraryBrowsePage from "./pages/TemplateBuilder/LibraryBrowsePage";
@@ -100,6 +69,7 @@ import PaymentStatusPage from "./pages/Payment/PaymentStatusPage";
 // WhatsApp / Meta Settings
 import WhatsAppSettings from "./pages/WhatsAppSettings/WhatsAppSettings";
 import MetaAccountManagement from "./pages/MetaAccount/MetaAccountManagement";
+import EsuProcessingPage from "./pages/ESU/EsuProcessingPage";
 
 // Account Insights (Admin analytics for accounts)
 import AccountDashboard from "./pages/AccountInsights/AccountDashboard";
@@ -138,6 +108,45 @@ import ChangePasswordPage from "./pages/Settings/Password/ChangePasswordPage";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// --- Lazy loaded components ---
+const CrmWorkspacePage = lazy(() => import("./pages/Workspaces/CrmWorkspacePage"));
+const CatalogWorkspacePage = lazy(() => import("./pages/Workspaces/CatalogWorkspacePage"));
+const CampaignWorkspacePage = lazy(() => import("./pages/Workspaces/CampaignWorkspacePage"));
+const AdminWorkspacePage = lazy(() => import("./pages/Workspaces/AdminWorkspacePage"));
+const MessagingWorkspacePage = lazy(() => import("./pages/Workspaces/MessagingWorkspacePage"));
+const AutomationWorkspace = lazy(() => import("./pages/Workspaces/AutomationWorkspace"));
+const InboxWorkspace = lazy(() => import("./pages/Workspaces/InboxWorkspace"));
+const TemplateBuilderWorkspacePage = lazy(() => import("./pages/Workspaces/TemplateBuilderWorkspacePage"));
+
+const Contacts = lazy(() => import("./pages/CRM/Contacts/Contacts"));
+const AttributesPage = lazy(() => import("./pages/CustomFields/AttributesPage"));
+const Reminders = lazy(() => import("./pages/CRM/Reminders/Reminders"));
+const NotesWrapper = lazy(() => import("./pages/CRM/Notes/NotesWrapper"));
+const LeadTimeline = lazy(() => import("./pages/CRM/Timeline/LeadTimeline"));
+const Tags = lazy(() => import("./pages/CRM/Tags/Tags"));
+const Contact360 = lazy(() => import("./pages/CRM/Contact360/Contact360"));
+
+const ProductCatalog = lazy(() => import("./pages/Businesses/ProductCatalog"));
+const ProductForm = lazy(() => import("./pages/Businesses/ProductForm"));
+const BusinessApprovals = lazy(() => import("./pages/Businesses/BusinessApprovals"));
+
+const CampaignBuilderPage = lazy(() => import("./pages/Campaigns/CampaignBuilderPage"));
+const CampaignSendLogs = lazy(() => import("./pages/Campaigns/CampaignSendLogs"));
+const TemplateCampaignList = lazy(() => import("./pages/Campaigns/TemplateCampaignList"));
+
+const ChatInbox = lazy(() => import("./pages/ChatInbox/ChatInbox"));
+const InboxWrapper = lazy(() => import("./pages/Inbox/InboxWrapper"));
+
+const WebhookSettings = lazy(() => import("./pages/Tracking/WebhookSettings"));
+const PlanManagementPage = lazy(() => import("./pages/admin/FeatureAccess/PlanManagement"));
+
+// Helper for root suspense
+const RootLoader = () => (
+  <div className="flex items-center justify-center min-h-screen bg-slate-50/50">
+    <Loader2 className="animate-spin text-emerald-600" size={32} />
+  </div>
+);
+
 // --- Helper Components ---
 function DashboardRedirect() {
   const { search } = useLocation();
@@ -149,7 +158,8 @@ function App() {
     <AuthProvider>
       {/* Wrap entire app tree with EntitlementsProvider */}
       <EntitlementsProvider>
-        <Routes>
+        <Suspense fallback={<RootLoader />}>
+          <Routes>
           {/* ---------- Public Routes ---------- */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
@@ -186,6 +196,7 @@ function App() {
             />
             <Route path="welcome" element={<WelcomeCenter />} />
             <Route path="welcomepage" element={<WelcomePage />} />
+            <Route path="esu-processing" element={<EsuProcessingPage />} />
 
             {/* ----- CRM Workspace + child routes ----- */}
             <Route
@@ -895,6 +906,7 @@ function App() {
         {/* Global upgrade modal for feature/quota denials */}
         <UpgradeModal />
         {isDev && <AccessDebugger />}
+        </Suspense>
       </EntitlementsProvider>
     </AuthProvider>
   );
