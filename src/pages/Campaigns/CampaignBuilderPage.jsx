@@ -14,7 +14,9 @@ import {
   Send,
   Info,
   Smartphone,
+  X,
 } from "lucide-react";
+import StandaloneMediaUploader from "./components/StandaloneMediaUploader";
 
 // === Your axios baseURL already ends with /api. Keep all calls RELATIVE (no leading slash).
 const SYNC_ENDPOINT = bid => `templates/sync/${bid}`; // POST
@@ -922,20 +924,49 @@ export default function CampaignBuilderPage() {
                         <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-3">
                           {/* Header Media */}
                           {selectedTemplate.requiresHeaderMediaUrl && (
-                            <div>
-                              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                Header Media URL{" "}
-                                <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="url"
-                                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                                placeholder={`https://example.com/item.jpg`}
-                                value={headerMediaUrl}
-                                onChange={e =>
-                                  setHeaderMediaUrl(e.target.value)
-                                }
-                              />
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                  {mediaLabel(selectedTemplate.headerKind)}{" "}
+                                  <span className="text-red-500">*</span>
+                                </label>
+                                <div className="space-y-3">
+                                  <input
+                                    type="text"
+                                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                                    placeholder="Enter HTTPS URL or upload below..."
+                                    value={headerMediaUrl.startsWith("handle:") ? "" : headerMediaUrl}
+                                    onChange={e => setHeaderMediaUrl(e.target.value)}
+                                    disabled={headerMediaUrl.startsWith("handle:")}
+                                  />
+                                  
+                                  <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                      <span className="w-full border-t border-slate-200"></span>
+                                    </div>
+                                    <div className="relative flex justify-center text-[10px] uppercase">
+                                      <span className="bg-white px-2 text-slate-400 font-medium tracking-wider">Or Upload File</span>
+                                    </div>
+                                  </div>
+
+                                  <StandaloneMediaUploader
+                                    mediaType={selectedTemplate.headerKind.toUpperCase()}
+                                    handle={headerMediaUrl}
+                                    onUploaded={handle => setHeaderMediaUrl(handle)}
+                                  />
+                                  
+                                  {headerMediaUrl.startsWith("handle:") && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setHeaderMediaUrl("")}
+                                      className="text-[10px] text-red-500 hover:text-red-700 font-medium flex items-center gap-1 mt-1"
+                                    >
+                                      <X size={10} />
+                                      Remove uploaded media
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           )}
 

@@ -40,6 +40,35 @@ export async function uploadHeaderMedia({
   return data;
 }
 
+/**
+ * Upload standalone media (Campaign Builder)
+ * POST /api/template-builder/uploads/standalone
+ */
+export async function uploadStandaloneMedia({
+  mediaType = "IMAGE",
+  file,
+  sourceUrl,
+  fileName,
+}) {
+  const form = new FormData();
+  form.append("MediaType", mediaType);
+
+  if (file) form.append("File", file);
+  if (sourceUrl) form.append("SourceUrl", sourceUrl);
+  if (fileName) form.append("FileName", fileName);
+
+  const { data } = await axiosClient.post(
+    "/template-builder/uploads/standalone",
+    form,
+    { 
+      headers: { "Content-Type": "multipart/form-data" },
+      __silentToast: true 
+    }
+  );
+
+  return data;
+}
+
 // // src/api/templateBuilder/uploads.js
 // import axiosClient from "../../api/axiosClient";
 
