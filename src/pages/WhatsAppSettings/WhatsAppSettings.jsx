@@ -133,6 +133,7 @@ export default function WhatsAppSettings() {
   const [savedProvider, setSavedProvider] = useState(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // ESU status (normalized)
   const [esuStatus, setEsuStatus] = useState({
@@ -612,12 +613,16 @@ export default function WhatsAppSettings() {
   const setDefaultSenderLocal = idx =>
     setSenders(s => s.map((row, i) => ({ ...row, isDefault: i === idx })));
 
-  // ===== Global form handlers =====
   const handleChange = e => {
     const { name, value } = e.target;
     hasUserEditedRef.current = true;
     setCanPersistDraft(true);
     setFormData(p => ({ ...p, [name]: value }));
+
+    // Clear field specific error when user types
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   const handleToggle = e => {
@@ -666,8 +671,16 @@ export default function WhatsAppSettings() {
       setCanPersistDraft(true);
 
       toast.success("Settings saved.");
+      setFieldErrors({}); // Clear all errors on success
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to save settings.");
+      const msg = err?.response?.data?.message || "Failed to save settings.";
+      
+      // Inline error for WABA ID
+      if (msg.includes("WABA ID")) {
+        setFieldErrors(prev => ({ ...prev, wabaId: msg }));
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -739,12 +752,17 @@ export default function WhatsAppSettings() {
 
   // ===== Fetch numbers via backend sync =====
   const handleFetchFromMeta = async () => {
-    if (!formData.apiKey?.trim() || !formData.wabaId?.trim()) {
-      toast.warn(
-        "Please provide API Key/Token and WABA ID, then Save Settings."
-      );
-      return;
+    let hasErr = false;
+    if (!formData.apiKey?.trim()) {
+      toast.warn("Please provide API Key/Token.");
+      hasErr = true;
     }
+    if (!formData.wabaId?.trim()) {
+      setFieldErrors(prev => ({ ...prev, wabaId: "WABA ID is required to fetch numbers." }));
+      hasErr = true;
+    }
+    if (hasErr) return;
+
     try {
       setFetchingMeta(true);
       const res = await axiosClient.post(
@@ -770,7 +788,12 @@ export default function WhatsAppSettings() {
     } catch (err) {
       const msg =
         err?.response?.data?.message || err?.message || "Fetch failed.";
-      toast.error(msg);
+      
+      if (msg.includes("WABA ID")) {
+        setFieldErrors(prev => ({ ...prev, wabaId: msg }));
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setFetchingMeta(false);
     }
@@ -1053,8 +1076,18 @@ export default function WhatsAppSettings() {
                       value={formData.wabaId}
                       onChange={handleChange}
                       placeholder="e.g. 7445482479..."
-                      className="w-full px-3.5 py-1.5 rounded-lg text-xs border border-slate-200 bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500 transition-all"
+                      className={`w-full px-3.5 py-1.5 rounded-lg text-xs border bg-white focus:outline-none focus:ring-4 transition-all ${
+                        fieldErrors.wabaId 
+                          ? "border-red-500 focus:ring-red-500/10 focus:border-red-500" 
+                          : "border-slate-200 focus:ring-emerald-500/5 focus:border-emerald-500"
+                      }`}
                     />
+                    {fieldErrors.wabaId && (
+                      <div className="mt-1.5 flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 rounded-lg border border-red-100 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <Info size={12} className="shrink-0" />
+                        <span className="text-[10px] font-bold leading-tight">{fieldErrors.wabaId}</span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Display Name</label>

@@ -31,7 +31,10 @@ export async function uploadHeaderMedia({
   const { data } = await axiosClient.post(
     "/template-builder/uploads/header",
     form,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    { 
+      headers: { "Content-Type": "multipart/form-data" },
+      __silentToast: true 
+    }
   );
 
   return data;

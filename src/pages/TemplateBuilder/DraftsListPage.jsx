@@ -99,7 +99,6 @@ export default function DraftsListPage() {
           const id = res?.draftId || res?.id;
           if (!id) throw new Error("Draft created but no ID returned.");
 
-          toast.success("New template started");
           // Navigate to editor with blankName param so editor clears the "untitled_..." name
           navigate(`/app/template-builder/drafts/${id}?language=en_US&blankName=1`);
         } catch (err) {

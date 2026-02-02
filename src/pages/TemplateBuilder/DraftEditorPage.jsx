@@ -615,6 +615,7 @@ export default function DraftEditorPage() {
     if (!canEdit) return;
 
     setSubmitting(true);
+    setSubmissionError(null);
     try {
       // Ensure the variant exists (Meta submission requires a saved draft+variant).
       const ok = await saveDraftAndVariant();
@@ -652,7 +653,7 @@ export default function DraftEditorPage() {
         // Scroll to body input
         document.getElementById("body-input-container")?.scrollIntoView({ behavior: "smooth", block: "center" });
       } else {
-        toast.error(msg);
+        setSubmissionError(msg);
       }
     } finally {
       setSubmitting(false);
@@ -827,7 +828,19 @@ export default function DraftEditorPage() {
                      <h3 className="text-sm font-bold text-slate-800">Template Creation</h3>
                   </div>
                   <div className="flex items-center gap-2">
-                     {name && category && bodyText ? (
+                     {submissionError && (
+                        <div className="flex items-center gap-2 px-2 py-1 bg-red-50 text-red-600 border border-red-100 rounded-lg animate-in fade-in slide-in-from-top-1">
+                           <AlertCircle size={12} />
+                           <span className="text-[10px] font-bold uppercase tracking-tight">{submissionError}</span>
+                           <button 
+                              onClick={() => setSubmissionError(null)}
+                              className="p-0.5 hover:bg-red-100 rounded text-red-400"
+                           >
+                              <X size={10} />
+                           </button>
+                        </div>
+                     )}
+                     {name && category && bodyText && !submissionError ? (
                         <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100 uppercase tracking-wider">
                            <CheckCircle2 size={12} /> Ready to Submit
                         </span>
@@ -1252,9 +1265,9 @@ export default function DraftEditorPage() {
                   // Force a hard navigation to ensure data refetch if needed, or just standard nav
                   window.location.href = '/app/template-builder/pending'; 
                 }}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-sm active:scale-[0.98]"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all shadow-md shadow-emerald-600/10 active:scale-[0.98]"
               >
-                View Pending Templates
+                View Approval Status
               </button>
               
               <button
