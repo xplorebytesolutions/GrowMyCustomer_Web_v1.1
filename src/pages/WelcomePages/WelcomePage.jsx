@@ -118,8 +118,8 @@ const VerticalStepper = ({ whatsappConnected, hasPlan, onConnect, onNavigate }) 
       />
       <VerticalStep
         step={2}
-        title="Connect WhatsApp"
-        desc="Link Meta Account"
+        title="Connect WhatsApp Api"
+        desc="Link with Meta"
         status={whatsappConnected ? "Connected" : "Action Required"}
         isCompleted={whatsappConnected}
         isActive={!whatsappConnected}
@@ -179,8 +179,8 @@ const EngagementBanner = ({ onConnect, connecting, whatsappConnected }) => (
               </div>
            </div>
 
-           <h2 className="text-2xl md:text-3xl font-extrabold text-white leading-tight">
-              WhatsApp <span className="text-emerald-500">Customer Engagement</span>
+           <h2 className="text-2xl md:text-3xl font-extrabold text-white leading-tight font-inter">
+              Connect your <span className="text-emerald-500">WhatsApp Business Api</span> to XploreByte
            </h2>
            <p className="text-slate-400 text-xs md:text-sm leading-relaxed max-w-lg">
               Setting up your official <span className="text-emerald-400 font-semibold">WhatsApp Business API is 100% FREE</span>. 
@@ -208,7 +208,7 @@ const EngagementBanner = ({ onConnect, connecting, whatsappConnected }) => (
            <button
              onClick={onConnect}
              disabled={connecting}
-             className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold tracking-tight uppercase transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+             className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold tracking-tight transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 font-inter"
            >
              <Facebook className="fill-white" size={14} />
              {connecting ? "Connecting..." : "Connect with Meta"}
@@ -216,10 +216,10 @@ const EngagementBanner = ({ onConnect, connecting, whatsappConnected }) => (
            
            <button
              onClick={() => window.open('https://xplorebyte.com/demo', '_blank')}
-             className="w-full sm:w-auto px-6 py-3 bg-transparent border border-white/10 hover:border-white/20 text-white rounded-xl text-xs font-bold tracking-tight uppercase transition-all flex items-center justify-center gap-2"
+             className="w-full sm:w-auto px-6 py-3 bg-transparent border border-white/10 hover:border-white/20 text-white rounded-xl text-xs font-bold tracking-tight transition-all flex items-center justify-center gap-2 font-inter"
            >
              <Calendar size={14} />
-             Live Demo
+             Book Demo
            </button>
         </div>
       </div>
@@ -515,7 +515,7 @@ export default function WelcomePage() {
   const progressPercent = Math.round((completedSteps / totalSteps) * 100);
 
   return (
-    <div className="min-h-screen w-full bg-slate-50/50">
+    <div className="min-h-screen w-full bg-slate-50/50 font-inter">
       <div className="mx-auto max-w-6xl px-6 py-10 space-y-8">
         {/* Hero Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -670,7 +670,7 @@ function MigrationModal({ onClose, onSubmit, submitted, setSubmitted }) {
           {!submitted ? (
             <>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-slate-900">
+                <h2 className="text-2xl font-bold text-slate-900 font-inter">
                   Migrate to XploreByte
                 </h2>
                 <button
@@ -709,7 +709,7 @@ function MigrationModal({ onClose, onSubmit, submitted, setSubmitted }) {
                 </button>
                 <button
                   onClick={onSubmit}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm transition-colors"
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm transition-colors font-inter"
                 >
                   Request Migration
                 </button>
@@ -731,7 +731,7 @@ function MigrationModal({ onClose, onSubmit, submitted, setSubmitted }) {
                   setSubmitted(false);
                   onClose();
                 }}
-                className="px-8 py-2.5 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 transition-colors"
+                className="px-8 py-2.5 bg-slate-900 text-white font-semibold rounded-lg hover:bg-slate-800 transition-colors font-inter"
               >
                 Done
               </button>
@@ -756,7 +756,7 @@ function ApplyModal({ onClose, onMigrate, onConnect, connecting }) {
       >
         <div className="p-6 md:p-8 overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-emerald-950">
+            <h2 className="text-2xl font-bold text-emerald-950 font-inter">
               Connect WhatsApp API
             </h2>
             <button
@@ -873,7 +873,7 @@ function ApplyModal({ onClose, onMigrate, onConnect, connecting }) {
         <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4 justify-center items-center">
           <button
             onClick={onMigrate}
-            className="px-6 py-2.5 bg-white border border-emerald-500 text-emerald-700 font-semibold rounded-lg hover:bg-emerald-50 transition-colors"
+            className="px-6 py-2.5 bg-white border border-emerald-500 text-emerald-700 font-semibold rounded-lg hover:bg-emerald-50 transition-colors font-inter"
           >
             Migrate from another vendor
           </button>
@@ -881,12 +881,12 @@ function ApplyModal({ onClose, onMigrate, onConnect, connecting }) {
           <button
             disabled={connecting}
             onClick={onConnect}
-            className="px-6 py-2.5 bg-[#008f5c] hover:bg-[#007a4d] text-white font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-2"
+            className="px-6 py-2.5 bg-[#008f5c] hover:bg-[#007a4d] text-white font-bold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 font-inter"
           >
             {connecting && (
               <Loader2 className="h-4 w-4 animate-spin text-white" />
             )}
-            Continue With Facebook
+            Continue with Facebook
           </button>
         </div>
       </motion.div>

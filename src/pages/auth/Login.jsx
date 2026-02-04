@@ -96,8 +96,6 @@ export default function Login() {
         toast.info("Please complete your profile to continue.");
       } else if (next === "/pending-approval") {
         toast.warn("Your account is pending approval.");
-      } else {
-        toast.success("Login successful");
       }
 
       const finalNext = next.includes("?") 
