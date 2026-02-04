@@ -44,15 +44,17 @@ const PERM_BY_BLOCK = {
 
 /* ---------- Tiles ---------- */
 const templateBlocks = [
-  {
-    id: "template.builder.library.browse",
-    label: "Template Library",
-    description:
-      "Browse segmented templates (Salon, Gym, Doctor, etc.) and preview.",
-    path: "/app/template-builder/library",
-    icon: <FolderKanban size={22} />,
-    action: "Open Library",
-  },
+  // 🚧 TEMPORARILY HIDDEN - Template Library tile
+  // Uncomment below to re-enable the Library tab
+  // {
+  //   id: "template.builder.library.browse",
+  //   label: "Template Library",
+  //   description:
+  //     "Browse segmented templates (Salon, Gym, Doctor, etc.) and preview.",
+  //   path: "/app/template-builder/library",
+  //   icon: <FolderKanban size={22} />,
+  //   action: "Open Library",
+  // },
   {
     id: "template.builder.create.draft",
     label: "My Drafts",

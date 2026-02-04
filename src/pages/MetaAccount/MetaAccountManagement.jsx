@@ -113,17 +113,24 @@ export default function MetaAccountManagement() {
     const rawStatus = searchParams.get("esuStatus");
     const status = rawStatus?.toLowerCase();
 
-    console.log("[MetaAccountManagement] esuStatus check:", { rawStatus, status });
+    console.log("[MetaAccountManagement] esuStatus check:", {
+      rawStatus,
+      status,
+    });
 
     if (status === "success") {
       toast.success("✅ Connected to Meta! Your number is active.");
       sessionStorage.removeItem("xb_pending_esu_pin");
       setShowPinModal(false);
       loadStatus(); // Refresh health status
-    } 
-    else if (status === "needs_pin" || sessionStorage.getItem("xb_pending_esu_pin") === "true") {
+    } else if (
+      status === "needs_pin" ||
+      sessionStorage.getItem("xb_pending_esu_pin") === "true"
+    ) {
       if (status === "needs_pin") {
-        toast.info("This number is already protected. Please enter your existing PIN.");
+        toast.info(
+          "This number is already protected. Please enter your existing PIN.",
+        );
         sessionStorage.setItem("xb_pending_esu_pin", "true");
       }
       setShowPinModal(true);

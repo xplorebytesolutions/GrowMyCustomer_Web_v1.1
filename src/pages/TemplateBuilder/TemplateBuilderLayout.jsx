@@ -17,7 +17,8 @@ import { useAuth } from "../../app/providers/AuthProvider";
 
 const tabs = [
   { label: "Approved", to: "/app/template-builder/approved", icon: <FileBarChart size={16} />, key: "approved" },
-  { label: "Library", to: "/app/template-builder/library", icon: <Library size={16} />, key: "library" },
+  // 🚧 TEMPORARILY HIDDEN - Library tab
+  // { label: "Library", to: "/app/template-builder/library", icon: <Library size={16} />, key: "library" },
   { label: "Drafts", to: "/app/template-builder/drafts", icon: <ListChecks size={16} />, key: "drafts" },
   { label: "Pending", to: "/app/template-builder/pending", icon: <Clock size={16} />, key: "pending" },
 ];
