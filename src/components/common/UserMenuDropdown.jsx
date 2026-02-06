@@ -1,7 +1,8 @@
+
 // 📄 src/components/common/UserMenuDropdown.jsx
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, LogOut, Rocket, ShieldCheck, Lock, Terminal, UserCog } from "lucide-react";
+import { ChevronDown, LogOut, Rocket, ShieldCheck, Lock, UserCog } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
 
@@ -11,11 +12,12 @@ export default function UserMenuDropdown({ currentPlan }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { userName: ctxUserName, logout } = useAuth();
+  const { userName: ctxUserName, user, logout } = useAuth();
 
   // Prefer AuthProvider userName, fall back to old localStorage value
   const storedUserName = localStorage.getItem("userName") || "User";
   const displayName = ctxUserName || storedUserName;
+  const displayEmail = user?.email || user?.Email || localStorage.getItem("email") || "";
 
   const userAvatar =
     localStorage.getItem("userAvatar") ||
@@ -45,11 +47,6 @@ export default function UserMenuDropdown({ currentPlan }) {
   const handleSecurity = () => {
     setOpen(false);
     navigate("/app/settings/password");
-  };
-
-  const handleApiSetup = () => {
-    setOpen(false);
-    navigate("/app/settings/whatsapp");
   };
 
   const handleProfileUpdate = () => {
@@ -115,7 +112,8 @@ export default function UserMenuDropdown({ currentPlan }) {
         <div className="absolute right-0 mt-2 w-56 bg-white border rounded-lg shadow-lg z-50 animate-fadeIn">
           <div className="px-4 py-3 border-b">
             <p className="text-sm font-medium text-gray-800">{displayName}</p>
-            <p className="text-xs text-gray-400">Plan: {plan}</p>
+            {displayEmail && <p className="text-xs text-gray-500 truncate">{displayEmail}</p>}
+            <p className="text-xs text-gray-400 mt-0.5">Plan: {plan}</p>
           </div>
           <ul className="py-1 text-sm text-gray-700">
             <li>
@@ -134,15 +132,6 @@ export default function UserMenuDropdown({ currentPlan }) {
               >
                 <Lock size={16} className="mr-2 text-sapphire-600 transition-transform group-hover:scale-110" />
                 Change Password
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={handleApiSetup}
-                className="w-full flex items-center px-4 py-2 hover:bg-emerald-50 group"
-              >
-                <Terminal size={16} className="mr-2 text-amber-600 transition-transform group-hover:scale-110" />
-                Manual Api Setup
               </button>
             </li>
             <li>
