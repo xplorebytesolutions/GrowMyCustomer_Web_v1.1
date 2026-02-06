@@ -75,6 +75,7 @@ const accountBlocks = [
     icon: <Globe size={22} />,
     action: "Manage Meta",
   },
+  /*
   {
     id: "whatsapp-settings",
     label: "Manual Api Setup",
@@ -83,6 +84,7 @@ const accountBlocks = [
     icon: <Phone size={22} />,
     action: "Open Settings",
   },
+  */
   {
     id: "billing-subscription",
     label: "Billing & Subscription",

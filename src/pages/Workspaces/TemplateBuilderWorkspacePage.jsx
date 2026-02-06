@@ -32,54 +32,23 @@ function safeJson(key, fallback) {
 
 /* ---------- Permissions map (per-tile) ---------- */
 const PERM_BY_BLOCK = {
-  "template.builder.approved.templates.view": [
+  "template.builder.manage": [
     FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW,
   ],
-  "template.builder.library.browse": [FK.TEMPLATE_BUILDER_LIBRARY_BROWSE],
-  "template.builder.create.draft": [FK.TEMPLATE_BUILDER_CREATE_DRAFT],
-  "template.builder.create.new": [FK.TEMPLATE_BUILDER_CREATE_DRAFT],
 };
 
 
 
 /* ---------- Tiles ---------- */
 const templateBlocks = [
-  // 🚧 TEMPORARILY HIDDEN - Template Library tile
-  // Uncomment below to re-enable the Library tab
-  // {
-  //   id: "template.builder.library.browse",
-  //   label: "Template Library",
-  //   description:
-  //     "Browse segmented templates (Salon, Gym, Doctor, etc.) and preview.",
-  //   path: "/app/template-builder/library",
-  //   icon: <FolderKanban size={22} />,
-  //   action: "Open Library",
-  // },
   {
-    id: "template.builder.create.draft",
-    label: "My Drafts",
+    id: "template.builder.manage",
+    label: "Manage Templates",
     description:
-      "Edit header/body/buttons, upload media, preview & submit to Meta.",
-    path: "/app/template-builder/drafts",
-    icon: <ListChecks size={22} />,
-    action: "Manage Drafts",
-  },
-  {
-    id: "template.builder.approved.templates.view",
-    label: "Approved Templates",
-    description: "View approved templates and delete at Meta if needed.",
+      "View approved templates, manage drafts, and submit new templates to Meta.",
     path: "/app/template-builder/approved",
     icon: <FileBarChart size={22} />,
-    action: "Manage Approved",
-  },
-  {
-    id: "template.builder.create.new",
-    label: "Create from Scratch",
-    description:
-      "Start with a fresh template key and design your own WhatsApp message.",
-    path: "/app/template-builder/drafts?create=1",
-    icon: <Plus size={22} />,
-    action: "Design New",
+    action: "Manage Templates",
   },
 ];
 

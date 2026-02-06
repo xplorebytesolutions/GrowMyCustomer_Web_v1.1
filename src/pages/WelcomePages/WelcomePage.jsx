@@ -152,32 +152,39 @@ const EngagementBanner = ({ onConnect, connecting, whatsappConnected }) => (
     <div className="relative p-7 md:p-8 flex flex-col md:flex-row items-center gap-8">
       <div className="flex-1 space-y-5">
         <div className="space-y-3">
-           <div className="flex flex-wrap items-center gap-2">
-              <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest border transition-all duration-300 ${
-                whatsappConnected 
-                  ? "bg-emerald-500 text-white border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]" 
-                  : "bg-rose-500 text-white border-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
-              }`}>
-                 <div className="relative flex h-2 w-2 items-center justify-center">
-                   <motion.div
-                     animate={{ 
-                       scale: [1, 1.5, 1],
-                       opacity: [0.5, 0.2, 0.5]
-                     }}
-                     transition={{ 
-                       duration: 2, 
-                       repeat: Infinity,
-                       ease: "easeInOut"
-                     }}
-                     className={`absolute inset-0 rounded-full ${whatsappConnected ? "bg-emerald-400" : "bg-rose-400"}`}
-                   />
-                   <div className={`relative h-1.5 w-1.5 rounded-full bg-white shadow-sm`} />
-                 </div>
-                 <span className="leading-none">
-                   {whatsappConnected ? "WhatsApp Business API Connected" : "WhatsApp Business API Not Connected"}
-                 </span>
-              </div>
+           {/* Compact status chip with solid background */}
+           <div className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg transition-all duration-200 border shadow-sm ${
+             whatsappConnected 
+               ? "bg-emerald-500 text-white border-emerald-500" 
+               : "bg-white text-red-600 border-red-500"
+           }`}>
+              {whatsappConnected ? (
+                <>
+                  <div className="w-2 h-2 rounded-full bg-white" />
+                  <span className="text-xs font-semibold">Connected</span>
+                </>
+              ) : (
+                <>
+                  <div className="relative flex items-center justify-center w-2 h-2">
+                    <motion.div
+                      animate={{ 
+                        scale: [1, 1.8, 1],
+                        opacity: [0.6, 0.2, 0.6]
+                      }}
+                      transition={{ 
+                        duration: 2, 
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      className="absolute inset-0 rounded-full bg-red-500"
+                    />
+                    <div className="relative w-2 h-2 rounded-full bg-red-500" />
+                  </div>
+                  <span className="text-xs font-semibold">WhatsApp Api is not connected</span>
+                </>
+              )}
            </div>
+
 
            <h2 className="text-2xl md:text-3xl font-extrabold text-white leading-tight font-inter">
               Connect your <span className="text-emerald-500">WhatsApp Business Api</span> to XploreByte

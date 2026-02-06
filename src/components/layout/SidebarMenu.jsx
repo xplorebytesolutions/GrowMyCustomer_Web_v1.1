@@ -436,25 +436,11 @@ export default function SidebarMenu() {
     ],
     templatebuilder: [
       {
-        label: "Approved Templates",
+        label: "Manage Templates",
         path: "/app/template-builder/approved",
         icon: <FileText size={18} />,
         show: showTemplateBuilder,
         featureKey: FK.TEMPLATE_BUILDER_APPROVED_TEMPLATES_VIEW,
-      },
-      {
-        label: "Template Library",
-        path: "/app/template-builder/library",
-        icon: <FileText size={18} />,
-        show: showTemplateBuilder,
-        featureKey: FK.TEMPLATE_BUILDER_LIBRARY_BROWSE,
-      },
-      {
-        label: "My Drafts",
-        path: "/app/template-builder/drafts",
-        icon: <FileText size={18} />,
-        show: showTemplateBuilder,
-        featureKey: FK.TEMPLATE_BUILDER_CREATE_DRAFT,
       },
     ],
     settings: [
@@ -498,7 +484,7 @@ export default function SidebarMenu() {
         label: "Manual Api Setup",
         path: "/app/settings/whatsapp",
         icon: <Phone size={18} />,
-        show: showSettings,
+        show: false && showSettings,
         featureKey: FK.SETTINGS_WHATSAPP_SETTINGS_VIEW,
       },
       {
