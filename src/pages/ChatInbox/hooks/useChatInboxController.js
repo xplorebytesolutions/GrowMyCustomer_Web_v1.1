@@ -199,7 +199,25 @@ export function useChatInboxController() {
 
   // Right panel toggles
   const [showRightPanel, setShowRightPanel] = useState(true);
-  const [showDetails, setShowDetails] = useState(true);
+  
+  // 🔹 Persist 'showDetails' (Expand/Collapse right panel)
+  const [showDetails, setShowDetails] = useState(() => {
+    try {
+      const stored = localStorage.getItem("chatInbox:showDetails");
+      return stored !== null ? stored === "true" : true;
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("chatInbox:showDetails", String(showDetails));
+    } catch {
+      // ignore
+    }
+  }, [showDetails]);
+
   const [showCrmPanel, setShowCrmPanel] = useState(true);
   const [showMiniTimeline, setShowMiniTimeline] = useState(true);
 
@@ -938,7 +956,7 @@ export function useChatInboxController() {
 
             unreadCount: isSelected
               ? 0
-              : (localUnread ?? item.unreadCount) || 0,
+              : (localUnread ?? item.unreadCount ?? item.UnreadCount) || 0,
             status: parseConversationStatus(item.status) ?? "Open",
             numberId: item.numberId,
             numberLabel: item.numberLabel,
@@ -1044,7 +1062,7 @@ export function useChatInboxController() {
             lastMessageAt: item.lastMessageAt,
             unreadCount: isSelected
               ? 0
-              : (localUnread ?? item.unreadCount) || 0,
+              : (localUnread ?? item.unreadCount ?? item.UnreadCount) || 0,
             status: parseConversationStatus(item.status) ?? "Open",
             numberId: item.numberId,
             numberLabel: item.numberLabel,

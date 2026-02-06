@@ -137,7 +137,7 @@ export function ChatInboxView(props) {
       : "bg-emerald-50 text-emerald-800 border-emerald-200";
 
   return (
-    <div className="h-[calc(100vh-64px)] flex bg-slate-50">
+    <div className="h-full flex bg-slate-50">
       <LeftPanel
         activeTab={activeTab}
         setActiveTab={setActiveTab}
