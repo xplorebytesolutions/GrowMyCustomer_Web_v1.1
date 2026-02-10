@@ -114,6 +114,36 @@ function matchesTagsClientSide(contact, filters) {
   return filterTagIds.some(id => contactIds.has(id));
 }
 
+function getComplianceBadges(contact) {
+  const optStatus = Number(contact?.optStatus);
+  const channelStatus = Number(contact?.channelStatus);
+  const badges = [];
+
+  if (optStatus === 2) {
+    badges.push({
+      key: "opted-out",
+      label: "Opted out",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+    });
+  }
+
+  if (channelStatus === 2) {
+    badges.push({
+      key: "invalid",
+      label: "Invalid",
+      className: "border-rose-200 bg-rose-50 text-rose-700",
+    });
+  } else if (channelStatus === 1) {
+    badges.push({
+      key: "blocked",
+      label: "Blocked",
+      className: "border-orange-200 bg-orange-50 text-orange-700",
+    });
+  }
+
+  return badges;
+}
+
 function applyLocalFilters(list, { searchTerm, filters }) {
   const all = Array.isArray(list) ? list : [];
 
@@ -433,9 +463,19 @@ export default function ContactsTable({
                   />
                 </td>
                 <td className={`px-4 ${rowPadding}`}>
-                  <span className="font-semibold truncate text-sm text-slate-900">
-                    {contact.name || "Unnamed contact"}
-                  </span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold truncate text-sm text-slate-900">
+                      {contact.name || "Unnamed contact"}
+                    </span>
+                    {getComplianceBadges(contact).map(badge => (
+                      <span
+                        key={badge.key}
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${badge.className}`}
+                      >
+                        {badge.label}
+                      </span>
+                    ))}
+                  </div>
                 </td>
 
                 <td className={`px-4 ${rowPadding} truncate text-sm font-medium text-slate-800`}>

@@ -1,6 +1,38 @@
 import React from "react";
 import { getInitial } from "../utils/formatters";
 
+function getComplianceBadges(conv) {
+  const optStatus = Number(conv?.optStatus ?? conv?.contact?.optStatus);
+  const channelStatus = Number(
+    conv?.channelStatus ?? conv?.contact?.channelStatus
+  );
+  const badges = [];
+
+  if (optStatus === 2) {
+    badges.push({
+      key: "opted-out",
+      label: "Opted out",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+    });
+  }
+
+  if (channelStatus === 2) {
+    badges.push({
+      key: "invalid",
+      label: "Invalid",
+      className: "border-rose-200 bg-rose-50 text-rose-700",
+    });
+  } else if (channelStatus === 1) {
+    badges.push({
+      key: "blocked",
+      label: "Blocked",
+      className: "border-orange-200 bg-orange-50 text-orange-700",
+    });
+  }
+
+  return badges;
+}
+
 export function ConversationRow({ conv, isSelected, onClick }) {
   return (
     <button
@@ -24,9 +56,19 @@ export function ConversationRow({ conv, isSelected, onClick }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-0.5">
           <div className="flex flex-col">
-            <span className="text-xs font-semibold text-slate-800 truncate">
-              {conv.contactName || conv.contactPhone || "Unknown"}
-            </span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs font-semibold text-slate-800 truncate">
+                {conv.contactName || conv.contactPhone || "Unknown"}
+              </span>
+              {getComplianceBadges(conv).map(badge => (
+                <span
+                  key={badge.key}
+                  className={`inline-flex items-center rounded-full border px-1.5 py-[1px] text-[9px] font-medium ${badge.className}`}
+                >
+                  {badge.label}
+                </span>
+              ))}
+            </div>
             <span className="text-[10px] text-slate-400">{conv.contactPhone}</span>
           </div>
           <span className="text-[10px] text-slate-400 ml-2">
@@ -65,4 +107,3 @@ export function ConversationRow({ conv, isSelected, onClick }) {
     </button>
   );
 }
-
