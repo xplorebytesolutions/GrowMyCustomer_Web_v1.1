@@ -105,6 +105,7 @@ import DeveloperNotesPage from "./pages/DeveloperNotes/DeveloperNotesPage";
 import TeamStaffPage from "./pages/TeamStaff/TeamStaffPage";
 import AccessControlPage from "./pages/Settings/AccessControl/RolePermissionMapping";
 import ChangePasswordPage from "./pages/Settings/Password/ChangePasswordPage";
+import ContactConsentDebugPage from "./pages/Settings/ContactConsentDebugPage";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -683,6 +684,16 @@ function App() {
                 <FeatureGuard codes={WORKSPACE_PERMS.settings}>
                   <ChangePasswordPage />
                 </FeatureGuard>
+              }
+            />
+            <Route
+              path="settings/contact-consent-debug"
+              element={
+                <AdminRouteGuard>
+                  <FeatureGuard codes={WORKSPACE_PERMS.settings}>
+                    <ContactConsentDebugPage />
+                  </FeatureGuard>
+                </AdminRouteGuard>
               }
             />
             {/* ----- Admin Workspace + tools ----- */}

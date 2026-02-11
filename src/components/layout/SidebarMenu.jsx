@@ -72,6 +72,7 @@ export default function SidebarMenu() {
 
   const safeRole = String(role || "").toLowerCase();
   const isSuper = safeRole === "superadmin";
+  const isSettingsAdmin = safeRole === "superadmin" || safeRole === "admin";
   const superAccess = isSuper || !!hasAllAccess;
 
   const iconSize = 20;
@@ -472,6 +473,13 @@ export default function SidebarMenu() {
         icon: <Lock size={18} />,
         show: showSettings,
         featureKey: FK.SETTINGS_ROLE_PERMISSIONS_MAPPING,
+      },
+      {
+        label: "Contact Consent Debug",
+        path: "/app/settings/contact-consent-debug",
+        icon: <SlidersHorizontal size={18} />,
+        show: showSettings && isSettingsAdmin,
+        featureKey: null,
       },
       {
         label: "WhatsApp Api Integration",

@@ -33,8 +33,8 @@ COPY --from=builder /app/build /usr/share/nginx/html
 #    This is the step that makes the routing work!
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 8090
-EXPOSE 8090
+# Expose port 3060
+EXPOSE 3064
 
 # Start Nginx
 CMD ["nginx", "-g", "daemon off;"]

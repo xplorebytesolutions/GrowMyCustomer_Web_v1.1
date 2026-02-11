@@ -1,0 +1,15 @@
+{
+  "short_name": "GrowMyCustomer",
+  "name": "GrowMyCustomer - WhatsApp Marketing & Automation",
+  "icons": [
+    {
+      "src": "logo/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
