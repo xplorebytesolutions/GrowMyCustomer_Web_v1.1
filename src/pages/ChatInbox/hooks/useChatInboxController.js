@@ -12,6 +12,15 @@ import { toIsoFromDatetimeLocal } from "../utils/dateUtils";
 import { formatDayLabel } from "../utils/formatters";
 import { parseConversationStatus } from "../utils/parseConversationStatus";
 
+const normalizeConversationMode = value => {
+  const raw = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (raw === "agent") return "agent";
+  if (raw === "auto" || raw === "automation") return "automation";
+  return "automation";
+};
+
 const normalizePagedResult = data => {
   if (Array.isArray(data)) {
     return { items: data, nextCursor: null, hasMore: false };
@@ -48,6 +57,8 @@ const CHAT_INBOX_ALLOWED_MIME_TYPES = new Set([
   "audio/ogg",
 ]);
 
+const TEMPLATE_HEADER_NONE = "none";
+
 const inferChatInboxMediaType = mime => {
   const base = String(mime || "")
     .split(";")[0]
@@ -57,6 +68,131 @@ const inferChatInboxMediaType = mime => {
   if (base.startsWith("video/")) return "video";
   if (base.startsWith("audio/")) return "audio";
   return "image";
+};
+
+const normalizeRecipientNumber = value => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (/^\d{10}$/.test(digits)) return `91${digits}`;
+  return digits;
+};
+
+const normalizeTemplateHeaderKind = template => {
+  const raw = String(template?.headerKind || template?.HeaderKind || "")
+    .trim()
+    .toLowerCase();
+  if (raw === "image" || raw === "video" || raw === "document") return raw;
+  return TEMPLATE_HEADER_NONE;
+};
+
+const parseTemplateButtons = template => {
+  const rawButtons =
+    template?.buttonsJson ?? template?.buttons ?? template?.urlButtons ?? null;
+  if (Array.isArray(rawButtons)) return rawButtons;
+  if (typeof rawButtons === "string" && rawButtons.trim().startsWith("[")) {
+    try {
+      const parsed = JSON.parse(rawButtons);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const hasDynamicUrlButton = buttons =>
+  Array.isArray(buttons) &&
+  buttons.some(button => {
+    const subtype = String(button?.SubType || button?.subType || "")
+      .trim()
+      .toLowerCase();
+    const originalUrl = String(
+      button?.ParameterValue ||
+        button?.parameterValue ||
+        button?.Url ||
+        button?.url ||
+        ""
+    );
+    return subtype === "url" || /\{\{\d+\}\}/.test(originalUrl);
+  });
+
+const extractTemplatePlaceholderIndexes = body => {
+  const source = String(body || "");
+  const matches = [...source.matchAll(/\{\{(\d+)\}\}/g)];
+  const unique = new Set();
+  for (const m of matches) {
+    const idx = Number(m?.[1] || 0);
+    if (Number.isFinite(idx) && idx > 0) unique.add(idx);
+  }
+  return [...unique].sort((a, b) => a - b);
+};
+
+const toTemplateParamArray = value => {
+  if (Array.isArray(value)) {
+    return value.map(v => (v == null ? "" : String(v)));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value)
+      .sort((a, b) => {
+        const ka = Number(a[0]);
+        const kb = Number(b[0]);
+        const aOk = Number.isFinite(ka);
+        const bOk = Number.isFinite(kb);
+        if (aOk && bOk) return ka - kb;
+        if (aOk) return -1;
+        if (bOk) return 1;
+        return String(a[0]).localeCompare(String(b[0]));
+      })
+      .map(([, v]) => (v == null ? "" : String(v)));
+  }
+
+  return [];
+};
+
+const resolveTemplateParameters = (templateMeta, placeholderIndexes) => {
+  const fromMeta =
+    templateMeta?.parameters ??
+    templateMeta?.templateParameters ??
+    templateMeta?.templateParameterValues ??
+    templateMeta?.bodyParameters ??
+    templateMeta?.bodyParams ??
+    templateMeta?.variables ??
+    templateMeta?.parameterMap ??
+    null;
+
+  const values = toTemplateParamArray(fromMeta);
+  if (placeholderIndexes.length === 0) return values;
+
+  return placeholderIndexes.map((idx, pos) => {
+    const oneBased = values[idx - 1];
+    if (oneBased !== undefined) return oneBased;
+    const byPos = values[pos];
+    return byPos !== undefined ? byPos : "";
+  });
+};
+
+const renderTemplateBodyPreview = (body, parameters) => {
+  let resolved = String(body || "");
+  if (!resolved) return "";
+  const vars = Array.isArray(parameters) ? parameters : [];
+  for (let i = 0; i < vars.length; i += 1) {
+    const token = `{{${i + 1}}}`;
+    resolved = resolved.split(token).join(String(vars[i] ?? ""));
+  }
+  return resolved.trim();
+};
+
+const normalizeTemplateUrlButtonParams = templateMeta => {
+  const raw =
+    templateMeta?.urlButtonParams ??
+    templateMeta?.dynamicUrlParams ??
+    templateMeta?.urlParameters ??
+    [];
+
+  return toTemplateParamArray(raw)
+    .map(v => v.trim())
+    .filter(Boolean);
 };
 
 const toFiniteNumberOrNull = value => {
@@ -160,6 +296,8 @@ export function useChatInboxController() {
   // 🔹 CRM summary for right panel
   const [contactSummary, setContactSummary] = useState(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+  const [conversationContext, setConversationContext] = useState(null);
+  const [isContextLoading, setIsContextLoading] = useState(false);
 
   // 🔹 Quick CRM actions (notes + reminders)
   const [noteDraft, setNoteDraft] = useState("");
@@ -966,7 +1104,7 @@ export function useChatInboxController() {
             isAssignedToMe: !!item.isAssignedToMe,
             sourceType: item.sourceType || "WhatsApp",
             sourceName: item.sourceName || "WhatsApp",
-            mode: item.mode || "Live",
+            mode: normalizeConversationMode(item.mode ?? item.Mode),
             firstSeenAt: item.firstSeenAt,
             lastInboundAt: item.lastInboundAt,
             lastOutboundAt: item.lastOutboundAt,
@@ -1072,7 +1210,7 @@ export function useChatInboxController() {
             isAssignedToMe: !!item.isAssignedToMe,
             sourceType: item.sourceType || "WhatsApp",
             sourceName: item.sourceName || "WhatsApp",
-            mode: item.mode || "Live",
+            mode: normalizeConversationMode(item.mode ?? item.Mode),
             firstSeenAt: item.firstSeenAt,
             lastInboundAt: item.lastInboundAt,
             lastOutboundAt: item.lastOutboundAt,
@@ -1580,6 +1718,26 @@ export function useChatInboxController() {
     }
   }, [selectedContactId]);
 
+  const refreshConversationContext = useCallback(async () => {
+    if (!selectedContactId) {
+      setConversationContext(null);
+      return;
+    }
+
+    try {
+      setIsContextLoading(true);
+      const res = await axiosClient.get(
+        `/chat-inbox/context?contactId=${encodeURIComponent(selectedContactId)}`
+      );
+      const payload = res.data?.data ?? res.data;
+      setConversationContext(payload || null);
+    } catch {
+      setConversationContext(null);
+    } finally {
+      setIsContextLoading(false);
+    }
+  }, [selectedContactId]);
+
   useEffect(() => {
     if (!selectedContactId) {
       setContactSummary(null);
@@ -1587,6 +1745,14 @@ export function useChatInboxController() {
     }
     refreshContactSummary();
   }, [selectedContactId, refreshContactSummary]);
+
+  useEffect(() => {
+    if (!selectedContactId) {
+      setConversationContext(null);
+      return;
+    }
+    refreshConversationContext();
+  }, [selectedContactId, refreshConversationContext]);
 
   // ✅ Remove/unassign tag from contact (MVP)
   const handleRemoveTag = useCallback(
@@ -2382,6 +2548,245 @@ export function useChatInboxController() {
     }
   };
 
+  const handleSendTemplateMessage = async templateMeta => {
+    if (!selectedConversation) {
+      toast.warn("Please select a conversation first.");
+      return false;
+    }
+
+    if (isConversationClosed) {
+      toast.warn("This conversation is closed. Reopen it to reply.");
+      return false;
+    }
+
+    const businessId = localStorage.getItem("businessId");
+    if (!businessId) {
+      toast.error("Missing business context. Please login again.");
+      return false;
+    }
+
+    if (isSending) return false;
+
+    const templateName = String(
+      templateMeta?.name ?? templateMeta?.Name ?? ""
+    ).trim();
+    const languageCode = String(
+      templateMeta?.languageCode ??
+        templateMeta?.LanguageCode ??
+        templateMeta?.language ??
+        templateMeta?.Language ??
+        "en_US"
+    ).trim();
+    if (!templateName) {
+      toast.error("Select a valid template.");
+      return false;
+    }
+
+    const recipientNumber =
+      normalizeRecipientNumber(selectedConversation?.contactPhone) ||
+      String(selectedConversation?.contactPhone || "").trim();
+    if (!recipientNumber) {
+      toast.error("Missing recipient number for this conversation.");
+      return false;
+    }
+
+    setIsSending(true);
+    let tempId = null;
+
+    try {
+      const normalizeStatus = raw => {
+        const s = String(raw || "")
+          .trim()
+          .toLowerCase();
+        if (!s) return null;
+        if (s.includes("fail") || s.includes("error") || s.includes("reject"))
+          return "Failed";
+        if (s.includes("read") || s === "seen" || s === "viewed") return "Read";
+        if (s.includes("deliver")) return "Delivered";
+        if (s === "sent") return "Sent";
+        if (
+          s.includes("queue") ||
+          s.includes("send") ||
+          s === "pending" ||
+          s.includes("accept") ||
+          s.includes("submit") ||
+          s.includes("process")
+        ) {
+          return "Queued";
+        }
+        return "Queued";
+      };
+
+      const languagePart = languageCode
+        ? `?language=${encodeURIComponent(languageCode)}`
+        : "";
+      const detailsRes = await axiosClient.get(
+        `templates/${businessId}/${encodeURIComponent(templateName)}${languagePart}`
+      );
+      const details = detailsRes?.data?.template || detailsRes?.data || {};
+
+      const body = String(details?.body ?? details?.Body ?? "").trim();
+      const placeholderIndexes = extractTemplatePlaceholderIndexes(body);
+      const headerKind = normalizeTemplateHeaderKind(
+        templateMeta?.headerKind ??
+          templateMeta?.HeaderKind ??
+          details?.headerKind ??
+          details?.HeaderKind
+      );
+      const headerMediaUrl = String(
+        templateMeta?.headerMediaUrl ??
+          templateMeta?.HeaderMediaUrl ??
+          templateMeta?.mediaUrl ??
+          templateMeta?.MediaUrl ??
+          ""
+      ).trim();
+      const parameters = resolveTemplateParameters(
+        templateMeta,
+        placeholderIndexes
+      );
+      const buttonParams = parseTemplateButtons(details);
+      const dynamicUrlParams = normalizeTemplateUrlButtonParams(templateMeta);
+
+      if (
+        placeholderIndexes.length > 0 &&
+        (parameters.length < placeholderIndexes.length ||
+          parameters.slice(0, placeholderIndexes.length).some(v => !v.trim()))
+      ) {
+        toast.warn("Fill all template variables before sending.");
+        return false;
+      }
+
+      if (
+        headerKind !== TEMPLATE_HEADER_NONE &&
+        headerKind !== "text" &&
+        !headerMediaUrl
+      ) {
+        toast.warn("This template header requires media. Attach header media.");
+        return false;
+      }
+
+      if (hasDynamicUrlButton(buttonParams) && dynamicUrlParams.length === 0) {
+        toast.warn("Fill dynamic URL button parameters before sending.");
+        return false;
+      }
+
+      tempId = `temp-template-${Date.now()}`;
+      const nowIso = new Date().toISOString();
+      const previewText =
+        renderTemplateBodyPreview(body, parameters) ||
+        body ||
+        `Template: ${templateName}`;
+
+      const optimisticMsg = {
+        id: tempId,
+        clientMessageId: tempId,
+        direction: "out",
+        isInbound: false,
+        text: previewText,
+        mediaId: null,
+        mediaType: null,
+        fileName: null,
+        mimeType: null,
+        sentAt: nowIso,
+        status: "Queued",
+        errorMessage: null,
+        messageKind: "Template",
+        templateName,
+        templateLanguage: languageCode || "en_US",
+      };
+
+      setMessages(prev => [...prev, optimisticMsg]);
+
+      const payload = {
+        businessId,
+        conversationId: selectedConversation.id,
+        contactId: selectedConversation.contactId,
+        to: recipientNumber,
+        numberId: selectedConversation.numberId,
+        sendMode: "template",
+        templateName,
+        templateLanguage: languageCode || "en_US",
+        parameters,
+        templateHeaderKind: headerKind,
+        headerMediaUrl: headerMediaUrl || null,
+        urlButtonParams: hasDynamicUrlButton(buttonParams)
+          ? dynamicUrlParams
+          : [],
+        templateBody: body || "",
+        clientMessageId: tempId,
+      };
+
+      const res = await axiosClient.post("/chat-inbox/send-message", payload);
+      const saved = res?.data || {};
+      const normalizedStatus = normalizeStatus(saved.status) || "Queued";
+      const sentAtIso =
+        saved.sentAtUtc || saved.sentAt || saved.createdAt || nowIso;
+      const savedText = String(saved.text ?? saved.Text ?? previewText).trim();
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === tempId
+            ? {
+                ...m,
+                serverId: saved.id ?? null,
+                messageId:
+                  saved.messageId ??
+                  saved.wamid ??
+                  saved.waMessageId ??
+                  saved.providerMessageId ??
+                  null,
+                sentAt: sentAtIso,
+                status: normalizedStatus,
+                text: savedText || m.text,
+                errorMessage: saved.errorMessage || null,
+                messageKind: saved.messageKind ?? saved.MessageKind ?? "Template",
+                templateName:
+                  saved.templateName ?? saved.TemplateName ?? templateName,
+                templateLanguage:
+                  saved.templateLanguage ??
+                  saved.TemplateLanguage ??
+                  (languageCode || "en_US"),
+                templateSnapshotJson:
+                  saved.templateSnapshotJson ?? saved.TemplateSnapshotJson ?? null,
+              }
+            : m
+        )
+      );
+
+      setAllConversations(prev =>
+        prev.map(c =>
+          c.id === selectedConversation.id
+            ? {
+                ...c,
+                lastMessagePreview: savedText || previewText,
+                lastMessageAt: sentAtIso,
+                lastOutboundAt: sentAtIso,
+              }
+            : c
+        )
+      );
+
+      scrollToBottom();
+      toast.success("Template sent.");
+      return true;
+    } catch (error) {
+      console.error("Failed to send template message:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to send template message."
+      );
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === tempId
+            ? { ...m, status: "Failed", errorMessage: "Not delivered" }
+            : m
+        )
+      );
+      return false;
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const handleUploadAndSendMedia = async file => {
     if (!file) return;
 
@@ -3122,6 +3527,7 @@ export function useChatInboxController() {
     confirmState,
     connection,
     contactSummary,
+    conversationContext,
     conversationsHasMore,
     conversationsNextCursor,
     conversationsRef,
@@ -3147,6 +3553,7 @@ export function useChatInboxController() {
     handleReceiveInboxMessage,
     handleRemoveTag,
     handleSendMessage,
+    handleSendTemplateMessage,
     handleUploadAndSendMedia,
     handleSendLocation,
     handleOpenMedia,
@@ -3163,6 +3570,7 @@ export function useChatInboxController() {
     headerIsAssignedToMe,
     isAssigning,
     isConnected,
+    isContextLoading,
     isLoading,
     isConversationsLoadingMore,
     isMessagesLoading,
@@ -3192,6 +3600,7 @@ export function useChatInboxController() {
     recentNotes,
     recentTimeline,
     refreshContactSummary,
+    refreshConversationContext,
     reminderDescription,
     reminderDueAt,
     reminderTitle,
@@ -3208,6 +3617,7 @@ export function useChatInboxController() {
     setConfirmBusy,
     setConfirmState,
     setContactSummary,
+    setConversationContext,
     setEditNoteContent,
     setEditReminderDescription,
     setEditReminderDueAt,
@@ -3221,6 +3631,7 @@ export function useChatInboxController() {
     setIsSavingReminder,
     setIsSending,
     setIsUploadingMedia,
+    setIsContextLoading,
     setIsSummaryLoading,
     setIsTagModalOpen,
     setIsUpdatingNote,

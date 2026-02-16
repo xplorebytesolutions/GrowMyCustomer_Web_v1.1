@@ -1,6 +1,7 @@
 import React from "react";
 import { X, Zap, StickyNote, LayoutTemplate } from "lucide-react";
 import QuickReplyPicker from "./QuickReplyPicker";
+import { TemplateSendModal } from "./modals/TemplateSendModal";
 
 const TABS = [
   { id: "quickReply", label: "Quick replies", Icon: Zap },
@@ -12,7 +13,7 @@ const PLACEHOLDERS = {
   quickReply: "Quick replies UI goes here",
   notes: "Notes UI goes here",
   tag: "Tag UI goes here",
-  template: "Template UI goes here",
+  template: "Template sending is available in a modal.",
 };
 
 export function ComposerTabs({
@@ -20,17 +21,24 @@ export function ComposerTabs({
   setOpenTab,
   composerRef,
   onQuickReplyInsert,
+  selectedConversation,
+  isTemplateSendDisabled,
+  isTemplateSending,
+  onTemplateSend,
 }) {
-  const isOpen = openTab !== null;
+  const isTemplateModalOpen = openTab === "template";
+  const isPanelOpen = openTab !== null && !isTemplateModalOpen;
+
   const active = TABS.find(t => t.id === openTab) || null;
   const notesTab = TABS.find(t => t.id === "notes") || null;
   const leftTabs = TABS.filter(t => t.id !== "notes");
+
   const close = React.useCallback(() => {
     if (typeof setOpenTab === "function") setOpenTab(null);
   }, [setOpenTab]);
 
   React.useEffect(() => {
-    if (!isOpen) return;
+    if (!isPanelOpen) return;
 
     const onMouseDown = e => {
       const target = e.target;
@@ -52,23 +60,30 @@ export function ComposerTabs({
       document.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("keydown", onKeyDown, { capture: true });
     };
-  }, [isOpen, close, composerRef]);
+  }, [isPanelOpen, close, composerRef]);
 
   const panelId = "chatinbox-composer-panel";
 
   return (
     <div className="relative w-full">
-      {/* Sliding panel (anchored to composer, expands upward) */}
+      <TemplateSendModal
+        open={isTemplateModalOpen}
+        onClose={close}
+        selectedConversation={selectedConversation}
+        isTemplateSendDisabled={isTemplateSendDisabled}
+        isTemplateSending={isTemplateSending}
+        onSendTemplate={onTemplateSend}
+      />
+
       <div
         id={panelId}
-        aria-hidden={!isOpen}
-        className={`absolute left-0 right-0 bottom-full mb-1 overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm transform-gpu transition-[transform,opacity] duration-150 ease-out flex flex-col max-h-[240px] ${
-          isOpen
+        aria-hidden={!isPanelOpen}
+        className={`absolute left-0 right-0 bottom-full mb-1 overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm transform-gpu transition-[transform,opacity] duration-150 ease-out flex flex-col max-h-[280px] ${
+          isPanelOpen
             ? "opacity-100 translate-y-0 pointer-events-auto"
             : "opacity-0 translate-y-2 pointer-events-none"
         }`}
       >
-        {/* Compact inline header row: tabs + close */}
         <div className="shrink-0 flex items-center gap-2 px-2 pt-2 pb-1.5 border-b border-slate-200/70">
           <div
             className="flex items-center gap-3 min-w-0 flex-1"
@@ -103,33 +118,35 @@ export function ComposerTabs({
               );
             })}
 
-            {notesTab ? (() => {
-              const isActive = openTab === notesTab.id;
-              const Icon = notesTab.Icon;
-              return (
-                <button
-                  key={notesTab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  className={`ml-auto inline-flex items-center gap-1.5 text-[13px] leading-none px-0.5 pb-1 border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70 rounded-sm ${
-                    isActive
-                      ? "border-emerald-600 text-slate-900 font-semibold"
-                      : "border-transparent text-slate-600 hover:text-slate-800"
-                  }`}
-                  onClick={() => setOpenTab?.(notesTab.id)}
-                >
-                  {Icon ? (
-                    <Icon
-                      className={`w-3.5 h-3.5 ${
-                        isActive ? "text-emerald-600" : "text-slate-400"
+            {notesTab
+              ? (() => {
+                  const isActive = openTab === notesTab.id;
+                  const Icon = notesTab.Icon;
+                  return (
+                    <button
+                      key={notesTab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`ml-auto inline-flex items-center gap-1.5 text-[13px] leading-none px-0.5 pb-1 border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70 rounded-sm ${
+                        isActive
+                          ? "border-emerald-600 text-slate-900 font-semibold"
+                          : "border-transparent text-slate-600 hover:text-slate-800"
                       }`}
-                    />
-                  ) : null}
-                  {notesTab.label}
-                </button>
-              );
-            })() : null}
+                      onClick={() => setOpenTab?.(notesTab.id)}
+                    >
+                      {Icon ? (
+                        <Icon
+                          className={`w-3.5 h-3.5 ${
+                            isActive ? "text-emerald-600" : "text-slate-400"
+                          }`}
+                        />
+                      ) : null}
+                      {notesTab.label}
+                    </button>
+                  );
+                })()
+              : null}
           </div>
 
           <button

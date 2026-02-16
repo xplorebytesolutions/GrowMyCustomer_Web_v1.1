@@ -28,6 +28,7 @@ import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
 import ConnectionSummaryCard from "../../components/WhatsApp/ConnectionSummaryCard";
 import MetaPinActivationModal from "../../components/modals/MetaPinActivationModal";
+import HelpCenterModal from "../../components/helpcenter/HelpCenterModal";
 
 const isGuid = v =>
   !!v &&
@@ -303,6 +304,7 @@ export default function WelcomePage() {
 
   const [showMigration, setShowMigration] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [migrationSubmitted, setMigrationSubmitted] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
@@ -539,40 +541,51 @@ export default function WelcomePage() {
             </p>
           </div>
 
-          {/* Progress Circle Visual */}
-          <div className="flex items-center gap-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="relative h-16 w-16 flex items-center justify-center">
-              <svg
-                className="h-full w-full -rotate-90 text-slate-100"
-                viewBox="0 0 36 36"
-              >
-                <path
-                  className="text-slate-100"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="text-emerald-500 drop-shadow-md transition-all duration-1000 ease-out"
-                  strokeDasharray={`${progressPercent}, 100`}
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-              </svg>
-              <span className="absolute text-xs font-bold text-slate-700">
-                {progressPercent}%
-              </span>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">
-                {completedSteps} of {totalSteps} Steps Complete
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                {progressPercent === 100 ? "Ready to grow!" : `Next: ${whatsappConnected ? "Choose a Plan" : "Connect WhatsApp"}`}
-              </p>
+          <div className="flex flex-col items-start md:items-end gap-3">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-lg bg-white border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
+              onClick={() => setShowHelpCenter(true)}
+            >
+              <MessageCircle size={16} className="text-emerald-600" />
+              Help & Support
+            </button>
+
+            {/* Progress Circle Visual */}
+            <div className="flex items-center gap-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="relative h-16 w-16 flex items-center justify-center">
+                <svg
+                  className="h-full w-full -rotate-90 text-slate-100"
+                  viewBox="0 0 36 36"
+                >
+                  <path
+                    className="text-slate-100"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="text-emerald-500 drop-shadow-md transition-all duration-1000 ease-out"
+                    strokeDasharray={`${progressPercent}, 100`}
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                </svg>
+                <span className="absolute text-xs font-bold text-slate-700">
+                  {progressPercent}%
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  {completedSteps} of {totalSteps} Steps Complete
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {progressPercent === 100 ? "Ready to grow!" : `Next: ${whatsappConnected ? "Choose a Plan" : "Connect WhatsApp"}`}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -633,6 +646,11 @@ export default function WelcomePage() {
           onClose={closePinModal}
           businessId={businessId}
           onSuccess={handlePinSuccess}
+        />
+
+        <HelpCenterModal
+          isOpen={showHelpCenter}
+          onClose={() => setShowHelpCenter(false)}
         />
 
       </div>

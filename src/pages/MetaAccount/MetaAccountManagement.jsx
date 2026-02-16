@@ -628,8 +628,8 @@ export default function MetaAccountManagement() {
             {renderStatusPanel()}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Soft disconnect card */}
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all">
+              {/* Soft disconnect card - HIDDEN TEMPORARILY */}
+              {/* <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all">
                 <div className="p-5 border-b border-slate-50 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
@@ -664,7 +664,7 @@ export default function MetaAccountManagement() {
                     </p>
                   )}
                 </div>
-              </div>
+              </div> */}
 
               {/* Hard delete card */}
               <div className="bg-white rounded-xl border border-rose-100 shadow-sm overflow-hidden hover:shadow-md transition-all">

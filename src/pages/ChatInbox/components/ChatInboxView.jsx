@@ -13,6 +13,7 @@ export function ChatInboxView(props) {
     confirmBusy,
     confirmState,
     contactSummary,
+    conversationContext,
     currentUserId,
     editNoteContent,
     editReminderDescription,
@@ -38,6 +39,7 @@ export function ChatInboxView(props) {
     ensurePdfPreview,
     handleRemoveTag,
     handleSendMessage,
+    handleSendTemplateMessage,
     handleUploadAndSendMedia,
     handleSendLocation,
     handleUnassign,
@@ -49,6 +51,7 @@ export function ChatInboxView(props) {
     headerIsAssignedToMe,
     isAssigning,
     isConnected,
+    isContextLoading,
     isLoading,
     isConversationsLoadingMore,
     isMessagesLoading,
@@ -172,6 +175,7 @@ export function ChatInboxView(props) {
         isSending={isSending}
         isUploadingMedia={isUploadingMedia}
         handleSendMessage={handleSendMessage}
+        handleSendTemplateMessage={handleSendTemplateMessage}
         handleUploadAndSendMedia={handleUploadAndSendMedia}
         handleSendLocation={handleSendLocation}
         handleOpenMedia={handleOpenMedia}
@@ -210,7 +214,9 @@ export function ChatInboxView(props) {
         selectedConversation={selectedConversation}
         selectedContactId={selectedContactId}
         contactSummary={contactSummary}
+        conversationContext={conversationContext}
         isSummaryLoading={isSummaryLoading}
+        isContextLoading={isContextLoading}
         showRightPanel={showRightPanel}
         setShowDetails={setShowDetails}
         showCrmPanel={showCrmPanel}

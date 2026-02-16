@@ -15,11 +15,22 @@ import {
 } from "lucide-react";
 import { formatDateTime } from "../utils/formatters";
 
+const formatEntrySourceLabel = value => {
+  const raw = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (raw === "campaign") return "Campaign";
+  if (raw === "automation" || raw === "auto") return "Automation";
+  return "Direct";
+};
+
 export function RightPanel({
   selectedConversation,
   selectedContactId,
   contactSummary,
+  conversationContext,
   isSummaryLoading,
+  isContextLoading,
   showRightPanel,
   setShowDetails,
   showCrmPanel,
@@ -67,6 +78,29 @@ export function RightPanel({
     React.useState(false);
   const [showQuickNoteForm, setShowQuickNoteForm] = React.useState(false);
   const [activityExpanded, setActivityExpanded] = React.useState(false);
+
+  const campaignName =
+    conversationContext?.campaignName ?? conversationContext?.CampaignName;
+  const templateName =
+    conversationContext?.templateName ?? conversationContext?.TemplateName;
+  const templateLanguage =
+    conversationContext?.templateLanguage ??
+    conversationContext?.TemplateLanguage;
+  const entrySource =
+    conversationContext?.entrySource ?? conversationContext?.EntrySource;
+  const escalation =
+    conversationContext?.escalation ?? conversationContext?.Escalation;
+  const escalationMarker = escalation?.marker ?? escalation?.Marker;
+  const escalationAtUtc =
+    escalation?.escalatedAtUtc ?? escalation?.EscalatedAtUtc;
+  const lastFlowStep =
+    conversationContext?.lastFlowStep ?? conversationContext?.LastFlowStep;
+  const journeyState =
+    conversationContext?.journeyState ?? conversationContext?.JourneyState;
+  const lastFlowStepName =
+    lastFlowStep?.stepName ?? lastFlowStep?.StepName ?? null;
+  const lastJourneyText =
+    journeyState?.journeyText ?? journeyState?.JourneyText ?? null;
 
   if (!showRightPanel) return null;
 
@@ -161,6 +195,57 @@ export function RightPanel({
                     <div className="text-slate-400">Status</div>
                     <div className="font-medium">{normalizedStatus}</div>
                   </div>
+                </div>
+
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-[11px]">
+                  <div className="font-semibold text-slate-700 mb-1">
+                    Conversation context
+                  </div>
+
+                  {isContextLoading ? (
+                    <div className="text-slate-400">Loading context...</div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-400">Entry source</span>
+                        <span className="font-medium text-slate-700">
+                          {formatEntrySourceLabel(entrySource)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-400">Campaign</span>
+                        <span className="font-medium text-slate-700 text-right">
+                          {campaignName || "N/A"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-400">Template</span>
+                        <span className="font-medium text-slate-700 text-right">
+                          {templateName
+                            ? `${templateName}${templateLanguage ? ` (${templateLanguage})` : ""}`
+                            : "N/A"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-400">Escalation</span>
+                        <span className="font-medium text-slate-700 text-right">
+                          {escalationAtUtc
+                            ? `${escalationMarker === "TalkToTeam" ? "Talk to Team" : "Agent mode"} at ${formatDateTime(escalationAtUtc)}`
+                            : "N/A"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-400">Last flow step</span>
+                        <span className="font-medium text-slate-700 text-right">
+                          {lastFlowStepName || lastJourneyText || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="h-px bg-slate-200 my-2" />

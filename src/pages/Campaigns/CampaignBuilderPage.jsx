@@ -105,13 +105,20 @@ export default function CampaignBuilderPage() {
     return `campaignBuilder.selectedTemplate.${businessId}`;
   }, [businessId, hasValidBusiness]);
 
+  const formStateStorageKey = useMemo(() => {
+    if (!hasValidBusiness) return null;
+    return `campaignBuilder.formState.${businessId}`;
+  }, [businessId, hasValidBusiness]);
+
+  const formRestoreAttemptedRef = useRef(false);
+
   const createdBy = localStorage.getItem("userId");
   const navigate = useNavigate();
 
   // ---------- Helpers ----------
   const checkNameAvailability = async name => {
     setNameError("");
-    if (!name?.trim() || !hasValidBusiness) return;
+    if (!name?.trim() || !hasValidBusiness) return true;
     try {
       setCheckingName(true);
       const { data } = await axiosClient.get(`campaign/check-name`, {
@@ -119,11 +126,14 @@ export default function CampaignBuilderPage() {
       });
       if (data?.available === false) {
         setNameError("Name already exists.");
+        return false;
       } else {
         setNameError("");
+        return true;
       }
     } catch {
       setNameError("");
+      return true;
     } finally {
       setCheckingName(false);
     }
@@ -480,6 +490,129 @@ export default function CampaignBuilderPage() {
     }
   }, [selectedTemplateOption, templateSelectionStorageKey]);
 
+  // Restore in-progress form values after refreshes (e.g., file picker / upload).
+  useEffect(() => {
+    if (!hasValidBusiness) return;
+    if (!formStateStorageKey) return;
+    if (formRestoreAttemptedRef.current) return;
+    formRestoreAttemptedRef.current = true;
+
+    try {
+      const raw = sessionStorage.getItem(formStateStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+
+      if (!campaignName && typeof parsed?.campaignName === "string") {
+        setCampaignName(parsed.campaignName);
+      }
+      if (!selectedSenderId && typeof parsed?.selectedSenderId === "string") {
+        setSelectedSenderId(parsed.selectedSenderId);
+      }
+      if (
+        scheduleMode === "now" &&
+        (parsed?.scheduleMode === "now" || parsed?.scheduleMode === "later")
+      ) {
+        setScheduleMode(parsed.scheduleMode);
+      }
+      if (!scheduledAt && typeof parsed?.scheduledAt === "string") {
+        setScheduledAt(parsed.scheduledAt);
+      }
+      if (typeof parsed?.useCsvPersonalization === "boolean") {
+        setUseCsvPersonalization(parsed.useCsvPersonalization);
+      }
+      if (typeof parsed?.useFlow === "boolean") {
+        setUseFlow(parsed.useFlow);
+      }
+      if (!selectedFlowId && typeof parsed?.selectedFlowId === "string") {
+        setSelectedFlowId(parsed.selectedFlowId);
+      }
+    } catch {
+      // no-op
+    }
+  }, [
+    hasValidBusiness,
+    formStateStorageKey,
+    campaignName,
+    selectedSenderId,
+    scheduleMode,
+    scheduledAt,
+    useCsvPersonalization,
+    useFlow,
+    selectedFlowId,
+  ]);
+
+  // Restore uploaded header media handle/url once the template has loaded.
+  useEffect(() => {
+    if (!hasValidBusiness) return;
+    if (!formStateStorageKey) return;
+    if (!selectedTemplate) return;
+    if (headerMediaUrl) return;
+
+    try {
+      const raw = sessionStorage.getItem(formStateStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+
+      const storedUrl = parsed?.headerMediaUrl;
+      if (typeof storedUrl !== "string" || !storedUrl.trim()) return;
+
+      const storedName = parsed?.selectedTemplateName;
+      const storedLanguage = parsed?.selectedTemplateLanguage;
+      if (!storedName || storedName !== selectedTemplate.name) return;
+      if (storedLanguage && storedLanguage !== selectedTemplate.language) return;
+
+      setHeaderMediaUrl(storedUrl);
+    } catch {
+      // no-op
+    }
+  }, [
+    hasValidBusiness,
+    formStateStorageKey,
+    selectedTemplate,
+    headerMediaUrl,
+  ]);
+
+  // Persist in-progress form values so accidental refreshes don't wipe the form.
+  useEffect(() => {
+    if (!hasValidBusiness) return;
+    if (!formStateStorageKey) return;
+
+    try {
+      sessionStorage.setItem(
+        formStateStorageKey,
+        JSON.stringify({
+          selectedTemplateName:
+            selectedTemplateOption?.name || selectedTemplate?.name || null,
+          selectedTemplateLanguage:
+            selectedTemplateOption?.languageCode || selectedTemplate?.language || null,
+          campaignName,
+          selectedSenderId,
+          headerMediaUrl,
+          scheduleMode,
+          scheduledAt,
+          useCsvPersonalization,
+          useFlow,
+          selectedFlowId,
+        })
+      );
+    } catch {
+      // no-op
+    }
+  }, [
+    hasValidBusiness,
+    formStateStorageKey,
+    selectedTemplateOption,
+    selectedTemplate,
+    campaignName,
+    selectedSenderId,
+    headerMediaUrl,
+    scheduleMode,
+    scheduledAt,
+    useCsvPersonalization,
+    useFlow,
+    selectedFlowId,
+  ]);
+
   useEffect(() => {
     if (!hasValidBusiness) return;
     if (!templateSelectionStorageKey) return;
@@ -598,8 +731,8 @@ export default function CampaignBuilderPage() {
     };
 
     try {
-      await checkNameAvailability(campaignName);
-      if (nameError) {
+      const isNameAvailable = await checkNameAvailability(campaignName);
+      if (!isNameAvailable) {
         setSubmitting(false);
         return;
       }
@@ -610,6 +743,11 @@ export default function CampaignBuilderPage() {
       );
       if (res.data?.success && res.data?.campaignId) {
         toast.success("Campaign created successfully.");
+        try {
+          if (formStateStorageKey) sessionStorage.removeItem(formStateStorageKey);
+        } catch {
+          // ignore
+        }
         navigate(
           `/app/campaigns/image-campaigns/assign-contacts/${res.data.campaignId}`
         );
@@ -618,7 +756,9 @@ export default function CampaignBuilderPage() {
       }
     } catch (err) {
       toast.error(
-        err?.response?.data?.message || "Failed to create campaign."
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to create campaign."
       );
     } finally {
       setSubmitting(false);
@@ -772,7 +912,7 @@ export default function CampaignBuilderPage() {
                         </option>
                         {senders.map(s => (
                           <option key={s.id} value={s.id}>
-                            {s.whatsAppNumber} ({s.provider})
+                            {s.whatsAppNumber}
                           </option>
                         ))}
                       </select>

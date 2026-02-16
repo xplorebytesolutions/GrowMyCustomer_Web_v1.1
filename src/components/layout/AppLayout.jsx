@@ -26,7 +26,7 @@ export default function AppLayout() {
       <div className="flex flex-1 overflow-hidden">
       {/* ✅ Sidebar */}
       <div
-        className="w-20 flex-shrink-0 bg-white shadow-xl h-full z-[45] transition-all duration-300"
+        className="relative w-20 flex-shrink-0 bg-[#0a322b] shadow-[10px_0_25px_-5px_rgba(0,0,0,0.25)] h-full z-[45] transition-all duration-300"
       >
         <SidebarMenu />
       </div>

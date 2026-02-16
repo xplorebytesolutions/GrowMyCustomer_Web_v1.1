@@ -9,12 +9,13 @@ import React, {
 } from "react";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
-import WhatsAppBubblePreview from "../../components/WhatsAppBubblePreview";
 import TemplateCard from "./components/templates/TemplateCard";
 import normalizeCampaign from "../../utils/normalizeTemplate";
 import { useNavigate } from "react-router-dom";
 import { Menu, Portal, Transition } from "@headlessui/react";
 import { Fragment } from "react";
+import { Dialog, DialogContent } from "../../components/ui/dialog";
+import WhatsAppTemplatePreview from "../TemplateBuilder/components/WhatsAppTemplatePreview";
 import {
   FaSearch,
   FaSyncAlt,
@@ -31,6 +32,7 @@ import {
   FaEllipsisV,
   FaHistory,
   FaRegClock,
+  FaTimes,
 } from "react-icons/fa";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -48,6 +50,7 @@ function clamp(value, min, max) {
 
 function CampaignRowMoreMenu({
   hasRecipients,
+  canViewLogs,
   canDelete,
   onPreview,
   onViewRecipients,
@@ -73,6 +76,7 @@ function CampaignRowMoreMenu({
             open={open}
             buttonRef={buttonRef}
             hasRecipients={hasRecipients}
+            canViewLogs={canViewLogs}
             canDelete={canDelete}
             onPreview={onPreview}
             onViewRecipients={onViewRecipients}
@@ -90,6 +94,7 @@ function CampaignRowMoreMenuItems({
   open,
   buttonRef,
   hasRecipients,
+  canViewLogs,
   canDelete,
   onPreview,
   onViewRecipients,
@@ -236,32 +241,52 @@ function CampaignRowMoreMenuItems({
               )}
             </Menu.Item>
 
-            <Menu.Item>
-              {({ active }) => (
+            <Menu.Item disabled={!canViewLogs}>
+              {({ active, disabled }) => (
                 <button
+                  disabled={disabled}
                   onClick={onViewLogs}
                   className={cx(
-                    active ? "bg-amber-50 text-amber-700" : "text-gray-700",
+                    disabled
+                      ? "text-gray-300 cursor-not-allowed"
+                      : active
+                      ? "bg-amber-50 text-amber-700"
+                      : "text-gray-700",
                     "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm"
                   )}
                 >
-                  <FaHistory className="text-gray-400 group-hover:text-amber-500" />
-                  View Logs
+                  <FaHistory
+                    className={cx(
+                      "text-gray-400 group-hover:text-amber-500",
+                      disabled && "text-gray-300"
+                    )}
+                  />
+                  Clicks Log
                 </button>
               )}
             </Menu.Item>
 
-            <Menu.Item>
-              {({ active }) => (
+            <Menu.Item disabled={!canViewLogs}>
+              {({ active, disabled }) => (
                 <button
+                  disabled={disabled}
                   onClick={onLogReport}
                   className={cx(
-                    active ? "bg-indigo-50 text-indigo-700" : "text-gray-700",
+                    disabled
+                      ? "text-gray-300 cursor-not-allowed"
+                      : active
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "text-gray-700",
                     "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm"
                   )}
                 >
-                  <FaChartBar className="text-gray-400 group-hover:text-indigo-500" />
-                  Log Report
+                  <FaChartBar
+                    className={cx(
+                      "text-gray-400 group-hover:text-indigo-500",
+                      disabled && "text-gray-300"
+                    )}
+                  />
+                  Report
                 </button>
               )}
             </Menu.Item>
@@ -307,71 +332,117 @@ const TYPE_FILTERS = [
   { id: "no_buttons", label: "No Buttons", icon: FaChartBar },
 ];
 
-/* ---------- Inspector Modal ---------- */
-function InspectorModal({ item, onClose }) {
+function extractPlaceholderMax(text) {
+  const source = String(text || "");
+  const regex = /\{\{\s*(\d+)\s*\}\}/g;
+  let max = 0;
+  let match;
+  while ((match = regex.exec(source))) {
+    const num = Number(match[1]);
+    if (Number.isFinite(num) && num > max) max = num;
+  }
+  return max;
+}
+
+function normalizeButtonsForPreview(buttons) {
+  const list = Array.isArray(buttons) ? buttons : [];
+  return list
+    .map(button => {
+      const typeRaw = String(
+        button?.type ||
+          button?.buttonType ||
+          button?.ButtonType ||
+          button?.subType ||
+          button?.SubType ||
+          ""
+      ).toUpperCase();
+      const text = String(
+        button?.text || button?.buttonText || button?.ButtonText || "Button"
+      );
+      const value = String(
+        button?.url ||
+          button?.phoneNumber ||
+          button?.targetUrl ||
+          button?.TargetUrl ||
+          button?.parameterValue ||
+          button?.ParameterValue ||
+          ""
+      );
+
+      if (typeRaw.includes("URL")) return { type: "URL", text, url: value };
+      if (typeRaw.includes("PHONE"))
+        return { type: "PHONE_NUMBER", text, phone_number: value };
+      if (typeRaw.includes("QUICK")) return { type: "QUICK_REPLY", text };
+
+      return { type: typeRaw || "QUICK_REPLY", text };
+    })
+    .slice(0, 3);
+}
+
+function mapCampaignToPreviewDraft(item) {
   if (!item) return null;
 
-  // Normalize fields from different shapes (DB list vs. detail vs. legacy)
-  const messageTemplate =
-    item.body || item.messageBody || item.templateBody || "";
-
-  // Buttons can be `buttons`, `multiButtons`, or a JSON string
-  let buttonsRaw = item.buttons ?? item.multiButtons ?? [];
-  if (typeof buttonsRaw === "string") {
-    try {
-      buttonsRaw = JSON.parse(buttonsRaw);
-    } catch {
-      buttonsRaw = [];
-    }
+  const bodyText = String(item?.body || "");
+  const max = extractPlaceholderMax(bodyText);
+  const examples = [];
+  for (let i = 1; i <= max; i++) {
+    examples.push(i === 1 ? "12345" : `Example ${i}`);
   }
 
-  const imageUrl =
-    item.imageUrl || item.mediaUrl || item.headerImageUrl || undefined;
+  const headerTypeRaw = String(
+    item?.raw?.headerType || item?.raw?.headerKind || item?.raw?.mediaType || ""
+  ).toUpperCase();
 
-  const caption = item.caption || item.imageCaption || "";
+  let headerType = "NONE";
+  if (["TEXT", "IMAGE", "VIDEO", "DOCUMENT"].includes(headerTypeRaw)) {
+    headerType = headerTypeRaw;
+  } else if (item?.imageUrl) {
+    headerType = "IMAGE";
+  }
+
+  return {
+    name: item.name,
+    category: item?.raw?.category || "",
+    language: item?.raw?.languageCode || item?.raw?.language || "en_US",
+    headerType,
+    headerText: String(item?.raw?.headerText || ""),
+    headerMediaUrl: item?.imageUrl || null,
+    bodyText,
+    footerText: String(item?.raw?.footerText || ""),
+    buttons: normalizeButtonsForPreview(item?.buttons),
+    examples,
+  };
+}
+
+/* ---------- Inspector Modal ---------- */
+function InspectorModal({ item, onClose }) {
+  const previewDraft = useMemo(() => mapCampaignToPreviewDraft(item), [item]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+    <Dialog
+      open={!!item}
+      onOpenChange={open => {
+        if (!open) onClose();
+      }}
     >
-      <div
-        className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b px-6 py-4 bg-gradient-to-r from-slate-50 to-emerald-50">
-          <div>
-            <div className="text-lg font-bold text-gray-900">{item.name}</div>
-            <div className="text-sm text-gray-600">Template Preview</div>
+      <DialogContent className="max-w-[380px] p-0 overflow-hidden !border-none !bg-transparent !shadow-none [&>button]:hidden">
+        {previewDraft && (
+          <div className="relative flex w-full flex-col items-center">
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors focus:outline-none"
+              title="Close Preview"
+            >
+              <FaTimes className="h-4 w-4" />
+            </button>
+            <div className="w-full">
+              <WhatsAppTemplatePreview draft={previewDraft} />
+            </div>
           </div>
-          <button
-            className="rounded-xl border border-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-
-        <div className="p-6">
-          <WhatsAppBubblePreview
-            messageTemplate={messageTemplate}
-            multiButtons={buttonsRaw}
-            imageUrl={imageUrl}
-            caption={caption}
-            campaignId={item.id}
-          />
-        </div>
-
-        <div className="flex items-center justify-end gap-3 border-t px-6 py-4 bg-gray-50">
-          <button
-            className="rounded-xl border border-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -515,6 +586,10 @@ function TemplateCampaignList() {
   const [q, setQ] = useState("");
   const [onlyWithRecipients, setOnlyWithRecipients] = useState(false);
   const [sort, setSort] = useState("recent"); // recent | recipients | name
+  const [columnSort, setColumnSort] = useState({
+    key: null, // "name" | "type" | "sentAt" | null
+    dir: "asc", // "asc" | "desc"
+  });
   const [activeType, setActiveType] = useState("all");
   const [viewMode, setViewMode] = useState("table"); // grid | table
   const [inspector, setInspector] = useState(null);
@@ -678,6 +753,23 @@ function TemplateCampaignList() {
     }
 
     list = [...list].sort((a, b) => {
+      if (columnSort.key) {
+        const mult = columnSort.dir === "asc" ? 1 : -1;
+        if (columnSort.key === "name") {
+          return (a.name || "").localeCompare(b.name || "") * mult;
+        }
+        if (columnSort.key === "type") {
+          const at = a.kind === "image_header" ? "Image Header" : "Text Only";
+          const bt = b.kind === "image_header" ? "Image Header" : "Text Only";
+          return at.localeCompare(bt) * mult;
+        }
+        if (columnSort.key === "sentAt") {
+          const ax = new Date(a.sentAt || 0).getTime();
+          const bx = new Date(b.sentAt || 0).getTime();
+          return (ax - bx) * mult;
+        }
+      }
+
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "recipients") return b.recipients - a.recipients;
       const ax = new Date(a.updatedAt || 0).getTime();
@@ -686,10 +778,34 @@ function TemplateCampaignList() {
     });
 
     return list;
-  }, [data, q, onlyWithRecipients, activeType, sort]);
+  }, [data, q, onlyWithRecipients, activeType, sort, columnSort]);
+
+  const toggleColumnSort = key => {
+    setColumnSort(prev => {
+      if (prev.key === key) {
+        return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
+      }
+      return { key, dir: key === "sentAt" ? "desc" : "asc" };
+    });
+  };
+
+  const renderSortMark = key => {
+    if (columnSort.key !== key) return <span className="ml-1 text-slate-300">^</span>;
+    return (
+      <span className="ml-1 text-emerald-600">
+        {columnSort.dir === "asc" ? "↑" : "↓"}
+      </span>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-[#f5f6f7]">
+    <div
+      className="min-h-screen bg-[#f5f6f7] text-[14px] leading-6 text-slate-800 antialiased"
+      style={{
+        fontFamily:
+          '"Manrope","Plus Jakarta Sans","Inter","Segoe UI",system-ui,-apple-system,sans-serif',
+      }}
+    >
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -700,10 +816,10 @@ function TemplateCampaignList() {
                   <FaList className="text-white text-xl" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Template Campaigns
+                  <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-gray-900 leading-tight">
+                    Template List
                   </h1>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="mt-1 text-[13px] font-medium text-gray-600">
                     Manage and send your WhatsApp template campaigns
                   </p>
                 </div>
@@ -718,12 +834,12 @@ function TemplateCampaignList() {
                   value={q}
                   onChange={e => setQ(e.target.value)}
                   placeholder="Search by name or message…"
-                  className="w-full lg:w-72 rounded-xl border border-gray-200 pl-12 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                  className="w-full lg:w-72 rounded-xl border border-gray-200 pl-12 pr-4 py-2.5 text-[14px] font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all shadow-sm"
                 />
               </div>
 
               <div className="flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer select-none">
+                <label className="inline-flex items-center gap-2 text-[14px] font-semibold text-gray-700 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={onlyWithRecipients}
@@ -736,7 +852,7 @@ function TemplateCampaignList() {
                 <select
                   value={sort}
                   onChange={e => setSort(e.target.value)}
-                  className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none shadow-sm cursor-pointer"
+                  className="rounded-xl border border-gray-200 px-3 py-2.5 text-[14px] font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none shadow-sm cursor-pointer"
                 >
                   <option value="recent">Sort: Recent</option>
                   <option value="recipients">Sort: Recipients</option>
@@ -757,7 +873,7 @@ function TemplateCampaignList() {
                 <button
                   key={f.id}
                   className={cx(
-                    "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                    "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-semibold transition-all",
                     isActive
                       ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
                       : "bg-white text-gray-600 border border-transparent hover:bg-emerald-50 hover:text-emerald-700"
@@ -802,7 +918,7 @@ function TemplateCampaignList() {
             </div>
             <button
               onClick={loadCampaigns}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white hover:shadow-sm transition-all bg-white/50"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-[14px] font-semibold text-gray-700 hover:bg-white hover:shadow-sm transition-all bg-white/50"
               title="Refresh"
             >
               <FaSyncAlt className={cx(loading && "animate-spin")} />
@@ -891,15 +1007,41 @@ function TemplateCampaignList() {
         {!loading && view.length > 0 && viewMode === "table" && (
           <div className="overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm">
             <div className="max-h-[70vh] overflow-auto">
-              <table className="w-full text-sm text-slate-900">
-                <thead className="sticky top-0 z-10 bg-gray-100 backdrop-blur text-left text-xs font-semibold tracking-wider text-gray-700 border-b border-gray-200">
+              <table className="w-full text-[14px] text-slate-900">
+                <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[12px] font-semibold uppercase tracking-[0.03em] text-slate-600 border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3 w-4"></th>
-                    <th className="px-4 py-3">Campaign Name</th>
-                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        className="inline-flex items-center hover:text-slate-900"
+                        onClick={() => toggleColumnSort("name")}
+                      >
+                        Campaign Name
+                        {renderSortMark("name")}
+                      </button>
+                    </th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        className="inline-flex items-center hover:text-slate-900"
+                        onClick={() => toggleColumnSort("type")}
+                      >
+                        Type
+                        {renderSortMark("type")}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-center">Recipients</th>
                     <th className="px-4 py-3 text-center">Status</th>
-                    <th className="px-4 py-3">Sent At</th>
+                    <th className="px-4 py-3">
+                      <button
+                        type="button"
+                        className="inline-flex items-center hover:text-slate-900"
+                        onClick={() => toggleColumnSort("sentAt")}
+                      >
+                        Sent At
+                        {renderSortMark("sentAt")}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -907,6 +1049,7 @@ function TemplateCampaignList() {
                   {view.map(t => {
                      const hasRecipients = t.recipients > 0;
                      const statusRaw = (t?.status || "").toString().toLowerCase();
+                     const isDraft = statusRaw === "draft";
                      const isSent =
                        Boolean(t?.sentAt) ||
                        ["sent", "delivered", "dispatched", "completed"].includes(
@@ -915,22 +1058,14 @@ function TemplateCampaignList() {
                      const canDelete = hasRecipients && !isSent;
                       
                      return (
-                      <tr
+                     <tr
                         key={t.id}
                         className={cx(
                           "group hover:bg-gray-200 transition-colors",
                           view.indexOf(t) % 2 === 0 ? "bg-white" : "bg-slate-50/40"
                         )}
                       >
-                        {/* Status Indicator Bar */}
-                        <td className="px-4 py-3 align-middle">
-                           <div className={cx(
-                             "w-1.5 h-8 rounded-full",
-                             hasRecipients ? "bg-emerald-500" : "bg-gray-200"
-                           )} title={hasRecipients ? "Ready to send" : "No recipients assigned"}/>
-                        </td>
-
-                        <td className="px-4 py-3 font-medium text-gray-900 group-hover:text-indigo-800 align-middle">
+                        <td className="px-4 py-3 font-semibold text-gray-900 group-hover:text-indigo-800 align-middle">
                           <span className="truncate max-w-[200px] xl:max-w-[300px]" title={t.name}>
                             {t.name}
                           </span>
@@ -947,23 +1082,23 @@ function TemplateCampaignList() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center align-middle">
-                          <button
-                            disabled={!hasRecipients}
-                            onClick={() =>
-                              navigate(
-                                `/app/campaigns/image-campaigns/assigned-contacts/${t.id}`
-                              )
-                            }
-                            className={cx(
-                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
-                              hasRecipients
-                                ? "bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer"
-                                : "bg-gray-100 text-gray-600 cursor-default"
-                            )}
-                            title={hasRecipients ? "View assigned recipients" : ""}
-                          >
-                            {t.recipients}
-                          </button>
+                          {hasRecipients ? (
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/app/campaigns/image-campaigns/assigned-contacts/${t.id}`
+                                )
+                              }
+                              className="text-sm font-semibold text-slate-800 hover:text-emerald-700"
+                              title="View assigned recipients"
+                            >
+                              {t.recipients}
+                            </button>
+                          ) : (
+                            <span className="text-sm font-medium text-slate-400">
+                              {t.recipients}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-center align-middle">
                           <span
@@ -979,7 +1114,11 @@ function TemplateCampaignList() {
                             )}
                             title={t?.status ? `Status: ${t.status}` : undefined}
                           >
-                            <FaPaperPlane className="opacity-70" />
+                            {isDraft ? (
+                              <FaEdit className="opacity-70" />
+                            ) : (
+                              <FaPaperPlane className="opacity-70" />
+                            )}
                             {isSent ? "Sent" : t?.status || "Pending"}
                           </span>
                         </td>
@@ -997,26 +1136,26 @@ function TemplateCampaignList() {
                             {/* Context-Aware Actions */}
                             {isSent ? (
                                 <>
-                                  <button
-                                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3.5 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
-                                    onClick={() => navigate(`/app/campaigns/logs/${t.id}`)}
-                                  >
-                                    <FaHistory className="text-emerald-600" />
-                                    View Logs
-                                  </button>
-                                  <button
-                                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3.5 py-1.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
-                                    onClick={() => navigate(`/app/campaigns/${t.id}/reports/logs`)}
-                                  >
-                                    <FaChartBar className="text-indigo-600" />
-                                    Log Report
-                                  </button>
+                                <button
+                                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
+                                  onClick={() => navigate(`/app/campaigns/logs/${t.id}`)}
+                                >
+                                  <FaHistory className="text-emerald-600" />
+                                    Clicks Log
+                                </button>
+                                <button
+                                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
+                                  onClick={() => navigate(`/app/campaigns/${t.id}/reports/logs`)}
+                                >
+                                  <FaChartBar className="text-indigo-600" />
+                                    Report
+                                </button>
                                 </>
                             ) : hasRecipients ? (
                               // READY STATE: Show "Send" as primary
                               <>
                                 <button
-                                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 px-3 py-1.5 rounded-md transition-colors"
+                                  className="px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
                                   onClick={() =>
                                     navigate(
                                       `/app/campaigns/image-campaigns/assign-contacts/${t.id}`
@@ -1026,16 +1165,17 @@ function TemplateCampaignList() {
                                   Assign
                                 </button>
                                 <button
-                                  className="ml-2 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all"
+                                  className="ml-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all"
                                   onClick={() => handleSend(t.id)}
                                 >
+                                  <FaPaperPlane className="mr-1.5 inline-block opacity-90" />
                                   Send
                                 </button>
                               </>
                             ) : (
                               // EMPTY STATE: Show "Assign" as primary
                                 <button
-                                  className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all"
+                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all"
                                   onClick={() =>
                                     navigate(
                                       `/app/campaigns/image-campaigns/assign-contacts/${t.id}`
@@ -1049,6 +1189,7 @@ function TemplateCampaignList() {
                             {/* More Dropdown */}
                             <CampaignRowMoreMenu
                               hasRecipients={hasRecipients}
+                              canViewLogs={isSent}
                               canDelete={canDelete}
                               onPreview={() => setInspector(t)}
                               onViewRecipients={() =>

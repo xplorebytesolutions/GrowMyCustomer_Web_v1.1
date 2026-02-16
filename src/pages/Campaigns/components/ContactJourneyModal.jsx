@@ -1499,6 +1499,7 @@ import {
   Copy,
   Filter,
   X,
+  Compass,
 } from "lucide-react";
 
 const formatDate = dt => (dt ? new Date(dt).toLocaleString() : "N/A");
@@ -1616,7 +1617,7 @@ function ContactJourneyModal({ isOpen, onClose, log }) {
           );
         } else {
           setErrorText(raw || "Failed to fetch contact journey.");
-          toast.error(`🚨 ${raw || "Failed to fetch contact journey"}`);
+          toast.error(raw || "Failed to fetch contact journey");
         }
         setJourney({ events: [] });
       } finally {
@@ -1685,7 +1686,7 @@ function ContactJourneyModal({ isOpen, onClose, log }) {
               <Dialog.Panel className="w-full max-w-2xl flex flex-col max-h-[85vh] transform overflow-hidden rounded-xl bg-white shadow-xl transition-all">
                 {/* Header */}
                 <Dialog.Title className="sticky top-0 z-10 bg-white/70 backdrop-blur px-6 pt-6 pb-2 text-base font-semibold text-gray-800 flex items-center gap-2 border-b border-gray-200">
-                  <span className="text-purple-600">🧭</span>
+                  <Compass size={16} className="text-emerald-600" />
                   Contact Journey for {displayPhone}
                   {typeBadge}
                   <div className="ml-auto flex items-center gap-2">
@@ -1782,7 +1783,7 @@ function ContactJourneyModal({ isOpen, onClose, log }) {
                         <div className="flex justify-center pt-2 pb-4">
                           <button
                             onClick={() => setExpanded(v => !v)}
-                            className="text-sm font-semibold text-purple-700 hover:text-purple-800"
+                            className="text-sm font-semibold text-emerald-700 hover:text-emerald-800"
                           >
                             {expanded
                               ? "Show less"
@@ -1804,7 +1805,7 @@ function ContactJourneyModal({ isOpen, onClose, log }) {
                 <div className="flex-shrink-0 px-6 pt-2 pb-4 flex justify-end gap-3 border-t border-gray-200">
                   <button
                     onClick={onClose}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm font-semibold"
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 text-sm font-semibold"
                   >
                     Close
                   </button>
@@ -1878,7 +1879,7 @@ const JourneyEvent = ({ event, isCurrent }) => {
         )}
 
         <p className="text-xs text-gray-400 mt-1">
-          {formatDate(event.timestamp)} • {relTime(event.timestamp)}
+          {formatDate(event.timestamp)} | {relTime(event.timestamp)}
         </p>
       </div>
     </div>

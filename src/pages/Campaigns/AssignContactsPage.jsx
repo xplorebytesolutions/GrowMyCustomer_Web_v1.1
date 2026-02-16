@@ -1,6 +1,6 @@
 // 📄 src/pages/campaigns/AssignContactsPage.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import { toast } from "react-toastify";
 import Papa from "papaparse";
@@ -9,7 +9,7 @@ import TagFilterDropdown from "./components/TagFilterDropdown";
 
 // CSV campaign flow (schema → upload → map → validate → dry-run → commit)
 import CsvAudienceSection from "./components/CsvAudienceSection";
-import { fetchCsvSchema } from "./api/csvApi";
+import { fetchCsvSchema, getCampaignAudience } from "./api/csvApi";
 // function shortId(id = "") {
 //   return id.length > 14 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id;
 // }
@@ -104,13 +104,15 @@ if (typeof document !== "undefined" && process.env.NODE_ENV !== "test") {
 
 export default function AssignContactsPage() {
   const { id: campaignId } = useParams();
+  const navigate = useNavigate();
 
   // ── Campaign + schema
   const [campaign, setCampaign] = useState(null);
   const [placeholderCount, setPlaceholderCount] = useState(0);
+  const [audienceInfo, setAudienceInfo] = useState(null);
 
   // ── CRM panel state
-  const [includeCRM, setIncludeCRM] = useState(false);
+  const [activeAudienceTab, setActiveAudienceTab] = useState("csv");
 
   // ── CRM contacts & UI
   const [contacts, setContacts] = useState([]);
@@ -129,8 +131,20 @@ export default function AssignContactsPage() {
   const [saveToDb, setSaveToDb] = useState(true);
   const [selectedTagId, setSelectedTagId] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [showAssignConfirmModal, setShowAssignConfirmModal] = useState(false);
+  const [assignDraft, setAssignDraft] = useState({
+    validIds: [],
+    selectedCount: 0,
+    hasExistingCsv: false,
+  });
+  const [selectedCrmCountSnapshot, setSelectedCrmCountSnapshot] = useState(0);
 
   const importedRef = useRef(null);
+  const crmSupportsCurrentTemplate = placeholderCount === 0;
+  const hasExistingCsv = !!(
+    audienceInfo?.attachmentId ??
+    audienceInfo?.AttachmentId
+  );
 
   const getPhone = c => c.phoneNumber || c.phone || "";
 
@@ -156,12 +170,25 @@ export default function AssignContactsPage() {
       } catch {
         setPlaceholderCount(0);
       }
+
+      try {
+        const ai = await getCampaignAudience(campaignId);
+        setAudienceInfo(ai ?? null);
+      } catch {
+        setAudienceInfo(null);
+      }
     })();
   }, [campaignId]);
 
-  // Load tags when CRM panel is enabled
   useEffect(() => {
-    if (!includeCRM) return;
+    if (!crmSupportsCurrentTemplate && activeAudienceTab === "crm") {
+      setActiveAudienceTab("csv");
+    }
+  }, [crmSupportsCurrentTemplate, activeAudienceTab]);
+
+  // Load tags when CRM tab is active.
+  useEffect(() => {
+    if (activeAudienceTab !== "crm" || !crmSupportsCurrentTemplate) return;
     (async () => {
       try {
         const res = await axiosClient.get("/tags/get-tags");
@@ -170,11 +197,11 @@ export default function AssignContactsPage() {
         toast.error("Failed to load tags");
       }
     })();
-  }, [includeCRM]);
+  }, [activeAudienceTab, crmSupportsCurrentTemplate]);
 
-  // Load CRM contacts (only when panel enabled)
+  // Load CRM contacts (only when CRM tab is active and template supports it).
   useEffect(() => {
-    if (!includeCRM) {
+    if (activeAudienceTab !== "crm" || !crmSupportsCurrentTemplate) {
       setContacts([]);
       setFilteredContacts([]);
       setSelectedIds([]);
@@ -196,18 +223,18 @@ export default function AssignContactsPage() {
         toast.error("Failed to load contacts");
       }
     })();
-  }, [includeCRM, tags]);
+  }, [activeAudienceTab, crmSupportsCurrentTemplate, tags]);
 
   // Local search filter for CRM list
   useEffect(() => {
-    if (!includeCRM) return;
+    if (activeAudienceTab !== "crm" || !crmSupportsCurrentTemplate) return;
     const q = search.trim().toLowerCase();
     const result = contacts.filter(
       c =>
         c.name?.toLowerCase().includes(q) || getPhone(c).includes(search.trim())
     );
     setFilteredContacts(result);
-  }, [includeCRM, contacts, search]);
+  }, [activeAudienceTab, crmSupportsCurrentTemplate, contacts, search]);
 
   // CSV → quick import into CRM list
   const handleFileUpload = e => {
@@ -301,7 +328,20 @@ export default function AssignContactsPage() {
   };
 
   const allVisibleSelected =
-    includeCRM && filteredContacts.every(c => selectedIds.includes(c.id));
+    filteredContacts.length > 0 &&
+    filteredContacts.every(c => selectedIds.includes(c.id));
+  const selectedCrmReadyCount = selectedIds.filter(id =>
+    contacts.find(c => c.id === id && getPhone(c).trim() !== "")
+  ).length;
+  useEffect(() => {
+    if (activeAudienceTab === "crm" && crmSupportsCurrentTemplate) {
+      setSelectedCrmCountSnapshot(selectedCrmReadyCount);
+    }
+  }, [
+    activeAudienceTab,
+    crmSupportsCurrentTemplate,
+    selectedCrmReadyCount,
+  ]);
 
   // Assign selected CRM contacts
   const assignContacts = async () => {
@@ -309,28 +349,61 @@ export default function AssignContactsPage() {
       toast.error("Campaign not ready. Please try again.");
       return;
     }
-    if (!includeCRM) {
-      toast.warn("Enable 'Include contacts from CRM' to select contacts here.");
-      return;
+    let csvAudiencePresent = hasExistingCsv;
+    try {
+      const latestAudience = await getCampaignAudience(campaign.id);
+      setAudienceInfo(latestAudience ?? null);
+      csvAudiencePresent = !!(
+        latestAudience?.attachmentId ??
+        latestAudience?.AttachmentId
+      );
+    } catch {
+      // Keep previously known state if refresh fails.
     }
-    if (selectedIds.length === 0) {
-      toast.warn("Please select at least one contact");
+    if (!crmSupportsCurrentTemplate) {
+      toast.warn("CRM contacts are available only for phone-only templates.");
       return;
     }
     const validIds = selectedIds.filter(id =>
       contacts.find(c => c.id === id && getPhone(c).trim() !== "")
     );
-    if (validIds.length === 0) {
+    if (selectedIds.length > 0 && validIds.length === 0) {
       toast.warn("No selected contacts have valid phone numbers.");
       return;
     }
-    try {
-      const payload = { contactIds: validIds };
-      await axiosClient.post(
-        `/campaign/${campaign.id}/assign-contacts`,
-        payload
+    if (validIds.length === 0 && !csvAudiencePresent) {
+      toast.warn(
+        "Please select CRM contacts or upload a CSV audience before continuing."
       );
-      toast.success("Contacts assigned to campaign");
+      return;
+    }
+
+    setAssignDraft({
+      validIds,
+      selectedCount: selectedIds.length,
+      hasExistingCsv: csvAudiencePresent,
+    });
+    setShowAssignConfirmModal(true);
+  };
+
+  const confirmAssignContacts = async () => {
+    if (!campaign || !campaign.id) {
+      setShowAssignConfirmModal(false);
+      return;
+    }
+
+    try {
+      if (assignDraft.validIds.length > 0) {
+        const payload = { contactIds: assignDraft.validIds };
+        await axiosClient.post(`/campaign/${campaign.id}/assign-contacts`, payload);
+        toast.success("Contacts assigned to campaign.");
+      } else {
+        toast.success(
+          "Saved. Your uploaded CSV audience will be used without additional CRM contacts."
+        );
+      }
+      setShowAssignConfirmModal(false);
+      navigate("/app/campaigns/template-campaigns-list", { replace: true });
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -342,6 +415,27 @@ export default function AssignContactsPage() {
   return (
     <div className="bg-[#f5f6f7] min-h-[calc(100vh-80px)]">
       <div className="mx-auto max-w-7xl px-4 py-6">
+      <button
+        type="button"
+        onClick={() => navigate("/app/campaigns/template-campaigns-list")}
+        className="mb-2 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+      >
+        <svg
+          width="18"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        Back
+      </button>
       {/* Title */}
       <h1 className="mb-2 flex items-center gap-2 text-2xl font-bold text-emerald-700">
         📇 Assign Contacts
@@ -370,195 +464,243 @@ export default function AssignContactsPage() {
       ) : (
         <div className="mb-6 text-xs text-gray-500">Loading campaign…</div>
       )}
-
-      {/* 1) CSV Audience (always visible, first) */}
-      {campaignId && (
-        <section className="rounded-xl border bg-white p-4 shadow-sm">
-          <h2 className="mb-2 text-sm font-semibold text-gray-800">
-            Bulk Personalization via CSV
-            {placeholderCount > 0 && (
-              <>
-                {" "}
-                (Template has {placeholderCount} dynamic field
-                {placeholderCount > 1 ? "s" : ""})
-              </>
-            )}
-          </h2>
-          <CsvAudienceSection campaignId={campaignId} campaign={campaign} />
-        </section>
-      )}
-
-      <div className="my-6 h-px bg-gray-100" />
-      {/* 2) Optional CRM Panel (collapsed by default) */}
-      <section className="rounded-xl border bg-white shadow-sm">
-        {/* Header / Toggle */}
-        <div className="flex items-start justify-between gap-4 p-4">
-          <div className="flex items-start gap-3">
-            <input
-              id="includeCRM"
-              type="checkbox"
-              className="mt-1"
-              checked={includeCRM}
-              onChange={e => setIncludeCRM(e.target.checked)}
-              aria-controls="crm-panel"
-              aria-expanded={includeCRM}
-            />
-            <div>
-              <label
-                htmlFor="includeCRM"
-                className="block cursor-pointer text-sm font-semibold text-gray-800"
-              >
-                Include contacts from CRM
-              </label>
-              <p className="mt-1 text-xs text-gray-500">
-                Search, filter by tags, quick-import to CRM, and assign selected
-                contacts.
-              </p>
-            </div>
-          </div>
-          <div className="text-xs text-gray-500">
-            Manual assignment is additive to any CSV audience above.
+      <section className="rounded-xl border bg-white p-4 shadow-sm">
+        <div className="mb-4 flex items-center justify-start border-b pb-3">
+          <div className="inline-flex rounded-lg border bg-gray-50 p-1">
+            <button
+              type="button"
+              onClick={() => setActiveAudienceTab("csv")}
+              className={`rounded-md px-3 py-1.5 text-sm transition ${
+                activeAudienceTab === "csv"
+                  ? "bg-white font-semibold text-emerald-700 shadow-sm"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              CSV Upload
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                crmSupportsCurrentTemplate && setActiveAudienceTab("crm")
+              }
+              disabled={!crmSupportsCurrentTemplate}
+              className={`rounded-md px-3 py-1.5 text-sm transition ${
+                activeAudienceTab === "crm"
+                  ? "bg-white font-semibold text-emerald-700 shadow-sm"
+                  : "text-gray-600 hover:text-gray-800"
+              } disabled:cursor-not-allowed disabled:opacity-50`}
+              title={
+                crmSupportsCurrentTemplate
+                  ? "Select contacts from CRM"
+                  : "CRM is available only for phone-only templates"
+              }
+            >
+              CRM Contacts
+            </button>
           </div>
         </div>
 
-        {/* Collapsible body */}
-        <div
-          id="crm-panel"
-          className={`grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-in-out ${
-            includeCRM ? "grid-rows-[1fr]" : ""
-          }`}
-        >
-          <div className="overflow-hidden">
-            <div className="border-t p-4">
-              {/* Controls */}
-              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <input
-                  className="w-full rounded-md border p-2 sm:w-1/3"
-                  type="text"
-                  placeholder="Search by name or phone…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-                <TagFilterDropdown
-                  selectedTags={tags}
-                  onChange={setTags}
-                  category="All"
-                />
-                <label className="text-sm text-emerald-700 hover:underline sm:ml-auto">
-                  + Upload CSV to CRM
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+        {activeAudienceTab === "csv" && campaignId && (
+          <div>
+            <CsvAudienceSection
+              campaignId={campaignId}
+              campaign={campaign}
+              selectedCrmCount={selectedCrmCountSnapshot}
+            />
+          </div>
+        )}
 
-              {/* Table */}
-              <div
-                className="overflow-x-auto rounded-xl border"
-                ref={importedRef}
-              >
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-700">
-                    <tr>
-                      <th className="px-4 py-2 text-center">
+        {activeAudienceTab === "crm" && crmSupportsCurrentTemplate && (
+          <div className="border-t pt-4">
+            <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <input
+                className="w-full rounded-md border p-2 sm:w-1/3"
+                type="text"
+                placeholder="Search by name or phone..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              <TagFilterDropdown
+                selectedTags={tags}
+                onChange={setTags}
+                category="All"
+              />
+              <label className="text-sm text-emerald-700 hover:underline sm:ml-auto">
+                + Upload CSV to CRM
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border" ref={importedRef}>
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="px-4 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        onChange={toggleSelectAll}
+                      />
+                    </th>
+                    <th className="px-4 py-2 text-left">Name</th>
+                    <th className="px-4 py-2 text-left">Phone</th>
+                    <th className="px-4 py-2 text-left">Tags</th>
+                    <th className="px-4 py-2 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredContacts.map(c => (
+                    <tr key={c.id} className="border-t hover:bg-gray-50">
+                      <td className="px-4 py-2 text-center">
                         <input
                           type="checkbox"
-                          checked={allVisibleSelected}
-                          onChange={toggleSelectAll}
+                          checked={selectedIds.includes(c.id)}
+                          onChange={() => toggleContact(c.id)}
                         />
-                      </th>
-                      <th className="px-4 py-2 text-left">Name</th>
-                      <th className="px-4 py-2 text-left">Phone</th>
-                      <th className="px-4 py-2 text-left">Tags</th>
-                      <th className="px-4 py-2 text-left">Status</th>
+                      </td>
+                      <td className="px-4 py-2">{c.name || "Unnamed"}</td>
+                      <td className="px-4 py-2">{getPhone(c) || "-"}</td>
+                      <td className="px-4 py-2">
+                        <div className="flex flex-wrap gap-1">
+                          {(c.tags || c.contactTags || []).map(t => (
+                            <span
+                              key={t.tagId || t.id}
+                              className="rounded-full px-2 py-0.5 text-xs"
+                              style={{
+                                backgroundColor: t.colorHex || "#E5E7EB",
+                                color: "#000",
+                              }}
+                            >
+                              {t.tagName || t.name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        {getPhone(c).trim() !== "" ? "Valid" : "No Phone"}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredContacts.map(c => (
-                      <tr key={c.id} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(c.id)}
-                            onChange={() => toggleContact(c.id)}
-                          />
-                        </td>
-                        <td className="px-4 py-2">{c.name || "Unnamed"}</td>
-                        <td className="px-4 py-2">{getPhone(c) || "—"}</td>
-                        <td className="px-4 py-2">
-                          <div className="flex flex-wrap gap-1">
-                            {(c.tags || c.contactTags || []).map(t => (
-                              <span
-                                key={t.tagId || t.id}
-                                className="rounded-full px-2 py-0.5 text-xs"
-                                style={{
-                                  backgroundColor: t.colorHex || "#E5E7EB",
-                                  color: "#000",
-                                }}
-                              >
-                                {t.tagName || t.name}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2">
-                          {getPhone(c).trim() !== ""
-                            ? "✅ Valid"
-                            : "⚠️ No Phone"}
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredContacts.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-4 py-10 text-center text-xs text-gray-500"
-                        >
-                          {tags.length > 0
-                            ? "No contacts match the selected tags."
-                            : "No contacts to show."}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                  {filteredContacts.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-10 text-center text-xs text-gray-500"
+                      >
+                        {tags.length > 0
+                          ? "No contacts match the selected tags."
+                          : "No contacts to show."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-              {/* Footer + Assign button (INSIDE the panel) */}
-              <div className="mt-4 flex flex-col items-center justify-between text-sm text-gray-600 sm:flex-row">
-                <div>
-                  Selected: {selectedIds.length} / WhatsApp-ready:{" "}
-                  {
-                    filteredContacts.filter(
-                      c =>
-                        selectedIds.includes(c.id) && getPhone(c).trim() !== ""
-                    ).length
-                  }
+            <div className="mt-4 flex flex-col items-center justify-between text-sm text-gray-600 sm:flex-row">
+              <div>
+                Selected: {selectedIds.length} / WhatsApp-ready:{" "}
+                {
+                  filteredContacts.filter(
+                    c =>
+                      selectedIds.includes(c.id) && getPhone(c).trim() !== ""
+                  ).length
+                }
+              </div>
+              {importedCount > 0 && (
+                <div className="text-green-600">
+                  Imported: {importedCount} contact(s)
                 </div>
-                {importedCount > 0 && (
-                  <div className="text-green-600">
-                    ✔ Imported: {importedCount} contact(s)
-                  </div>
-                )}
-              </div>
+              )}
+            </div>
 
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={assignContacts}
-                  className="rounded-lg bg-emerald-600 px-6 py-3 text-white transition hover:bg-emerald-700"
-                >
-                  Assign Selected Contacts to Campaign
-                </button>
-              </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={assignContacts}
+                className="rounded-lg bg-emerald-600 px-6 py-3 text-white transition hover:bg-emerald-700"
+              >
+                Assign Selected Contacts to Campaign
+              </button>
             </div>
           </div>
-        </div>
+        )}
+
+        {activeAudienceTab === "crm" && !crmSupportsCurrentTemplate && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            CRM contacts are hidden for this campaign because the selected
+            template needs dynamic values. Use the CSV tab to provide both phone
+            and parameter columns.
+          </div>
+        )}
       </section>
 
-      {/* CSV → CRM mapping modal */}
+      {/* CSV -> CRM mapping modal */}
+      <Modal
+        isOpen={showAssignConfirmModal}
+        onRequestClose={() => setShowAssignConfirmModal(false)}
+        className="mx-auto mt-20 max-w-xl rounded-lg bg-white p-6 shadow-lg"
+        overlayClassName="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+      >
+        <h2 className="mb-2 text-lg font-bold text-gray-900">
+          Confirm Recipient Setup
+        </h2>
+        <p className="mb-4 text-sm text-gray-600">
+          Do you want to save and continue with this campaign audience selection?
+        </p>
+
+        <div className="space-y-2 rounded-lg border bg-gray-50 p-3 text-sm text-gray-700">
+          <div>
+            CRM contacts selected:{" "}
+            <strong>{assignDraft.validIds.length}</strong>
+          </div>
+          <div>
+            CSV audience uploaded:{" "}
+            <strong>{assignDraft.hasExistingCsv ? "Yes" : "No"}</strong>
+          </div>
+        </div>
+
+        {assignDraft.hasExistingCsv && assignDraft.validIds.length > 0 && (
+          <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+            You selected recipients from both sources: uploaded CSV and CRM contacts.
+            If you continue, both sets will be used for this campaign.
+          </div>
+        )}
+
+        {assignDraft.hasExistingCsv && assignDraft.validIds.length === 0 && (
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            You already uploaded a CSV audience, but no CRM contacts are selected.
+            If you continue, the campaign will proceed with CSV recipients only.
+          </div>
+        )}
+
+        {!assignDraft.hasExistingCsv && assignDraft.validIds.length > 0 && (
+          <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+            You selected CRM contacts, but no CSV audience is uploaded. If you
+            continue, the campaign will proceed with CRM recipients only.
+          </div>
+        )}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            className="text-gray-600 hover:underline"
+            onClick={() => setShowAssignConfirmModal(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="rounded-md bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+            onClick={confirmAssignContacts}
+          >
+            Yes, Save & Continue
+          </button>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={showFieldMapModal}
         onRequestClose={() => setShowFieldMapModal(false)}
@@ -1602,3 +1744,4 @@ export default function AssignContactsPage() {
 //     </div>
 //   );
 // }
+

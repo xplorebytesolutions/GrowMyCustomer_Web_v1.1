@@ -36,6 +36,7 @@ export const getBreadcrumbs = pathname => {
     "assigned-contacts": "Assigned Contacts",
     messaging: "Messaging",
     "send-direct-text": "Send Direct Message",
+    "send-template-message": "Send Template Message",
     reporting: "Reporting",
     "direct-message-history": "Message History",
     conversations: "Conversations",

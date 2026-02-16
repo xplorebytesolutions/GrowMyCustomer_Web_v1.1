@@ -37,7 +37,7 @@ import CampaignBucketContactsPage from "./pages/CampaignReports/CampaignBucketCo
 import CampaignRetargetWizardPage from "./pages/CampaignReports/CampaignRetargetWizardPage";
 // Messaging
 import SendTextMessagePage from "./pages/WhatsAppMessageEngine/SendContentFreeTextMessage";
-import TemplateMessagingComingSoon from "./pages/Messaging/TemplateMessagingComingSoon";
+import SendTemplateMessageInstantPage from "./pages/Messaging/SendTemplateMessageInstantPage";
 import MessagingReportsComingSoon from "./pages/Messaging/MessagingReportsComingSoon";
 
 // Inbox & Automation
@@ -340,7 +340,7 @@ function App() {
               path="messaging/send-template-message"
               element={
                 <FeatureGuard code={FK.MESSAGING_SEND_TEMPLATE}>
-                  <TemplateMessagingComingSoon />
+                  <SendTemplateMessageInstantPage />
                 </FeatureGuard>
               }
             />

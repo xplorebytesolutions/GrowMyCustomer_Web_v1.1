@@ -239,6 +239,11 @@ export default function DraftEditorPage() {
     return h.startsWith("handle:") ? h : `handle:${h}`;
   };
 
+  const isLikelyNumericMediaId = handle => {
+    const h = String(handle || "").trim().replace(/^handle:/i, "");
+    return /^\d+$/.test(h);
+  };
+
   const normalizeButtonsForApi = list => {
     const btns = Array.isArray(list) ? list : [];
     return btns
@@ -429,6 +434,13 @@ export default function DraftEditorPage() {
       !headerMediaHandle
     ) {
       return "Upload/attach header media first.";
+    }
+    if (
+      requireHeaderMedia &&
+      ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) &&
+      isLikelyNumericMediaId(headerMediaHandle)
+    ) {
+      return "Attached media is using an old/invalid handle. Please re-upload header media and try again.";
     }
 
     // Validate Examples

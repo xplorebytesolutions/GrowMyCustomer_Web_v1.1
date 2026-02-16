@@ -86,19 +86,29 @@ export default function PhoneWhatsAppPreview({
                           <span className="text-[10px] font-medium uppercase tracking-tight">Media Uploaded (Meta Handle)</span>
                         </div>
                       ) : (
-                        <img
-                          src={imageUrl}
-                          alt="Header"
-                          className="w-full h-40 object-cover rounded-t-2xl"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.parentElement.innerHTML = `
-                              <div class="w-full h-40 bg-slate-100 flex flex-col items-center justify-center gap-2 text-slate-400">
-                                <span class="text-[10px] font-medium uppercase tracking-tight">Media Preview Unavailable</span>
-                              </div>
-                            `;
-                          }}
-                        />
+                        <div className="w-full h-40 rounded-t-2xl overflow-hidden">
+                          <img
+                            src={imageUrl}
+                            alt="Header"
+                            className="w-full h-40 object-cover"
+                            onError={e => {
+                              const img = e.currentTarget;
+                              img.style.display = "none";
+                              const fallback = img.nextElementSibling;
+                              if (fallback && fallback instanceof HTMLElement) {
+                                fallback.style.display = "flex";
+                              }
+                            }}
+                          />
+                          <div
+                            className="w-full h-40 bg-slate-100 items-center justify-center gap-2 text-slate-400"
+                            style={{ display: "none" }}
+                          >
+                            <span className="text-[10px] font-medium uppercase tracking-tight">
+                              Media Preview Unavailable
+                            </span>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ) : (

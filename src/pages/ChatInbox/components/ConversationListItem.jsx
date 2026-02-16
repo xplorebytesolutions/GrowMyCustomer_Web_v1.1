@@ -60,11 +60,18 @@ export function ConversationListItem({ conversation, isActive, onClick }) {
         </div>
 
         <div className="mt-1 flex items-center justify-between">
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${statusClass}`}
-          >
-            {conversation.status}
-          </span>
+          <div className="flex items-center gap-1">
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${statusClass}`}
+            >
+              {conversation.status}
+            </span>
+            {String(conversation.mode || "").toLowerCase() === "agent" && (
+              <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700">
+                Agent
+              </span>
+            )}
+          </div>
           {!conversation.within24h && (
             <span className="text-[10px] text-amber-600 font-medium">
               24h window over

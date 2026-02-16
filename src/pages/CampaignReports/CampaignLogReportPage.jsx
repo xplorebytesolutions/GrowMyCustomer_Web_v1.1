@@ -42,6 +42,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "../../components/ui/dialog";
+import WhatsAppTemplatePreview from "../TemplateBuilder/components/WhatsAppTemplatePreview";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { fetchTemplates } from "../../api/templateService";
 import { FK } from "../../capabilities/featureKeys";
@@ -119,6 +120,42 @@ const normalizeHeaderKind = (t) => {
   }
   return t.hasImageHeader || t.HasImageHeader ? HK.Image : HK.None;
 };
+
+function normalizeButtonsForTemplatePreview(buttons, buttonParams = []) {
+  const list = Array.isArray(buttons) ? buttons : [];
+  return list
+    .map((button, idx) => {
+      const typeRaw = String(
+        button?.type ||
+          button?.buttonType ||
+          button?.ButtonType ||
+          button?.subType ||
+          button?.SubType ||
+          ""
+      ).toUpperCase();
+      const text = String(
+        button?.text || button?.buttonText || button?.ButtonText || "Button"
+      );
+      const staticValue = String(
+        button?.value ||
+          button?.ParameterValue ||
+          button?.parameterValue ||
+          button?.targetUrl ||
+          ""
+      );
+      const value =
+        buttonParams[idx] != null && String(buttonParams[idx]).trim()
+          ? String(buttonParams[idx]).trim()
+          : staticValue;
+
+      if (typeRaw.includes("URL")) return { type: "URL", text, url: value };
+      if (typeRaw.includes("PHONE"))
+        return { type: "PHONE_NUMBER", text, phone_number: value };
+      if (typeRaw.includes("QUICK")) return { type: "QUICK_REPLY", text };
+      return { type: typeRaw || "QUICK_REPLY", text };
+    })
+    .slice(0, 3);
+}
 
 const toArray = (maybe) => (Array.isArray(maybe) ? maybe : []);
 
@@ -413,6 +450,7 @@ function RetargetModal({
   // New scheduling states
   const [scheduleMode, setScheduleMode] = useState("now"); // "now" or "later"
   const [scheduledAt, setScheduledAt] = useState("");
+  const [isTemplatePreviewOpen, setIsTemplatePreviewOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -435,6 +473,7 @@ function RetargetModal({
       setRequiresHeaderMediaUrl(false);
       setScheduleMode("now");
       setScheduledAt("");
+      setIsTemplatePreviewOpen(false);
       setSenders([]);
       setSelectedSenderId("");
 
@@ -997,20 +1036,54 @@ function RetargetModal({
     return { value: v, missing: true };
   }, [variableConfigs]);
 
-  const mergeTemplatePreview = useCallback(
-    (contact) => {
-      if (!templateBodyText) return "";
-      return String(templateBodyText).replace(
-        /\{\{\s*(\d+)\s*\}\}/g,
-        (_, num) => {
-          const n = Number(num);
-          const r = resolveVariableValue(contact, n);
-          return r.missing ? `[missing {{${num}}}]` : r.value;
-        }
+  const templatePreviewDraft = useMemo(() => {
+    if (!selectedTemplate) return null;
+    const hk = String(headerKind || HK.None).toUpperCase();
+    const previewHeaderType =
+      hk === "IMAGE" || hk === "VIDEO" || hk === "DOCUMENT" || hk === "TEXT"
+        ? hk
+        : "NONE";
+
+    const examples = placeholderNumbers.map((n) => {
+      const r = resolveVariableValue(
+        Array.isArray(selectedContacts) ? selectedContacts[0] : null,
+        n
       );
-    },
-    [resolveVariableValue, templateBodyText]
-  );
+      const value = String(r?.value ?? "").trim();
+      return value || `Value ${n}`;
+    });
+
+    return {
+      name: selectedTemplate,
+      language:
+        templateDetails?.language ||
+        templateDetails?.languageCode ||
+        "en_US",
+      headerType: previewHeaderType,
+      headerText: String(
+        templateDetails?.headerText || templateDetails?.HeaderText || ""
+      ),
+      headerMediaUrl: requiresHeaderMediaUrl ? headerMediaUrl : null,
+      bodyText: String(templateBodyText || ""),
+      footerText: String(
+        templateDetails?.footerText || templateDetails?.FooterText || ""
+      ),
+      buttons: normalizeButtonsForTemplatePreview(rawButtonParams, buttonParams),
+      examples,
+    };
+  }, [
+    selectedTemplate,
+    headerKind,
+    placeholderNumbers,
+    resolveVariableValue,
+    selectedContacts,
+    templateDetails,
+    requiresHeaderMediaUrl,
+    headerMediaUrl,
+    templateBodyText,
+    rawButtonParams,
+    buttonParams,
+  ]);
 
   function handleRunClick() {
     setSubmitAttempted(true);
@@ -1050,11 +1123,19 @@ function RetargetModal({
         aria-describedby={undefined}
         className="!max-w-4xl p-0 border-none shadow-2xl rounded-2xl flex flex-col max-h-[90vh] overflow-hidden"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white shrink-0">
-          <DialogHeader className="p-0 mb-0 border-none">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-white shrink-0">
+          <DialogHeader className="p-0 mb-0 border-none space-y-1">
             <DialogTitle className="text-xl font-bold text-slate-800 tracking-tight">
               Retarget selected contacts
             </DialogTitle>
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-600">
+                {segmentLabel(bucket)}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">
+                {selectedCount.toLocaleString()} selected
+              </span>
+            </div>
           </DialogHeader>
           <DialogClose asChild>
             <button className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -1063,28 +1144,7 @@ function RetargetModal({
           </DialogClose>
         </div>
 
-        <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/30 shrink-0">
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-tight text-slate-400 mb-1.5">
-                Segment
-              </div>
-              <div className="text-[15px] font-bold text-slate-800">
-                {segmentLabel(bucket)}
-              </div>
-            </div>
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-tight text-slate-400 mb-1.5">
-                Selected contacts
-              </div>
-              <div className="text-[15px] font-bold text-slate-800">
-                {selectedCount.toLocaleString()}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 py-8 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
+        <div className="px-6 py-4 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
           {eligibilityError ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
@@ -1103,7 +1163,7 @@ function RetargetModal({
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 md:grid-cols-[200px,1fr] gap-x-8 gap-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-x-5 gap-y-2">
             <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-800">
                 Campaign Name
@@ -1118,7 +1178,7 @@ function RetargetModal({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Retarget - Selected Contacts"
                 disabled={uiLocked}
-                className="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                className="w-full bg-slate-100 border-none rounded-xl px-4 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
               {submitAttempted && nameError ? (
                 <div className="text-[11px] font-semibold text-rose-600">
@@ -1128,7 +1188,7 @@ function RetargetModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[200px,1fr] gap-x-8 gap-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-x-5 gap-y-2">
             <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-800">
                 Sender <span className="text-rose-500">*</span>
@@ -1142,7 +1202,7 @@ function RetargetModal({
                 value={selectedSenderId}
                 onChange={(e) => setSelectedSenderId(e.target.value)}
                 disabled={loadingSenders || uiLocked}
-                className="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none cursor-pointer disabled:opacity-60"
+                className="w-full bg-slate-100 border-none rounded-xl px-4 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none cursor-pointer disabled:opacity-60"
               >
                 <option value="">
                   {loadingSenders
@@ -1173,7 +1233,7 @@ function RetargetModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[200px,1fr] gap-x-8 gap-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-x-5 gap-y-2">
             <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-800">
                 Template Name
@@ -1237,7 +1297,7 @@ function RetargetModal({
                     value={selectedTemplate}
                     disabled={loadingTemplates || uiLocked}
                     onChange={(e) => setSelectedTemplate(e.target.value)}
-                    className="w-full bg-slate-100 border-none rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none cursor-pointer disabled:opacity-60"
+                    className="w-full bg-slate-100 border-none rounded-xl px-4 py-2 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none cursor-pointer disabled:opacity-60"
                   >
                     <option value="">
                       {loadingTemplates ? "Loading..." : "Select template"}
@@ -1273,6 +1333,15 @@ function RetargetModal({
               >
                 <RefreshCcw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
               </button>
+              <button
+                type="button"
+                onClick={() => setIsTemplatePreviewOpen(true)}
+                disabled={uiLocked || !selectedTemplate}
+                className="flex items-center justify-center h-[40px] w-[40px] rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-emerald-600 transition-all disabled:opacity-50 shadow-sm"
+                title="Preview selected template"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
             </div>
             <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
               <span className="font-medium">
@@ -1288,65 +1357,35 @@ function RetargetModal({
             {/* Template selector ends here */}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-[13px] font-bold text-slate-800 uppercase tracking-tight">
-                  Template Personalization
+          {selectedTemplate ? (
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 border-b border-emerald-100 bg-gradient-to-r from-emerald-50/80 to-white">
+              <div className="flex items-start gap-3">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                  <Wand2 className="h-4 w-4" />
                 </div>
-                <div className="mt-1 text-[12px] text-slate-500">
-                  Configure all required components for this template.
+                <div>
+                  <div className="text-[13px] font-bold text-slate-800 uppercase tracking-tight">
+                    Template Personalization
+                  </div>
+                  <div className="mt-0.5 text-[12px] text-slate-600">
+                    Configure template variables, media, and button parameters.
+                  </div>
                 </div>
-            </div>
-            {!selectedTemplate ? (
-              <div className="mt-4 text-[12px] text-slate-500 italic bg-slate-50 rounded-xl p-4 border border-dashed border-slate-200 text-center">
-                Select a template above to begin personalization.
               </div>
-            ) : templateDetailsLoading ? (
-              <div className="mt-4 text-[12px] text-slate-600 font-medium flex items-center justify-center gap-2 py-8 bg-slate-50 rounded-xl border border-slate-100">
+            </div>
+            <div className="p-4">
+            {templateDetailsLoading ? (
+              <div className="mt-1 text-[12px] text-slate-600 font-medium flex items-center justify-center gap-2 py-6 bg-slate-50 rounded-xl border border-slate-100">
                 <RefreshCcw className="w-4 h-4 animate-spin text-emerald-500" />
                 Loading template details...
               </div>
             ) : templateDetailsError ? (
-              <div className="mt-4 text-[12px] font-semibold text-rose-600 bg-rose-50 rounded-xl p-4 border border-rose-100">
+              <div className="mt-1 text-[12px] font-semibold text-rose-600 bg-rose-50 rounded-xl p-4 border border-rose-100">
                 {templateDetailsError}
               </div>
             ) : (
-              <div className="mt-4 space-y-6">
-                {/* 0. Preview */}
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
-                    Preview (first 3 contacts)
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {(contactsReady
-                      ? selectedContactsList.slice(0, 3)
-                      : [null, null, null]
-                    ).map((c, idx) => {
-                      const text = templateBodyText
-                        ? mergeTemplatePreview(c || {})
-                        : "";
-                      return (
-                        <div
-                          key={idx}
-                          className="rounded-xl border border-slate-200 bg-slate-50 p-4 relative overflow-hidden flex flex-col min-h-[120px]"
-                        >
-                          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500/20" />
-                          <div className="text-[11px] font-bold text-slate-900 border-b border-slate-200/60 pb-2 mb-2">
-                            {contactsReady
-                              ? getContactNameValue(c) ||
-                                getContactPhoneValue(c) ||
-                                `Contact ${idx + 1}`
-                              : `Sample ${idx + 1}`}
-                          </div>
-                          <div className="flex-1 text-[12px] text-slate-600 leading-relaxed overflow-hidden">
-                            {text || "No body text found."}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+              <div className="mt-1 space-y-5">
 
                 {/* 1. Header Media */}
                 {requiresHeaderMediaUrl && (
@@ -1537,12 +1576,14 @@ function RetargetModal({
 
               </div>
             )}
+            </div>
           </div>
+          ) : null}
 
 
 
 
-          <div className="grid grid-cols-1 md:grid-cols-[200px,1fr] gap-x-8 gap-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-x-5 gap-y-2">
             <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-800">
                 Scheduling
@@ -1637,7 +1678,7 @@ function RetargetModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[200px,1fr] gap-x-8 gap-y-4 items-center pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-x-5 gap-y-2 items-center pt-1">
             <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-800">
                 Test Campaign
@@ -1658,7 +1699,6 @@ function RetargetModal({
             </div>
           </div>
         </div>
-      </div>
 
         <DialogFooter className="px-6 py-4 bg-white border-t border-slate-100 mt-0 shrink-0">
           <div className="w-full space-y-2">
@@ -1701,6 +1741,26 @@ function RetargetModal({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={isTemplatePreviewOpen} onOpenChange={setIsTemplatePreviewOpen}>
+        <DialogContent className="max-w-[380px] p-0 overflow-hidden !border-none !bg-transparent !shadow-none [&>button]:hidden">
+          {templatePreviewDraft ? (
+            <div className="relative flex w-full flex-col items-center">
+              <button
+                type="button"
+                onClick={() => setIsTemplatePreviewOpen(false)}
+                className="absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors focus:outline-none"
+                title="Close Preview"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="w-full">
+                <WhatsAppTemplatePreview draft={templatePreviewDraft} />
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

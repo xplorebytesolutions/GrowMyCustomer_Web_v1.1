@@ -117,6 +117,7 @@ export default function CsvAudienceSection({
   campaignId,
   audienceName: propAudienceName,
   campaign,
+  selectedCrmCount = 0,
 }) {
   const { businessId: ctxBusinessId } = useAuth(); // <--- Get current business ID
   const navigate = useNavigate();
@@ -127,7 +128,6 @@ export default function CsvAudienceSection({
   const [batch, setBatch] = useState(null);
   const [sample, setSample] = useState(null);
   const [valReq, setValReq] = useState({
-    normalizePhone: true,
     checkDuplicates: true,
   });
   const [valRes, setValRes] = useState(null);
@@ -140,11 +140,11 @@ export default function CsvAudienceSection({
 
   const [phoneHeader, setPhoneHeader] = useState("");
 
-  const [dryPreview, setDryPreview] = useState(null);
   const [persisting, setPersisting] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [clearingStaged, setClearingStaged] = useState(false);
   const [confirmKind, setConfirmKind] = useState(null); // "clearStaged" | "removeAudience" | null
+  const [showProceedConfirm, setShowProceedConfirm] = useState(false);
 
   const [showMapping, setShowMapping] = useState(false);
   const [isUploading, setIsUploading] = useState(false); // spinner flag
@@ -191,12 +191,22 @@ export default function CsvAudienceSection({
       "";
     return String(name).trim();
   }, [batch]);
+  const hasExistingCsv = !!activeAttachmentId;
+  const crmSelectedCount = Number.isFinite(Number(selectedCrmCount))
+    ? Math.max(0, Number(selectedCrmCount))
+    : 0;
+  const existingCsvFileName = useMemo(
+    () =>
+      String(
+        audienceInfo?.fileName ?? audienceInfo?.FileName ?? "Attached CSV"
+      ).trim() || "Attached CSV",
+    [audienceInfo]
+  );
 
   const resetStagedCsv = useCallback(() => {
     setBatch(null);
     setSample(null);
     setValRes(null);
-    setDryPreview(null);
     setPhoneHeader("");
     setKeyToColumn({});
     setShowMapping(false);
@@ -564,7 +574,7 @@ export default function CsvAudienceSection({
       const req = {
         phoneHeader,
         requiredHeaders: [],
-        normalizePhone: !!valReq.normalizePhone,
+        normalizePhone: true,
         checkDuplicates: !!valReq.checkDuplicates,
       };
       const res = await validateBatch(batch.batchId, req);
@@ -603,29 +613,10 @@ export default function CsvAudienceSection({
     return dict;
   };
 
-  const handleDryRun = async () => {
-    if (!batch?.batchId) return toast.warn("Upload a CSV first.");
-    try {
-      await saveMappings(campaignId, buildMappingDict());
-      const body = {
-        csvBatchId: batch.batchId,
-        mappings: buildMappingDict(),
-        phoneField: phoneHeader || undefined,
-        normalizePhones: !!valReq.normalizePhone,
-        deduplicate: !!valReq.checkDuplicates,
-        persist: false,
-      };
-      const preview = await materialize(campaignId, body);
-      setDryPreview(preview);
-      toast.success("Dry-run ready.");
-    } catch {
-      toast.error("Dry-run failed.");
-    }
-  };
-
-  const handlePersist = async () => {
+  const persistRecipients = async () => {
     if (!batch?.batchId) return toast.warn("Upload a CSV first.");
     const nameToUse = effectiveAudienceName;
+    setShowProceedConfirm(false);
     setPersisting(true);
     try {
       await saveMappings(campaignId, buildMappingDict());
@@ -633,14 +624,14 @@ export default function CsvAudienceSection({
         csvBatchId: batch.batchId,
         mappings: buildMappingDict(),
         phoneField: phoneHeader || undefined,
-        normalizePhones: !!valReq.normalizePhone,
+        normalizePhones: true,
         deduplicate: !!valReq.checkDuplicates,
         persist: true,
         audienceName: nameToUse,
       };
       await materialize(campaignId, body);
 
-      toast.success("Done!! Saved Successfully.");
+      toast.success("Recipients saved successfully.");
 
       const target = "/app/campaigns/template-campaigns-list";
       try {
@@ -661,6 +652,14 @@ export default function CsvAudienceSection({
     }
   };
 
+  const handlePersist = () => {
+    if (!batch?.batchId) {
+      toast.warn("Upload a CSV first.");
+      return;
+    }
+    setShowProceedConfirm(true);
+  };
+
   // Exclude "phone" and parameterN from non-body mapping keys
   const visibleKeys = useMemo(
     () =>
@@ -671,7 +670,8 @@ export default function CsvAudienceSection({
   );
 
   const mappingStatus = useMemo(() => {
-    if (!visibleKeys.length) return { label: "No extra params", ok: true };
+    if (!visibleKeys.length)
+      return { label: "No personalization fields needed", ok: true };
     const missing = visibleKeys.filter(k => {
       const v = String(keyToColumn[k] || "");
       if (!v) return true;
@@ -679,9 +679,27 @@ export default function CsvAudienceSection({
       return false;
     });
     return missing.length
-      ? { label: `${missing.length} missing`, ok: false }
-      : { label: "All mapped", ok: true };
+      ? { label: `${missing.length} fields to match`, ok: false }
+      : { label: "All fields matched", ok: true };
   }, [visibleKeys, keyToColumn]);
+  const requiredColumnCount = (expectedColumns || []).length;
+  const shouldOfferFieldMatching =
+    !!batch?.batchId && requiredColumnCount > 1;
+  const detectedHeaderCount = (csvHeaders ?? []).length;
+
+  useEffect(() => {
+    if (!batch?.batchId) {
+      setShowMapping(false);
+      return;
+    }
+    setShowMapping(requiredColumnCount > 1);
+  }, [batch?.batchId, requiredColumnCount]);
+
+  useEffect(() => {
+    if (detectedHeaderCount > 0 && !phoneHeader) {
+      setPhoneHeader((csvHeaders ?? [])[0] || "");
+    }
+  }, [detectedHeaderCount, csvHeaders, phoneHeader]);
 
   if (loading) {
     return (
@@ -693,6 +711,40 @@ export default function CsvAudienceSection({
 
   return (
     <section ref={topRef} className="rounded-xl border bg-white p-4 shadow-sm">
+      {hasExistingCsv && !batch?.batchId && (
+        <div className="mb-3 flex items-center justify-start">
+          <div className="inline-flex max-w-[320px] items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] text-rose-800">
+            <span className="truncate" title={existingCsvFileName}>
+              {existingCsvFileName}
+            </span>
+            {!isAudienceLocked && (
+              <button
+                type="button"
+                onClick={requestRemoveCsvAudience}
+                disabled={isUploading || removing}
+                className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded text-rose-800 hover:bg-rose-100 disabled:opacity-50"
+                aria-label="Remove existing CSV"
+                title="Remove existing CSV"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Current attachment summary (only show when a CSV is already attached) */}
       {activeAttachmentId && (
         <div className="mb-4 rounded-lg border bg-gray-50 p-3 text-xs text-gray-700">
@@ -716,7 +768,7 @@ export default function CsvAudienceSection({
                       "-"}
                   </div>
                   <div>
-                    <span className="font-medium">Members:</span>{" "}
+                    <span className="font-medium">Contacts:</span>{" "}
                     {audienceInfo?.memberCount ??
                       audienceInfo?.MemberCount ??
                       0}
@@ -746,90 +798,21 @@ export default function CsvAudienceSection({
         </div>
       )}
 
-      {/* Expected columns + actions */}
-      <div className="mb-4 flex items-center gap-3 text-sm">
-        <div className="text-emerald-700 font-semibold">
-          Required columns:&nbsp;
-          {expectedColumns.map((col, i) => (
-            <span
-              key={col}
-              className="ml-1 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800"
-            >
-              {getFriendlyHeader(col)}
-            </span>
-          ))}
-        </div>
-
-        {/* Right-aligned paired buttons */}
-        <div className="ml-auto flex items-center gap-2">
-          {!batch?.batchId && !isUploading && (
-            <button
-              type="button"
-              onClick={handleDownloadSample}
-              disabled={removing}
-              className="inline-flex items-center gap-2 rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:text-emerald-500"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+      {batch?.batchId ? (
+        <div className="mb-4 flex items-center gap-3 text-sm">
+          <div className="text-emerald-700 font-semibold">
+            Required columns:&nbsp;
+            {expectedColumns.map(col => (
+              <span
+                key={col}
+                className="ml-1 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800"
               >
-                <path d="M12 3v12" />
-                <path d="m8 11 4 4 4-4" />
-                <path d="M5 21h14" />
-              </svg>
-              Download sample CSV
-            </button>
-          )}
+                {getFriendlyHeader(col)}
+              </span>
+            ))}
+          </div>
 
-          {!batch?.batchId && !isUploading && (
-            <div>
-              <input
-                id="csv-file-input"
-                type="file"
-                accept=".csv"
-                onChange={e => {
-                  const f = e.target.files?.[0];
-                  handleFile(f);
-                  e.target.value = ""; // allow re-selecting the same file
-                }}
-                className="sr-only"
-                disabled={isUploading || removing || isAudienceLocked}
-              />
-              <label
-                htmlFor="csv-file-input"
-                aria-disabled={isUploading || removing || isAudienceLocked}
-                className={`inline-flex items-center gap-2 rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  isUploading || removing || isAudienceLocked
-                    ? "pointer-events-none opacity-50 text-emerald-500"
-                    : "text-emerald-700 hover:bg-emerald-50"
-                }`}
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M16 16.5a4 4 0 0 0-1-7.9 5 5 0 0 0-9.8 1.2 3.5 3.5 0 0 0 .7 6.9h2" />
-                  <path d="M12 12v8" />
-                  <path d="m8.5 15.5 3.5-3.5 3.5 3.5" />
-                </svg>
-                {activeAttachmentId ? "Replace CSV" : "Upload CSV"}
-              </label>
-            </div>
-          )}
-
-          {!!batch?.batchId && (
+          <div className="ml-auto flex items-center gap-2">
             <div className="inline-flex max-w-[260px] items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] text-rose-800">
               <span className="truncate" title={stagedFileName || "CSV uploaded"}>
                 {stagedFileName || "CSV uploaded"}
@@ -857,24 +840,98 @@ export default function CsvAudienceSection({
                 </svg>
               </button>
             </div>
-          )}
 
-          {activeAttachmentId && !isAudienceLocked && (
+          </div>
+        </div>
+      ) : hasExistingCsv ? (
+        <div className="mb-4" />
+      ) : (
+        <div className="mb-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M16 16.5a4 4 0 0 0-1-7.9 5 5 0 0 0-9.8 1.2 3.5 3.5 0 0 0 .7 6.9h2" />
+              <path d="M12 12v8" />
+              <path d="m8.5 15.5 3.5-3.5 3.5 3.5" />
+            </svg>
+          </div>
+          <div className="text-base font-semibold text-gray-900">Upload your contacts CSV</div>
+          <p className="mt-1 text-sm text-gray-500">
+            Start with a sample file or upload your own CSV to continue.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             <button
               type="button"
-              onClick={requestRemoveCsvAudience}
-              disabled={isUploading || removing}
-              className={`inline-flex items-center gap-2 rounded border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 ${
-                isUploading || removing
-                  ? "cursor-not-allowed opacity-50 text-rose-500"
-                  : "text-rose-700 hover:bg-rose-50"
-              }`}
+              onClick={handleDownloadSample}
+              disabled={removing}
+              className="inline-flex items-center gap-2 rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:text-emerald-500"
             >
-              {removing ? "Removing..." : "Remove CSV"}
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 3v12" />
+                <path d="m8 11 4 4 4-4" />
+                <path d="M5 21h14" />
+              </svg>
+              Download sample CSV
             </button>
-          )}
+            <div>
+              <input
+                id="csv-file-input"
+                type="file"
+                accept=".csv"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  handleFile(f);
+                  e.target.value = "";
+                }}
+                className="sr-only"
+                disabled={isUploading || removing || isAudienceLocked}
+              />
+              <label
+                htmlFor="csv-file-input"
+                aria-disabled={isUploading || removing || isAudienceLocked}
+                className={`inline-flex items-center gap-2 rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                  isUploading || removing || isAudienceLocked
+                    ? "pointer-events-none opacity-50 text-emerald-500"
+                    : "text-emerald-700 hover:bg-emerald-50"
+                }`}
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M16 16.5a4 4 0 0 0-1-7.9 5 5 0 0 0-9.8 1.2 3.5 3.5 0 0 0 .7 6.9h2" />
+                  <path d="M12 12v8" />
+                  <path d="m8.5 15.5 3.5-3.5 3.5 3.5" />
+                </svg>
+                Upload CSV
+              </label>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {isUploading && (
         <div className="mb-4 rounded-lg border bg-white p-3 text-xs text-gray-700">
@@ -995,70 +1052,108 @@ export default function CsvAudienceSection({
         </div>
       )}
 
-      {/* Helper note */}
-      <div className="mb-3 rounded-md border border-dashed border-gray-200 bg-gray-50 p-2 text-[11px] text-gray-600">
-        We set any media URL once at <strong>campaign creation</strong> (not in
-        CSV). Your CSV should contain <code>phone</code>, body values as{" "}
-        <code>parameter1..N</code>, plus any <code>headerparaN</code> and{" "}
-        <code>buttonparaN</code> columns if the template needs them.
-      </div>
-
-      {/* Phone + toggles and mapping */}
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-lg border p-3">
-          <h3 className="mb-2 text-xs font-semibold text-gray-700">
-            Phone column
-          </h3>
-          <select
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-emerald-500"
-            value={phoneHeader}
-            onChange={e => setPhoneHeader(e.target.value)}
-            disabled={
-              !(csvHeaders ?? []).length || isUploading || removing || isAudienceLocked
-            }
+      {showProceedConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowProceedConfirm(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white shadow-xl"
+            onClick={e => e.stopPropagation()}
           >
-            <option value="">
-              {(csvHeaders ?? []).length
-                ? "-- Select column --"
-                : "Upload a CSV first"}
-            </option>
-            {(csvHeaders ?? []).map(h => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
+            <div className="border-b px-4 py-3">
+              <div className="text-sm font-semibold text-gray-900">
+                Confirm Recipient Setup
+              </div>
+              <div className="mt-1 text-xs text-gray-600">
+                Do you want to save and continue with this audience setup?
+              </div>
+            </div>
 
-          <div className="mt-3 flex items-center gap-4 text-xs text-gray-700">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={valReq.normalizePhone}
-                onChange={e =>
-                  setValReq(v => ({ ...v, normalizePhone: e.target.checked }))
-                }
-                disabled={isUploading || removing || isAudienceLocked}
-              />
-              Normalize phone (E.164)
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={valReq.checkDuplicates}
-                onChange={e =>
-                  setValReq(v => ({ ...v, checkDuplicates: e.target.checked }))
-                }
-                disabled={isUploading || removing || isAudienceLocked}
-              />
-              Deduplicate by phone
-            </label>
+            <div className="space-y-2 px-4 py-3 text-xs text-gray-700">
+              <div>
+                CSV source: <strong>{batch?.batchId ? "Included" : "Not included"}</strong>
+              </div>
+              <div>
+                CRM contacts selected: <strong>{crmSelectedCount}</strong>
+              </div>
+
+              {batch?.batchId && crmSelectedCount > 0 && (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-emerald-800">
+                  You selected recipients from both sources: uploaded CSV and CRM
+                  contacts. If you continue, both will be used.
+                </div>
+              )}
+
+              {batch?.batchId && crmSelectedCount === 0 && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-amber-800">
+                  You uploaded a CSV audience but did not select CRM contacts.
+                  If you continue, the campaign will proceed with CSV recipients only.
+                </div>
+              )}
+
+              {!batch?.batchId && crmSelectedCount > 0 && (
+                <div className="rounded-md border border-blue-200 bg-blue-50 p-2 text-blue-800">
+                  You selected CRM contacts but no CSV is uploaded. If you continue,
+                  the campaign will proceed with CRM recipients only.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setShowProceedConfirm(false)}
+                disabled={persisting}
+                className="rounded border bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={persistRecipients}
+                disabled={persisting}
+                className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {persisting ? "Saving..." : "Yes, Save & Continue"}
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="rounded-lg border p-3">
+      {batch?.batchId && (
+        <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 p-2 text-[11px] text-emerald-900">
+          <span className="font-semibold">
+            {stagedFileName || "CSV"} uploaded.
+          </span>{" "}
+          <span>
+            {Array.isArray(sample?.rows) ? sample.rows.length : 0} sample rows loaded.
+            {(csvHeaders ?? []).length > 0
+              ? ` ${csvHeaders.length} columns detected.`
+              : ""}
+          </span>
+        </div>
+      )}
+
+      {shouldOfferFieldMatching && (
+        <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
+          This template needs multiple required fields. Please review column matching before saving recipients.
+        </div>
+      )}
+
+      <div className="mb-3 rounded-md border border-dashed border-gray-200 bg-gray-50 p-2 text-[11px] text-gray-600">
+        Keep media (image/video/document) in campaign setup. CSV is only for phone
+        and personalization values.
+      </div>
+
+      {shouldOfferFieldMatching && showMapping && (
+        <div className="mb-3 rounded-lg border p-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-gray-700">
-              Mapping & Validation
+              Column Matching
             </h3>
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] ${
@@ -1071,18 +1166,6 @@ export default function CsvAudienceSection({
             </span>
           </div>
 
-          <button
-            type="button"
-            className="mt-2 text-xs text-emerald-700 hover:underline disabled:opacity-50"
-            onClick={() => setShowMapping(s => !s)}
-            disabled={
-              !(csvHeaders ?? []).length || isUploading || removing || isAudienceLocked
-            }
-          >
-            {showMapping ? "Hide mapping" : "Edit mapping"}
-          </button>
-
-          {showMapping && (
             <div className="mt-3 space-y-2">
               {/* Non-body keys */}
               {visibleKeys.length === 0 ? (
@@ -1240,80 +1323,102 @@ export default function CsvAudienceSection({
                 </div>
               )}
             </div>
-          )}
         </div>
-      </div>
+      )}
 
-      {/* Sample table */}
-      <div className="mt-4 overflow-x-auto rounded-lg border">
-        <table className="min-w-full text-xs">
-          <thead className="bg-gray-100 text-gray-700">
-            <tr>
-              {(sample?.headers ?? csvHeaders ?? []).map(h => (
-                <th key={h} className="px-3 py-2 text-left">
-                  {sample?.headers ? h : getFriendlyHeader(h)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Array.isArray(sample?.rows) && sample.rows.length > 0 ? (
-              sample.rows.map((row, idx) => (
-                <tr key={idx} className="border-t">
+      {batch?.batchId && (
+        <>
+          {/* Sample table */}
+          <div className="mt-4 overflow-x-auto rounded-lg border">
+            <table className="min-w-full text-xs">
+              <thead className="bg-gray-100 text-gray-700">
+                <tr>
                   {(sample?.headers ?? csvHeaders ?? []).map(h => (
-                    <td key={h} className="px-3 py-1.5">
-                      {row?.[h] ?? ""}
-                    </td>
+                    <th key={h} className="px-3 py-2 text-left">
+                      {sample?.headers ? h : getFriendlyHeader(h)}
+                    </th>
                   ))}
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  className="px-3 py-2 text-gray-400"
-                  colSpan={(csvHeaders ?? []).length || 1}
-                >
-                  No rows yet
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {Array.isArray(sample?.rows) && sample.rows.length > 0 ? (
+                  sample.rows.map((row, idx) => (
+                    <tr key={idx} className="border-t">
+                      {(sample?.headers ?? csvHeaders ?? []).map(h => (
+                        <td key={h} className="px-3 py-1.5">
+                          {row?.[h] ?? ""}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      className="px-3 py-2 text-gray-400"
+                      colSpan={(csvHeaders ?? []).length || 1}
+                    >
+                      No rows yet
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      {/* Actions */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={handleValidate}
-          disabled={!batch?.batchId || isUploading || removing || isAudienceLocked}
-          className="rounded bg-gray-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
-        >
-          Validate
-        </button>
-        <button
-          type="button"
-          onClick={handleDryRun}
-          disabled={!batch?.batchId || isUploading || removing || isAudienceLocked}
-          className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          (Preview) Dry-run materialize
-        </button>
-        <button
-          type="button"
-          onClick={handlePersist}
-          disabled={
-            !batch?.batchId ||
-            persisting ||
-            isUploading ||
-            removing ||
-            isAudienceLocked
-          }
-          className="rounded bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-        >
-          {persisting ? "saving" : "Save Contact"}
-        </button>
-      </div>
+          {/* Actions */}
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex items-center gap-2 text-xs text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={valReq.checkDuplicates}
+                  onChange={e =>
+                    setValReq(v => ({ ...v, checkDuplicates: e.target.checked }))
+                  }
+                  className="h-4 w-4 accent-emerald-600"
+                  disabled={isUploading || removing || isAudienceLocked}
+                />
+                Skip duplicate contacts
+              </label>
+              <button
+                type="button"
+                onClick={handleValidate}
+                disabled={isUploading || removing || isAudienceLocked}
+                className="rounded border border-gray-700 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Check File
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handlePersist}
+              disabled={persisting || isUploading || removing || isAudienceLocked}
+              className="rounded bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {persisting ? (
+                "Saving..."
+              ) : (
+                <span className="inline-flex items-center gap-1">
+                  Next
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14" />
+                    <path d="m13 5 7 7-7 7" />
+                  </svg>
+                </span>
+              )}
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Validation result */}
       {valRes && (
@@ -1331,15 +1436,6 @@ export default function CsvAudienceSection({
         </div>
       )}
 
-      {/* Dry-run preview */}
-      {dryPreview && (
-        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
-          <div className="font-semibold">Dry-run preview</div>
-          <pre className="mt-1 overflow-x-auto rounded bg-white p-2 text-[11px] text-gray-800">
-            {JSON.stringify(dryPreview, null, 2)}
-          </pre>
-        </div>
-      )}
     </section>
   );
 }

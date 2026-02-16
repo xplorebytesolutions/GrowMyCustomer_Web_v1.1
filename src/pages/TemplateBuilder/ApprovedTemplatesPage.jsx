@@ -143,15 +143,15 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  // Use forcedStatus if provided, otherwise default to empty (All)
-  const [status, setStatus] = useState(forcedStatus || "");
+  // Use forcedStatus if provided; approved page defaults to APPROVED.
+  const [status, setStatus] = useState(forcedStatus || "APPROVED");
   const [sp] = useSearchParams();
   const q = sp.get("q") || "";
   const v = sp.get("v") || "";
   const categoryFilter = sp.get("category") || "ALL";
   const qDebounced = useDebouncedValue(q, 250);
 
-  const [sortKey, setSortKey] = useState("updatedAt");
+  const [sortKey, setSortKey] = useState("approvedAt");
   const [sortDir, setSortDir] = useState("desc"); // asc | desc
 
 
@@ -164,7 +164,7 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
   useEffect(() => {
     setPage(1);
     if (forcedStatus) setStatus(forcedStatus);
-    else setStatus("");
+    else setStatus("APPROVED");
   }, [forcedStatus]);
 
   useEffect(() => {
@@ -341,134 +341,145 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
           Select a business (top bar) and try again.
         </Card>
       ) : (
-        <div className="flex gap-6 items-start">
-          <Card className="flex-1 overflow-hidden border border-slate-200 rounded-lg">
-            <div className="overflow-auto">
-              <table className="w-full text-sm table-fixed">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr className="text-left text-slate-700">
-                    <th
-                      className="w-[360px] px-4 py-3 font-semibold cursor-pointer select-none"
-                      onClick={() => setSort("name")}
-                    >
-                      <div className="inline-flex items-center gap-2">
-                        Template name <SortIcon columnKey="name" />
-                      </div>
-                    </th>
-                    <th
-                      className="px-4 py-3 font-semibold cursor-pointer select-none"
-                      onClick={() => setSort("category")}
-                    >
-                      <div className="inline-flex items-center gap-2">
-                        Category <SortIcon columnKey="category" />
-                      </div>
-                    </th>
-                    <th
-                      className="px-4 py-3 font-semibold cursor-pointer select-none"
-                      onClick={() => setSort("language")}
-                    >
-                      <div className="inline-flex items-center gap-2">
-                        Language <SortIcon columnKey="language" />
-                      </div>
-                    </th>
-                    <th
-                      className="w-[220px] px-4 py-3 font-semibold cursor-pointer select-none"
-                      onClick={() => setSort("status")}
-                    >
-                      <div className="inline-flex items-center gap-2">
-                        Status <SortIcon columnKey="status" />
-                      </div>
-                    </th>
-                    <th className="px-4 py-3 font-semibold">Top block reason</th>
-                    <th
-                      className="w-[160px] px-4 py-3 font-semibold cursor-pointer select-none"
-                      onClick={() => setSort("updatedAt")}
-                    >
-                      <div className="inline-flex items-center gap-2">
-                        {status === "PENDING" ? "Submitted" : "Last edited"} <SortIcon columnKey="updatedAt" />
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {sortedTemplates.map(t => {
-                    const name = t?.name ?? t?.Name ?? "";
-                    const languageCode = t?.languageCode ?? t?.LanguageCode ?? "en_US";
-                    const category = t?.category ?? t?.Category ?? "—";
-                    const statusVal = t?.status ?? t?.Status ?? "—";
-                    const key = `${name}::${languageCode}`;
-                    const bodyPreview = String(
-                      t?.bodyPreview ??
-                        t?.BodyPreview ??
-                        t?.body ??
-                        t?.Body ??
-                        ""
-                    ).trim();
-                    const updatedAt =
-                      t?.updatedAt ??
-                      t?.UpdatedAt ??
-                      t?.lastSyncedAt ??
-                      t?.LastSyncedAt ??
-                      null;
+        <div className="overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm">
+          <div className="max-h-[70vh] overflow-auto">
+            <table className="w-full text-[14px] text-slate-900">
+              <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[12px] font-semibold uppercase tracking-[0.03em] text-slate-600 border-b border-slate-200">
+                <tr>
+                  <th
+                    className="w-[360px] px-4 py-3 cursor-pointer select-none"
+                    onClick={() => setSort("name")}
+                  >
+                    <div className="inline-flex items-center gap-2">
+                      Template name <SortIcon columnKey="name" />
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-3 cursor-pointer select-none"
+                    onClick={() => setSort("category")}
+                  >
+                    <div className="inline-flex items-center gap-2">
+                      Category <SortIcon columnKey="category" />
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-3 cursor-pointer select-none"
+                    onClick={() => setSort("language")}
+                  >
+                    <div className="inline-flex items-center gap-2">
+                      Language <SortIcon columnKey="language" />
+                    </div>
+                  </th>
+                  <th
+                    className="w-[220px] px-4 py-3 cursor-pointer select-none"
+                    onClick={() => setSort("status")}
+                  >
+                    <div className="inline-flex items-center gap-2">
+                      Status <SortIcon columnKey="status" />
+                    </div>
+                  </th>
+                  <th
+                    className="w-[160px] px-4 py-3 cursor-pointer select-none"
+                    onClick={() => setSort("approvedAt")}
+                  >
+                    <div className="inline-flex items-center gap-2">
+                      {status === "PENDING" ? "Submitted" : "Approved Date"} <SortIcon columnKey="approvedAt" />
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sortedTemplates.map((t, idx) => {
+                  const name = t?.name ?? t?.Name ?? "";
+                  const languageCode = t?.languageCode ?? t?.LanguageCode ?? "en_US";
+                  const category = t?.category ?? t?.Category ?? "—";
+                  const statusVal = t?.status ?? t?.Status ?? "—";
+                  const key = `${name}::${languageCode}`;
+                  const bodyPreview = String(
+                    t?.bodyPreview ??
+                      t?.BodyPreview ??
+                      t?.body ??
+                      t?.Body ??
+                      ""
+                  ).trim();
+                  const updatedAt =
+                    t?.updatedAt ??
+                    t?.UpdatedAt ??
+                    t?.lastSyncedAt ??
+                    t?.LastSyncedAt ??
+                    null;
+                  const approvedAt =
+                    t?.approvedAt ??
+                    t?.ApprovedAt ??
+                    null;
+                  const isPendingView = String(status || "").toUpperCase() === "PENDING";
+                  const displayTimestamp = isPendingView ? updatedAt : approvedAt;
 
-                    return (
-                      <tr
-                        key={key}
-                        className="border-b border-slate-100 hover:bg-slate-50"
-                      >
-                        <td className="px-4 py-4 w-[360px]">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 max-w-[280px]">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-slate-900 truncate">
-                                  {name || "—"}
-                                </span>
-                                  <button
-                                    type="button"
-                                    className="text-slate-400 hover:text-emerald-700"
-                                    title="Preview"
-                                    onClick={() => loadPreview(name, languageCode)}
-                                  >
-                                    <Eye size={16} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-all ml-1"
-                                    title="Delete Template"
-                                    onClick={() => handleDeleteClick(name, languageCode)}
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                              </div>
-                              {bodyPreview ? (
-                                <div className="text-xs text-slate-500 mt-1 truncate">
-                                  {bodyPreview}
-                                </div>
-                              ) : null}
+                  return (
+                    <tr
+                      key={key}
+                      className={`group transition-colors hover:bg-slate-50/80 ${
+                        idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
+                      }`}
+                    >
+                      <td className="px-4 py-3 w-[360px] align-middle">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 max-w-[280px]">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-900 group-hover:text-emerald-700 truncate transition-colors">
+                                {name || "—"}
+                              </span>
+                                <button
+                                  type="button"
+                                  className="text-slate-400 hover:text-emerald-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Preview"
+                                  onClick={() => loadPreview(name, languageCode)}
+                                >
+                                  <Eye size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all ml-1"
+                                  title="Delete Template"
+                                  onClick={() => handleDeleteClick(name, languageCode)}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
                             </div>
+                            {bodyPreview ? (
+                              <div className="text-[11px] text-slate-500 mt-0.5 truncate italic">
+                                {bodyPreview}
+                              </div>
+                            ) : null}
                           </div>
-                        </td>
-                        <td className="px-4 py-4">{category || "—"}</td>
-                        <td className="px-4 py-4">{normalizeLanguage(languageCode)}</td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={
-                              "inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold " +
-                              statusPillClass(statusVal)
-                            }
-                          >
-                            {statusLabel(statusVal)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-slate-700">--</td>
-                        <td className="px-4 py-4 text-slate-700 whitespace-nowrap">
-                          {updatedAt ? dayjs(updatedAt).format("D MMM YYYY") : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-middle text-slate-700 font-medium">
+                        {category || "—"}
+                      </td>
+                      <td className="px-4 py-3 align-middle text-slate-600">
+                        {normalizeLanguage(languageCode)}
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <span
+                          className={
+                            "inline-flex items-center px-2 py-0.5 rounded-md border text-[11px] font-semibold " +
+                            statusPillClass(statusVal)
+                          }
+                        >
+                          {statusLabel(statusVal)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-middle text-slate-600 whitespace-nowrap text-xs">
+                        {displayTimestamp
+                          ? dayjs(displayTimestamp).format("D MMM YYYY, h:mm A")
+                          : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
 
               {/* Pagination Controls */}
               {totalPages > 0 && (
@@ -525,9 +536,8 @@ export default function ApprovedTemplatesPage({ forcedStatus }) {
                 </div>
               )}
             </div>
-          </Card>
-        </div>
-      )}
+          </div>
+        )}
 
       {/* Preview Modal */}
       <Dialog 

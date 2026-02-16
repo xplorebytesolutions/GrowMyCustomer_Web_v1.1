@@ -61,7 +61,7 @@ function CampaignSummaryBar({ summary }) {
           value={summary.sent || 0}
           subText="Successfully sent to provider"
           icon={<Send size={40} />}
-          gradient="from-pink-500 to-purple-600"
+          gradient="from-emerald-500 to-teal-600"
           decoration="wave"
         />
         <KpiCard
@@ -69,7 +69,7 @@ function CampaignSummaryBar({ summary }) {
           value={summary.delivered || 0}
           subText={`${deliveryRate}% Delivery Rate`}
           icon={<CheckCircle2 size={40} />}
-          gradient="from-purple-500 to-indigo-600"
+          gradient="from-emerald-600 to-cyan-600"
           decoration="graph"
         />
         <KpiCard

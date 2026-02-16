@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Upload, Loader2, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { uploadStandaloneMedia } from "../../../api/templateBuilder/uploads";
 
@@ -8,8 +8,10 @@ export default function StandaloneMediaUploader({
   onUploaded,
   onPreview,
 }) {
+  const fileInputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: string }
+  const [lastFileName, setLastFileName] = useState("");
 
   const onFile = async file => {
     if (!file) return;
@@ -55,7 +57,12 @@ export default function StandaloneMediaUploader({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 cursor-pointer hover:bg-indigo-100 transition-all shadow-sm active:scale-[0.98]">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={busy}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 cursor-pointer hover:bg-indigo-100 transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+        >
           {busy ? (
             <Loader2 className="animate-spin" size={16} />
           ) : (
@@ -64,24 +71,27 @@ export default function StandaloneMediaUploader({
           <span className="text-sm font-semibold">
             {busy ? "Uploading..." : "Upload File"}
           </span>
-          <input
-            type="file"
-            className="hidden"
-            accept={
-              mediaType === "IMAGE"
-                ? "image/*"
-                : mediaType === "VIDEO"
-                ? "video/*"
-                : ".pdf,application/pdf"
-            }
-            onChange={e => {
-              const file = e.target.files?.[0];
-              e.target.value = ""; // allow re-selecting same file
-              onFile(file);
-            }}
-            disabled={busy}
-          />
-        </label>
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept={
+            mediaType === "IMAGE"
+              ? "image/*"
+              : mediaType === "VIDEO"
+              ? "video/*"
+              : ".pdf,application/pdf"
+          }
+          onChange={e => {
+            const file = e.target.files?.[0];
+            e.target.value = ""; // allow re-selecting same file
+            setLastFileName(file?.name || "");
+            onFile(file);
+          }}
+          disabled={busy}
+        />
 
         <div className="text-xs text-gray-500">
           {handle?.startsWith("handle:") ? (
@@ -90,7 +100,9 @@ export default function StandaloneMediaUploader({
               <span className="font-bold uppercase tracking-wider text-[10px]">Ready to Send</span>
             </div>
           ) : (
-            <span className="italic text-[10px] text-slate-400">Direct upload for better reliability</span>
+            <span className="italic text-[10px] text-slate-400">
+              {lastFileName ? `Selected: ${lastFileName}` : "Direct upload for better reliability"}
+            </span>
           )}
         </div>
       </div>

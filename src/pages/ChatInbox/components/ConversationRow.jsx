@@ -69,26 +69,11 @@ export function ConversationRow({ conv, isSelected, onClick }) {
                 </span>
               ))}
             </div>
-            <span className="text-[10px] text-slate-400">{conv.contactPhone}</span>
+            <span className="text-xs text-slate-500 font-medium">{conv.contactPhone}</span>
           </div>
-          <span className="text-[10px] text-slate-400 ml-2">
-            {conv.lastMessageAt
-              ? new Date(conv.lastMessageAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "-"}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] text-slate-600 truncate pr-4">
-            {conv.lastMessagePreview || "No recent message"}
-          </p>
-
-          <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-2 ml-2">
             <span
-              className={`text-[9px] px-1.5 py-[1px] rounded-full border ${
+              className={`text-[9px] px-1.5 py-[1px] rounded-full border whitespace-nowrap ${
                 conv.within24h
                   ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                   : "bg-slate-50 text-slate-500 border-slate-200"
@@ -96,13 +81,30 @@ export function ConversationRow({ conv, isSelected, onClick }) {
             >
               {conv.within24h ? "24h window" : "Outside 24h"}
             </span>
-            {conv.assignedToUserName && (
-              <span className="text-[9px] text-slate-400">
-                {conv.assignedToUserName}
-              </span>
-            )}
+            <span className="text-[10px] text-slate-400">
+              {conv.lastMessageAt
+                ? new Date(conv.lastMessageAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "-"}
+            </span>
           </div>
         </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] text-slate-600 truncate">
+            {conv.lastMessagePreview || "No recent message"}
+          </p>
+        </div>
+
+        {conv.assignedToUserName && (
+          <div className="flex justify-end mt-1">
+            <span className="inline-flex items-center rounded border border-indigo-100 bg-indigo-50/30 px-1.5 py-[1px] text-[9px] font-medium text-indigo-600 max-w-[100px] truncate whitespace-nowrap">
+              {conv.assignedToUserName}
+            </span>
+          </div>
+        )}
       </div>
     </button>
   );

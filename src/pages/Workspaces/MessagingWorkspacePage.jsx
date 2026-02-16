@@ -48,7 +48,7 @@ const messageBlocks = [
       "Use approved WhatsApp templates for consistent, scalable messaging.",
     path: "/app/messaging/send-template-message",
     icon: <FileText size={22} />,
-    action: "Coming Soon",
+    action: "Send Template",
   },
   {
     id: "view-messaging-reports",
