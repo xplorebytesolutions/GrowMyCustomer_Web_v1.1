@@ -2235,7 +2235,14 @@ export function useChatInboxController() {
       payload.providerMessageId ?? payload.ProviderMessageId ?? null;
     const messageId = payload.messageId ?? payload.MessageId ?? null;
     const nextStatus = payload.status ?? payload.Status ?? null;
+    const nextErrorRaw =
+      payload.error ??
+      payload.Error ??
+      payload.errorMessage ??
+      payload.ErrorMessage ??
+      null;
     if (!nextStatus) return;
+    const nextError = String(nextErrorRaw || "").trim();
 
     const rank = s => {
       const v = String(s || "")
@@ -2282,7 +2289,22 @@ export function useChatInboxController() {
         const nextRank = rank(nextStatus);
         if (nextRank < currentRank) return m;
 
-        return { ...m, status: nextStatus };
+        const nextStatusRaw = String(nextStatus || "")
+          .trim()
+          .toLowerCase();
+        const isFailedStatus =
+          nextStatusRaw.includes("fail") ||
+          nextStatusRaw.includes("error") ||
+          nextStatusRaw.includes("reject") ||
+          nextStatusRaw.includes("undeliver");
+
+        return {
+          ...m,
+          status: nextStatus,
+          errorMessage: isFailedStatus
+            ? nextError || m.errorMessage || "Not delivered"
+            : m.errorMessage,
+        };
       })
     );
   }, []);

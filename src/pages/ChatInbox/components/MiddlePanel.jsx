@@ -1239,6 +1239,8 @@ export function MiddlePanel({
                   normalizedStatus === "not_delivered";
                 const showFailedBelowBubble =
                   !isInbound && (hasFailedStatus || Boolean(msg?.errorMessage));
+                const failureReason = String(msg?.errorMessage || "").trim();
+                const failureLabel = failureReason || "Not delivered";
 
                 return (
                   <div
@@ -1422,7 +1424,7 @@ export function MiddlePanel({
                       {showFailedBelowBubble ? (
                         <div className="mt-1 flex items-center gap-1 text-[11px] text-rose-600">
                           <X className="h-3.5 w-3.5" />
-                          Not delivered
+                          {failureLabel}
                         </div>
                       ) : null}
                     </div>
