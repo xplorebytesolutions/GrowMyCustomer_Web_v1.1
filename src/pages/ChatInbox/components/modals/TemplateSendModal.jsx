@@ -59,18 +59,30 @@ const parseTemplateButtons = template => {
   return [];
 };
 
+const hasTemplateToken = value =>
+  /\{\{\s*\d+\s*\}\}/.test(String(value || ""));
+
 const isDynamicUrlButton = button => {
-  const subtype = String(button?.SubType || button?.subType || "")
-    .trim()
-    .toLowerCase();
+  const dynamicFlag =
+    button?.isDynamic ??
+    button?.IsDynamic ??
+    button?.hasVariable ??
+    button?.HasVariable ??
+    button?.requiresParameter ??
+    button?.RequiresParameter ??
+    null;
+
+  if (typeof dynamicFlag === "boolean") return dynamicFlag;
+
   const originalUrl = String(
-    button?.ParameterValue ||
-      button?.parameterValue ||
-      button?.Url ||
-      button?.url ||
+    button?.ParameterValue ??
+      button?.parameterValue ??
+      button?.Url ??
+      button?.url ??
       ""
   );
-  return subtype === "url" || /\{\{\d+\}\}/.test(originalUrl);
+
+  return hasTemplateToken(originalUrl);
 };
 
 const toDynamicUrlSlots = buttons =>
@@ -86,7 +98,7 @@ const toDynamicUrlSlots = buttons =>
 
 const extractTemplatePlaceholderIndexes = body => {
   const source = String(body || "");
-  const matches = [...source.matchAll(/\{\{(\d+)\}\}/g)];
+  const matches = [...source.matchAll(/\{\{\s*(\d+)\s*\}\}/g)];
   const unique = new Set();
   for (const m of matches) {
     const idx = Number(m?.[1] || 0);
